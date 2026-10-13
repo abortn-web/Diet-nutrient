@@ -1,0 +1,2618 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriCalc Pro — Калькулятор КБЖУ и Дневник Питания</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .dark body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+            transition: transform 0.15s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 999px;
+        }
+        .dark input[type=range]::-webkit-slider-runnable-track {
+            background: #334155;
+        }
+        /* Smooth transitions for progress bars and SVG */
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen transition-colors duration-200 selection:bg-emerald-500 selection:text-white pb-12">
+
+    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                    <i class="ph-fill ph-leaf text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                        NutriCalc <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Калькулятор КБЖУ и конструктор суточного рациона</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="loadDemoMenu()" class="text-xs sm:text-sm font-medium px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5" title="Заполнить пример сбалансированного рациона">
+                    <i class="ph ph-magic-wand text-emerald-500 text-base"></i>
+                    <span class="hidden md:inline">Пример рациона</span>
+                </button>
+                <button onclick="openCustomFoodModal()" class="text-xs sm:text-sm font-medium px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 transition flex items-center gap-1.5">
+                    <i class="ph ph-plus-circle text-base"></i>
+                    <span>Свой продукт</span>
+                </button>
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition" aria-label="Переключить тему">
+                    <i id="themeIcon" class="ph ph-moon text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        
+        <!-- Mobile Navigation Tabs -->
+        <div class="flex lg:hidden bg-slate-200/70 dark:bg-slate-800 p-1 rounded-2xl mb-6">
+            <button onclick="switchMobileTab('calc')" id="mobTabCalc" class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm">
+                <i class="ph ph-sliders-horizontal text-lg text-emerald-500"></i> Параметры и Норма
+            </button>
+            <button onclick="switchMobileTab('diary')" id="mobTabDiary" class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
+                <i class="ph ph-notebook text-lg"></i> Дневник питания
+                <span id="mobDiaryBadge" class="px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500 text-white">0</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <section id="sectionCalc" class="lg:col-span-5 space-y-6">
+                
+                <!-- Card 1: Biometrics -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">1</span>
+                            <h2 class="font-bold text-lg text-slate-900 dark:text-white">Ваши параметры</h2>
+                        </div>
+                        <span class="text-xs text-slate-400 dark:text-slate-500 font-medium">Миффлин-Сан Жеор</span>
+                    </div>
+
+                    <!-- Gender Switch -->
+                    <div class="grid grid-cols-2 gap-3 mb-5">
+                        <button type="button" onclick="setGender('female')" id="btnFemale" class="py-3 px-4 rounded-2xl border-2 font-semibold text-sm flex items-center justify-center gap-2 transition">
+                            <i class="ph-fill ph-gender-female text-lg"></i> Женщина
+                        </button>
+                        <button type="button" onclick="setGender('male')" id="btnMale" class="py-3 px-4 rounded-2xl border-2 font-semibold text-sm flex items-center justify-center gap-2 transition">
+                            <i class="ph-fill ph-gender-male text-lg"></i> Мужчина
+                        </button>
+                    </div>
+
+                    <!-- Age, Height, Weight Sliders + Inputs -->
+                    <div class="space-y-5">
+                        <!-- Age -->
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="inputAge" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Возраст (лет)</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="inputAge" min="14" max="100" value="35" oninput="syncParam('age', this.value)" class="w-16 text-right font-bold text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                                </div>
+                            </div>
+                            <input type="range" id="rangeAge" min="14" max="100" value="35" oninput="syncParam('age', this.value)">
+                        </div>
+
+                        <!-- Height -->
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="inputHeight" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Рост (см)</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="inputHeight" min="130" max="230" value="169" oninput="syncParam('height', this.value)" class="w-16 text-right font-bold text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                                </div>
+                            </div>
+                            <input type="range" id="rangeHeight" min="130" max="230" value="169" oninput="syncParam('height', this.value)">
+                        </div>
+
+                        <!-- Weight -->
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="inp-weight" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Вес (кг)</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="inp-weight" min="30" max="250" step="0.5" value="85" oninput="syncParam('weight', this.value)" class="w-20 text-right font-bold text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                                </div>
+                            </div>
+                            <input type="range" id="rangeWeight" min="30" max="250" step="0.5" value="85" oninput="syncParam('weight', this.value)">
+                            <div class="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 mt-1 px-0.5 font-medium">
+                                <span>30 кг</span>
+                                <span>65 кг</span>
+                                <span>100 кг</span>
+                                <span>150+ кг</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BMI & BMR Mini Status -->
+                    <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3">
+                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between">
+                            <div>
+                                <div class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">ИМТ (Индекс массы)</div>
+                                <div class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-200" id="bmiValue">22.5</div>
+                            </div>
+                            <span id="bmiBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Норма</span>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between">
+                            <div>
+                                <div class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Базовый обмен (BMR)</div>
+                                <div class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-200"><span id="bmrValue">1432</span> <span class="text-xs font-normal text-slate-400">ккал</span></div>
+                            </div>
+                            <i class="ph ph-fire text-xl text-amber-500"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Additive Activity (Steps + Workouts + Background) & Goal -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">2</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-slate-900 dark:text-white leading-tight">Расход энергии за день</h2>
+                                <p class="text-[11px] text-slate-400 dark:text-slate-500">BMR + Быт + Шаги + Тренировки</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" id="tdeeHeaderBadge">TDEE: 2450 ккал</span>
+                    </div>
+
+                    <!-- 2.1 Background Non-Exercise Activity (без шагов) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                <i class="ph-fill ph-briefcase text-indigo-500 text-sm"></i> 1. Бытовой фон (без учета ходьбы)
+                            </label>
+                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400" id="lblNeatCal">+259 ккал</span>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2" id="activityList">
+                            <!-- Dynamically rendered via JS -->
+                        </div>
+                    </div>
+
+                    <!-- 2.2 Daily Steps Counter -->
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                            <label for="inputSteps" class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                <i class="ph-fill ph-footprints text-teal-500 text-base"></i> 2. Количество шагов в день
+                            </label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="inputSteps" min="0" max="35000" step="500" value="8000" oninput="syncSteps(this.value)" class="w-24 text-right font-bold text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                                <span class="text-xs text-slate-400 font-medium">шагов</span>
+                            </div>
+                        </div>
+
+                        <input type="range" id="rangeSteps" min="0" max="30000" step="500" value="8000" oninput="syncSteps(this.value)" class="mb-2">
+
+                        <!-- Quick step presets -->
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            <button type="button" onclick="syncSteps(4000)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">4 000</button>
+                            <button type="button" onclick="syncSteps(6000)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">6 000</button>
+                            <button type="button" onclick="syncSteps(8000)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">8 000</button>
+                            <button type="button" onclick="syncSteps(10000)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">10 000</button>
+                            <button type="button" onclick="syncSteps(12000)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">12 000</button>
+                            <button type="button" onclick="syncSteps(15000)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">15 000</button>
+                        </div>
+
+                        <div class="pt-2.5 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between text-xs">
+                            <span class="text-slate-500 dark:text-slate-400">
+                                Дистанция: <b class="text-slate-800 dark:text-slate-200" id="lblStepsKm">~5.6 км</b> <span class="text-[11px] opacity-75" id="lblStepLen">(шаг 70 см)</span>
+                            </span>
+                            <span class="font-bold text-teal-600 dark:text-teal-400 text-sm" id="lblStepsCal">+298 ккал/день</span>
+                        </div>
+                    </div>
+
+                    <!-- 2.3 Workouts (Low/Moderate intensity) -->
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                <i class="ph-fill ph-barbell text-amber-500 text-base"></i> 3. Тренировки (по времени)
+                            </label>
+                            <span class="font-bold text-amber-600 dark:text-amber-400 text-sm" id="lblWorkoutDailyCal">+155 ккал/день</span>
+                        </div>
+
+                        <!-- Mode switch: Average per week vs Full workout today -->
+                        <div class="grid grid-cols-2 gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 rounded-xl text-[11px] font-bold">
+                            <button type="button" onclick="setWorkoutMode('weekly_avg')" id="btnWkAvg" class="py-1.5 px-2 rounded-lg transition bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm">
+                                Среднесуточно за неделю
+                            </button>
+                            <button type="button" onclick="setWorkoutMode('today_full')" id="btnWkToday" class="py-1.5 px-2 rounded-lg transition text-slate-600 dark:text-slate-400">
+                                Вся тренировка сегодня
+                            </button>
+                        </div>
+
+                        <!-- Workouts per week (visible in weekly_avg mode) -->
+                        <div id="workoutFreqBlock">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Количество тренировок в неделю</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="inputWorkoutCount" min="0" max="14" step="1" value="3" oninput="syncWorkoutCount(this.value)" class="w-14 text-right font-bold text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-slate-900 dark:text-white">
+                                    <span class="text-xs text-slate-400">раз/нед</span>
+                                </div>
+                            </div>
+                            <input type="range" id="rangeWorkoutCount" min="0" max="7" step="1" value="3" oninput="syncWorkoutCount(this.value)">
+                        </div>
+
+                        <!-- Duration of 1 workout in minutes -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-xs font-medium text-slate-600 dark:text-slate-300" id="lblWorkoutDurTitle">Длительность одной тренировки</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="inputWorkoutMins" min="0" max="240" step="5" value="60" oninput="syncWorkoutMins(this.value)" class="w-16 text-right font-bold text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 text-slate-900 dark:text-white">
+                                    <span class="text-xs text-slate-400">мин</span>
+                                </div>
+                            </div>
+                            <input type="range" id="rangeWorkoutMins" min="0" max="180" step="5" value="60" oninput="syncWorkoutMins(this.value)">
+                        </div>
+
+                        <!-- Workout Intensity Selector (focused on low/moderate intensity) -->
+                        <div>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Интенсивность тренировки</span>
+                            <div class="grid grid-cols-1 gap-1.5" id="workoutIntensityList">
+                                <!-- Rendered via JS -->
+                            </div>
+                        </div>
+
+                        <div class="pt-2.5 border-t border-slate-200/70 dark:border-slate-700/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span class="text-slate-500 dark:text-slate-400">
+                                За 1 тренировку: <b class="text-slate-800 dark:text-slate-200" id="lblSingleWorkoutCal">361 ккал</b>
+                            </span>
+                            <span class="text-[11px] text-slate-400 dark:text-slate-500" id="lblWorkoutFormulaNote">3 трен. × 361 ккал ÷ 7 дней</span>
+                        </div>
+                    </div>
+
+                    <!-- 2.4 Optional TEF Checkbox & Visual Formula Breakdown -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-3.5 shadow-md">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                <i class="ph-fill ph-lightning"></i> Сложение суточного обмена (TDEE)
+                            </span>
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-300 hover:text-white">
+                                <input type="checkbox" id="chkIncludeTef" onchange="toggleTef(this.checked)" class="rounded text-emerald-500 focus:ring-0">
+                                <span>+10% TEF (усвоение пищи)</span>
+                            </label>
+                        </div>
+
+                        <!-- Stacked Horizontal Bar of Energy Expenditure -->
+                        <div class="h-3 w-full rounded-full bg-slate-700 overflow-hidden flex gap-0.5 p-0.5">
+                            <div id="tdeeBarBmr" class="bg-slate-400 h-full rounded-l-full transition-all duration-300" style="width: 65%" title="Базовый обмен (BMR)"></div>
+                            <div id="tdeeBarNeat" class="bg-indigo-400 h-full transition-all duration-300" style="width: 12%" title="Бытовой фон"></div>
+                            <div id="tdeeBarSteps" class="bg-teal-400 h-full transition-all duration-300" style="width: 13%" title="Шаги"></div>
+                            <div id="tdeeBarWorkout" class="bg-amber-400 h-full transition-all duration-300" style="width: 10%" title="Тренировки"></div>
+                            <div id="tdeeBarTef" class="bg-rose-400 h-full rounded-r-full transition-all duration-300 hidden" style="width: 0%" title="Усвоение пищи (TEF)"></div>
+                        </div>
+
+                        <!-- Formula Pills -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                            <div class="p-2 rounded-xl bg-white/5 border border-white/10">
+                                <div class="text-slate-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400"></span> BMR (База)</div>
+                                <div class="font-bold text-sm text-white mt-0.5"><span id="fBmrVal">1729</span> ккал</div>
+                            </div>
+                            <div class="p-2 rounded-xl bg-white/5 border border-white/10">
+                                <div class="text-indigo-300 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-400"></span> Быт / фон</div>
+                                <div class="font-bold text-sm text-white mt-0.5">+<span id="fNeatVal">259</span> ккал</div>
+                            </div>
+                            <div class="p-2 rounded-xl bg-white/5 border border-white/10">
+                                <div class="text-teal-300 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-teal-400"></span> Шаги</div>
+                                <div class="font-bold text-sm text-white mt-0.5">+<span id="fStepsVal">298</span> ккал</div>
+                            </div>
+                            <div class="p-2 rounded-xl bg-white/5 border border-white/10">
+                                <div class="text-amber-300 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Тренировки</div>
+                                <div class="font-bold text-sm text-white mt-0.5">+<span id="fWorkoutVal">155</span> ккал</div>
+                            </div>
+                        </div>
+
+                        <div id="fTefRow" class="hidden text-[11px] text-rose-300 flex justify-between items-center px-1">
+                            <span>+ Термический эффект пищи (TEF 10%):</span>
+                            <span class="font-bold">+<span id="fTefVal">244</span> ккал</span>
+                        </div>
+
+                        <div class="pt-2.5 border-t border-white/10 flex items-baseline justify-between">
+                            <span class="text-xs text-slate-300 font-medium">Итого расход за сутки (TDEE):</span>
+                            <span class="text-lg font-extrabold text-emerald-400"><span id="fTotalTdeeVal">2441</span> ккал/день</span>
+                        </div>
+                    </div>
+
+                    <!-- 2.5 Goal Selection & Target Weight / Period Planner -->
+                    <div class="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                <i class="ph-fill ph-flag-checkered text-emerald-500 text-sm"></i> 4. Цель, желаемый вес и срок
+                            </label>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" id="lblGoalResultCal">Норма: 1616 ккал</span>
+                        </div>
+
+                        <!-- Goal Mode Switcher -->
+                        <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold">
+                            <button type="button" onclick="setGoalCalcMode('target_weight')" id="btnGoalModeWeight" class="py-2 px-2.5 rounded-xl transition flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm">
+                                <i class="ph-fill ph-calendar-check text-emerald-500 text-sm"></i> По желаемому весу и сроку
+                            </button>
+                            <button type="button" onclick="setGoalCalcMode('fixed_pct')" id="btnGoalModePct" class="py-2 px-2.5 rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400">
+                                <i class="ph ph-percent text-sm"></i> Фиксированный %
+                            </button>
+                        </div>
+
+                        <!-- Mode A: Target Weight & Desired Period -->
+                        <div id="goalWeightPlannerBlock" class="space-y-4">
+                            <!-- Target Weight Control -->
+                            <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div>
+                                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">Желаемый вес (кг)</span>
+                                        <span class="text-[11px] text-slate-400" id="lblWeightDeltaSummary">Цель: сбросить 12.0 кг (с 85 до 73 кг)</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <input type="number" id="inp-target-weight-num" min="30" max="160" step="0.5" value="73" oninput="syncTargetWeight(this.value)" class="w-20 text-right font-bold text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500">
+                                        <span class="text-xs text-slate-400 font-medium">кг</span>
+                                    </div>
+                                </div>
+                                <input type="range" id="inp-target-weight" min="30" max="160" step="0.5" value="73" oninput="syncTargetWeight(this.value)" class="mb-1">
+                                <div class="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 mb-2.5 px-0.5 font-medium">
+                                    <span>30 кг</span>
+                                    <span>65 кг</span>
+                                    <span>95 кг</span>
+                                    <span>130+ кг</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5" id="targetWeightQuickPresets">
+                                    <button type="button" onclick="syncTargetWeight(45)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">45 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(50)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">50 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(55)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">55 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(60)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">60 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(65)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">65 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(70)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">70 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(75)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">75 кг</button>
+                                    <button type="button" onclick="syncTargetWeight(80)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">80 кг</button>
+                                </div>
+                            </div>
+
+                            <!-- Desired Period Control -->
+                            <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div>
+                                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">Желаемый срок (недель)</span>
+                                        <span class="text-[11px] text-slate-400" id="lblPeriodDaysMonths">112 дней (~3.7 мес) • Финиш: 2 мар</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <input type="number" id="inputTargetWeeks" min="1" max="104" step="1" value="16" oninput="syncTargetWeeks(this.value)" class="w-16 text-right font-bold text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                                        <span class="text-xs text-slate-400 font-medium">нед</span>
+                                    </div>
+                                </div>
+                                <input type="range" id="rangeTargetWeeks" min="2" max="52" step="1" value="16" oninput="syncTargetWeeks(this.value)" class="mb-2">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button type="button" onclick="syncTargetWeeks(8)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">8 нед (2 мес)</button>
+                                    <button type="button" onclick="syncTargetWeeks(12)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">12 нед (3 мес)</button>
+                                    <button type="button" onclick="syncTargetWeeks(16)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">16 нед (4 мес)</button>
+                                    <button type="button" onclick="syncTargetWeeks(20)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">20 нед (5 мес)</button>
+                                    <button type="button" onclick="syncTargetWeeks(24)" class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500 transition">24 нед (6 мес)</button>
+                                </div>
+                            </div>
+
+                            <!-- Smart Recommendations & Mathematical Breakdown Box -->
+                            <div class="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/90 via-slate-900 to-slate-900 text-white border border-emerald-500/30 space-y-3.5 shadow-md">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                                        <i class="ph-fill ph-sparkle"></i> Персональные рекомендации по плану
+                                    </div>
+                                    <span id="planPaceBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                                        Оптимальный темп
+                                    </span>
+                                </div>
+
+                                <!-- Key Math Metrics Grid -->
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                                        <div class="text-[10px] text-slate-400 uppercase">Темп в неделю</div>
+                                        <div class="font-extrabold text-sm sm:text-base text-white mt-0.5" id="planWeeklyRate">-0.75 кг/нед</div>
+                                        <div class="text-[10px] text-emerald-300" id="planWeeklyPct">0.88% от веса</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                                        <div class="text-[10px] text-slate-400 uppercase" id="planDailyDeltaTitle">Дефицит в сутки</div>
+                                        <div class="font-extrabold text-sm sm:text-base text-amber-300 mt-0.5" id="planDailyDeltaVal">-825 ккал</div>
+                                        <div class="text-[10px] text-slate-400" id="planTotalKcalBank">Всего: 92 400 ккал</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30">
+                                        <div class="text-[10px] text-emerald-300 uppercase">Целевой рацион</div>
+                                        <div class="font-extrabold text-sm sm:text-base text-emerald-400 mt-0.5" id="planTargetCalVal">1616 ккал</div>
+                                        <div class="text-[10px] text-emerald-200/80" id="planDeficitPctOfTdee">-34% от TDEE</div>
+                                    </div>
+                                </div>
+
+                                <!-- Dynamic Actionable Recommendations List -->
+                                <div id="planRecommendationsList" class="space-y-2 text-xs text-slate-200 leading-relaxed">
+                                    <!-- Populated via JS -->
+                                </div>
+
+                                <!-- Quick Action Buttons (Safe Term / Apply Recommended Macros / Add Steps) -->
+                                <div class="flex flex-wrap gap-2 pt-1" id="planQuickActions">
+                                    <!-- Populated via JS -->
+                                </div>
+
+                                <!-- Weight Milestone Timeline -->
+                                <div class="pt-3 border-t border-white/10">
+                                    <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+                                        <span>Прогноз контрольных точек веса (1 кг ≈ 7 700 ккал):</span>
+                                        <span id="planTargetBmiNote" class="text-emerald-300 font-semibold">Целевой ИМТ: 25.6</span>
+                                    </div>
+                                    <div class="grid grid-cols-5 gap-1.5 text-center" id="planMilestonesGrid">
+                                        <!-- Populated via JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mode B: Classic Fixed Percentage Goals -->
+                        <div id="goalFixedPctBlock" class="hidden">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5" id="goalList">
+                                <!-- Dynamically rendered via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Macro Ratio Selection -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">3</span>
+                            <h2 class="font-bold text-lg text-slate-900 dark:text-white">Расчет БЖУ</h2>
+                        </div>
+                        <span id="macroSumBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Норма г/кг</span>
+                    </div>
+
+                    <!-- Mode Switcher: By Weight (g/kg) vs By Percent (%) -->
+                    <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-4">
+                        <button type="button" onclick="setMacroMode('gkg')" id="btnModeGkg" class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm">
+                            <i class="ph-fill ph-scales text-emerald-500 text-sm"></i> По весу (г/кг)
+                        </button>
+                        <button type="button" onclick="setMacroMode('pct')" id="btnModePct" class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400">
+                            <i class="ph ph-percent text-sm"></i> В процентах (%)
+                        </button>
+                    </div>
+
+                    <!-- Preset Pills -->
+                    <div class="flex flex-wrap gap-1.5 mb-4" id="macroPresetsContainer">
+                        <!-- Rendered via JS -->
+                    </div>
+
+                    <!-- Physiological Warning Banner (if protein > 2.5 g/kg or fat < 0.7 g/kg) -->
+                    <div id="macroSafetyAlert" class="hidden mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                        <i class="ph-fill ph-warning-circle text-amber-500 text-lg shrink-0 mt-0.5"></i>
+                        <div class="flex-1">
+                            <div class="font-bold" id="macroSafetyTitle">Обратите внимание</div>
+                            <div id="macroSafetyText" class="text-[11px] opacity-90 mt-0.5"></div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Stacked Bar of Ratio -->
+                    <div class="h-3.5 w-full rounded-full overflow-hidden flex mb-5 bg-slate-100 dark:bg-slate-800 p-0.5 gap-0.5">
+                        <div id="ratioBarP" class="bg-blue-500 h-full rounded-l-full transition-all duration-300" style="width: 25%"></div>
+                        <div id="ratioBarF" class="bg-amber-500 h-full transition-all duration-300" style="width: 25%"></div>
+                        <div id="ratioBarC" class="bg-emerald-500 h-full rounded-r-full transition-all duration-300" style="width: 50%"></div>
+                    </div>
+
+                    <!-- Controls for g/kg mode -->
+                    <div id="controlsGkgMode" class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Белки (норма 1.2–2.2 г/кг)
+                                </span>
+                                <span class="text-slate-700 dark:text-slate-200"><span id="lblGkgP" class="font-bold text-blue-600 dark:text-blue-400">1.6</span> г/кг • <span id="lblGkgGramP" class="font-bold">104</span> г (<span id="lblGkgPctP">23</span>%)</span>
+                            </div>
+                            <input type="range" id="rangeGkgP" min="0.8" max="2.8" step="0.1" value="1.6" oninput="handleGkgMacroChange('p', this.value)">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Жиры (норма 0.8–1.3 г/кг)
+                                </span>
+                                <span class="text-slate-700 dark:text-slate-200"><span id="lblGkgF" class="font-bold text-amber-600 dark:text-amber-400">1.0</span> г/кг • <span id="lblGkgGramF" class="font-bold">65</span> г (<span id="lblGkgPctF">32</span>%)</span>
+                            </div>
+                            <input type="range" id="rangeGkgF" min="0.5" max="2.5" step="0.05" value="1.0" oninput="handleGkgMacroChange('f', this.value)">
+                        </div>
+
+                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs font-semibold">
+                            <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Углеводы (остаток ккал)
+                            </span>
+                            <span class="text-slate-700 dark:text-slate-200"><span id="lblGkgC" class="font-bold text-emerald-600 dark:text-emerald-400">3.1</span> г/кг • <span id="lblGkgGramC" class="font-bold">200</span> г (<span id="lblGkgPctC">45</span>%)</span>
+                        </div>
+                    </div>
+
+                    <!-- Custom Sliders for P / F / C percentages -->
+                    <div id="controlsPctMode" class="space-y-4 hidden">
+                        <!-- Proteins % -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Белки (4 ккал/г)
+                                </span>
+                                <span class="text-slate-700 dark:text-slate-200"><span id="lblPctP">25</span>% • <span id="lblGramP" class="font-bold">113</span> г (<span id="lblPctGkgP" class="text-blue-600 dark:text-blue-400">1.7</span> г/кг)</span>
+                            </div>
+                            <input type="range" id="rangePctP" min="10" max="50" value="25" oninput="handleCustomMacroChange('p', this.value)">
+                        </div>
+
+                        <!-- Fats % -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Жиры (9 ккал/г)
+                                </span>
+                                <span class="text-slate-700 dark:text-slate-200"><span id="lblPctF">30</span>% • <span id="lblGramF" class="font-bold">60</span> г (<span id="lblPctGkgF" class="text-amber-600 dark:text-amber-400">0.9</span> г/кг)</span>
+                            </div>
+                            <input type="range" id="rangePctF" min="15" max="75" value="30" oninput="handleCustomMacroChange('f', this.value)">
+                        </div>
+
+                        <!-- Carbs % -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Углеводы (4 ккал/г)
+                                </span>
+                                <span class="text-slate-700 dark:text-slate-200"><span id="lblPctC">45</span>% • <span id="lblGramC" class="font-bold">203</span> г (<span id="lblPctGkgC" class="text-emerald-600 dark:text-emerald-400">3.1</span> г/кг)</span>
+                            </div>
+                            <input type="range" id="rangePctC" min="5" max="75" value="45" oninput="handleCustomMacroChange('c', this.value)">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sectionDiary" class="lg:col-span-7 space-y-6 hidden lg:block">
+                
+                <!-- Dashboard Card: Target vs Consumed -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+                        <div>
+                            <h2 class="font-bold text-lg sm:text-xl text-slate-900 dark:text-white flex items-center gap-2">
+                                Сводка дневного рациона
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400" id="goalSubtitle">Ваша цель: Поддержание веса</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="clearDiary()" class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+                                <i class="ph ph-trash"></i> Очистить день
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Ring + Macro Progress Bars -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                        
+                        <!-- Radial Calorie Chart -->
+                        <div class="md:col-span-5 flex flex-col items-center justify-center relative">
+                            <div class="relative w-44 h-44 flex items-center justify-center">
+                                <svg class="w-full h-full" viewBox="0 0 160 160">
+                                    <circle class="text-slate-100 dark:text-slate-800" stroke-width="14" stroke="currentColor" fill="transparent" r="66" cx="80" cy="80"/>
+                                    <circle id="calRingCircle" class="progress-ring-circle text-emerald-500" stroke-width="14" stroke-dasharray="414.69" stroke-dashoffset="414.69" stroke-linecap="round" stroke="currentColor" fill="transparent" r="66" cx="80" cy="80"/>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                                    <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500">Съедено</span>
+                                    <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5" id="dashConsumedCal">0</div>
+                                    <div class="text-xs font-medium text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 pt-1 mt-1 w-24">
+                                        из <span id="dashTargetCal" class="text-slate-700 dark:text-slate-300 font-bold">1800</span> ккал
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="calStatusBadge" class="mt-2 text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                Осталось: 1800 ккал
+                            </div>
+                        </div>
+
+                        <!-- 3 Macro Progress Cards -->
+                        <div class="md:col-span-7 space-y-4">
+                            <!-- Protein Bar -->
+                            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <div class="flex justify-between items-baseline mb-1.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                        <span class="font-bold text-sm text-slate-800 dark:text-slate-100">Белки</span>
+                                        <span id="dashGkgP" class="text-[11px] font-medium text-slate-400 dark:text-slate-500">(1.6 г/кг)</span>
+                                    </div>
+                                    <div class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        <span id="dashConsumedP" class="text-sm font-bold text-slate-900 dark:text-white">0</span> / <span id="dashTargetP">104</span> г
+                                        <span id="dashPctP" class="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">0%</span>
+                                    </div>
+                                </div>
+                                <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="barProgressP" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Fat Bar -->
+                            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <div class="flex justify-between items-baseline mb-1.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                                        <span class="font-bold text-sm text-slate-800 dark:text-slate-100">Жиры</span>
+                                        <span id="dashGkgF" class="text-[11px] font-medium text-slate-400 dark:text-slate-500">(1.0 г/кг)</span>
+                                    </div>
+                                    <div class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        <span id="dashConsumedF" class="text-sm font-bold text-slate-900 dark:text-white">0</span> / <span id="dashTargetF">65</span> г
+                                        <span id="dashPctF" class="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">0%</span>
+                                    </div>
+                                </div>
+                                <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="barProgressF" class="h-full bg-amber-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Carbs Bar -->
+                            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <div class="flex justify-between items-baseline mb-1.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                        <span class="font-bold text-sm text-slate-800 dark:text-slate-100">Углеводы</span>
+                                        <span id="dashGkgC" class="text-[11px] font-medium text-slate-400 dark:text-slate-500">(3.1 г/кг)</span>
+                                    </div>
+                                    <div class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        <span id="dashConsumedC" class="text-sm font-bold text-slate-900 dark:text-white">0</span> / <span id="dashTargetC">180</span> г
+                                        <span id="dashPctC" class="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">0%</span>
+                                    </div>
+                                </div>
+                                <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="barProgressC" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meal Distribution Bar (Breakfast / Lunch / Dinner / Snack) -->
+                    <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Распределение калорий по приемам пищи</span>
+                        </div>
+                        <div class="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex gap-0.5 p-0.5" id="mealDistBar">
+                            <div id="distBarBreakfast" class="bg-amber-400 h-full transition-all duration-300 rounded-l-full" style="width: 25%"></div>
+                            <div id="distBarLunch" class="bg-emerald-500 h-full transition-all duration-300" style="width: 35%"></div>
+                            <div id="distBarDinner" class="bg-indigo-500 h-full transition-all duration-300" style="width: 25%"></div>
+                            <div id="distBarSnack" class="bg-pink-500 h-full transition-all duration-300 rounded-r-full" style="width: 15%"></div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3" id="mealDistLegend">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Adder & Meal Tabs Card -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800">
+                    
+                    <!-- Meal Selector Tabs -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl mb-6" id="mealTabsContainer">
+                        <!-- Rendered via JS -->
+                    </div>
+
+                    <!-- Search & Filter Products -->
+                    <div class="mb-5">
+                        <div class="flex flex-col sm:flex-row gap-2.5 mb-3">
+                            <div class="relative flex-1">
+                                <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                <input type="text" id="foodSearchInput" oninput="renderFoodDatabase()" placeholder="Поиск продукта (например: куриная грудка, творог, овсянка)..." class="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 transition">
+                                <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <i class="ph-fill ph-x-circle text-lg"></i>
+                                </button>
+                            </div>
+                            <button onclick="openCustomFoodModal()" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 transition">
+                                <i class="ph ph-plus text-base text-emerald-500"></i> Свой продукт
+                            </button>
+                        </div>
+
+                        <!-- Category Pills -->
+                        <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1.5" id="categoryFilterContainer">
+                            <!-- Rendered via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Product Database Grid (Scrollable) -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">База продуктов (на 100 г) — нажмите, чтобы добавить</span>
+                            <span id="dbCountLabel" class="text-xs text-slate-400">45 продуктов</span>
+                        </div>
+                        <div id="foodDatabaseList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                            <!-- Rendered via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Active Meal Food Log -->
+                    <div class="border-t border-slate-200 dark:border-slate-800 pt-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                            <div class="flex items-center gap-2">
+                                <span id="activeMealIcon" class="text-2xl">🍳</span>
+                                <div>
+                                    <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white" id="activeMealTitle">Завтрак</h3>
+                                    <p class="text-xs text-slate-400 dark:text-slate-500" id="activeMealMacrosSummary">0 ккал • Б: 0г • Ж: 0г • У: 0г</p>
+                                </div>
+                            </div>
+                            <span class="text-xs text-slate-400 dark:text-slate-500">Изменяйте граммовку прямо в списке</span>
+                        </div>
+
+                        <div id="activeMealItemsList" class="space-y-2.5">
+                            <!-- Dynamically rendered logged items -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Final Daily Ration Summary Card (Финальная калорийность рациона) -->
+                <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/90 text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-emerald-500/30 relative overflow-hidden">
+                    <div class="absolute -right-12 -top-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                    
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/10">
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold uppercase tracking-wider mb-2">
+                                <i class="ph-fill ph-check-seal text-sm"></i> Итоговая сводка за день
+                            </div>
+                            <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                                Финальная калорийность рациона
+                            </h2>
+                            <p class="text-xs text-slate-300 mt-0.5">Суммарный результат по всем 4 приемам пищи в реальном времени</p>
+                        </div>
+
+                        <button type="button" onclick="copyRationReport()" class="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 shrink-0">
+                            <i class="ph-bold ph-copy text-base"></i>
+                            <span>Скопировать итоговый рацион</span>
+                        </button>
+                    </div>
+
+                    <!-- Big Final Calories & Target Comparison -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
+                        <div class="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Финальная калорийность</span>
+                            <div class="mt-2 flex items-baseline gap-2">
+                                <span id="finalTotalCal" class="text-3xl sm:text-4xl font-black text-white tracking-tight">0</span>
+                                <span class="text-sm font-semibold text-slate-300">ккал</span>
+                            </div>
+                            <div id="finalTotalWeight" class="text-[11px] text-slate-400 mt-1">Общий вес пищи: 0 г (0 поз.)</div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Целевая норма по плану</span>
+                            <div class="mt-2 flex items-baseline gap-2">
+                                <span id="finalTargetCal" class="text-3xl sm:text-4xl font-black text-slate-200 tracking-tight">1800</span>
+                                <span class="text-sm font-semibold text-slate-400">ккал</span>
+                            </div>
+                            <div id="finalTargetSub" class="text-[11px] text-slate-400 mt-1">Поддержка (TDEE): 2050 ккал</div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between" id="finalDiffCard">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-300" id="finalDiffLabel">Баланс от цели</span>
+                            <div class="mt-2 flex items-baseline gap-2">
+                                <span id="finalDiffCal" class="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">-1800</span>
+                                <span class="text-sm font-semibold text-slate-300">ккал</span>
+                            </div>
+                            <div id="finalDiffStatus" class="text-[11px] text-emerald-300 mt-1">Осталось добрать до целевой нормы</div>
+                        </div>
+                    </div>
+
+                    <!-- Final Macros Summary (Grams, % of Consumed Calories, g/kg of Bodyweight) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                        <div class="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-400/20">
+                            <div class="flex items-center justify-between text-xs font-bold text-blue-300 mb-1">
+                                <span>ИТОГО БЕЛКИ</span>
+                                <span id="finalPctP" class="px-1.5 py-0.5 rounded bg-blue-500/20 text-[11px]">0% ккал</span>
+                            </div>
+                            <div class="text-xl sm:text-2xl font-extrabold text-white">
+                                <span id="finalGramP">0</span> <span class="text-xs font-normal text-slate-300">/ <span id="finalNormP">140</span> г</span>
+                            </div>
+                            <div class="text-[11px] text-blue-200/80 mt-1" id="finalGkgP">Факт: 0.0 г/кг веса</div>
+                        </div>
+
+                        <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-400/20">
+                            <div class="flex items-center justify-between text-xs font-bold text-amber-300 mb-1">
+                                <span>ИТОГО ЖИРЫ</span>
+                                <span id="finalPctF" class="px-1.5 py-0.5 rounded bg-amber-500/20 text-[11px]">0% ккал</span>
+                            </div>
+                            <div class="text-xl sm:text-2xl font-extrabold text-white">
+                                <span id="finalGramF">0</span> <span class="text-xs font-normal text-slate-300">/ <span id="finalNormF">70</span> г</span>
+                            </div>
+                            <div class="text-[11px] text-amber-200/80 mt-1" id="finalGkgF">Факт: 0.0 г/кг веса</div>
+                        </div>
+
+                        <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-400/20">
+                            <div class="flex items-center justify-between text-xs font-bold text-emerald-300 mb-1">
+                                <span>ИТОГО УГЛЕВОДЫ</span>
+                                <span id="finalPctC" class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-[11px]">0% ккал</span>
+                            </div>
+                            <div class="text-xl sm:text-2xl font-extrabold text-white">
+                                <span id="finalGramC">0</span> <span class="text-xs font-normal text-slate-300">/ <span id="finalNormC">150</span> г</span>
+                            </div>
+                            <div class="text-[11px] text-emerald-200/80 mt-1" id="finalGkgC">Факт: 0.0 г/кг веса</div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Table by Meals with Total Row -->
+                    <div class="overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/50">
+                        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                            <thead>
+                                <tr class="border-b border-white/10 text-slate-400 text-[11px] uppercase tracking-wider">
+                                    <th class="py-3 px-4">Прием пищи</th>
+                                    <th class="py-3 px-3 text-right">Вес (г)</th>
+                                    <th class="py-3 px-3 text-right">Белки</th>
+                                    <th class="py-3 px-3 text-right">Жиры</th>
+                                    <th class="py-3 px-3 text-right">Углеводы</th>
+                                    <th class="py-3 px-3 text-right">Доля</th>
+                                    <th class="py-3 px-4 text-right text-white">Калории</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finalSummaryTableBody" class="divide-y divide-white/5 text-slate-200">
+                                <!-- Populated via JS -->
+                            </tbody>
+                            <tfoot id="finalSummaryTableFoot" class="border-t-2 border-emerald-500/40 bg-emerald-950/40 font-extrabold text-white">
+                                <!-- Populated via JS -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Custom Food Modal -->
+    <div id="customFoodModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl animate-slide-in">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <i class="ph-fill ph-bowl-food text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 dark:text-white">Добавить свой продукт</h3>
+                </div>
+                <button onclick="closeCustomFoodModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <form id="customFoodForm" onsubmit="saveCustomFood(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Название продукта или блюда</label>
+                    <input type="text" id="cfName" required placeholder="Например: Домашние сырники" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Калории (на 100 г)</label>
+                        <input type="number" id="cfCal" required min="0" max="900" step="0.1" placeholder="220" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Стандартная порция (г)</label>
+                        <input type="number" id="cfPortion" required min="1" max="1000" value="100" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">Белки (г/100г)</label>
+                        <input type="number" id="cfP" required min="0" max="100" step="0.1" placeholder="14" oninput="autoEstimateCalories()" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">Жиры (г/100г)</label>
+                        <input type="number" id="cfF" required min="0" max="100" step="0.1" placeholder="9" oninput="autoEstimateCalories()" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Углеводы (г/100г)</label>
+                        <input type="number" id="cfC" required min="0" max="100" step="0.1" placeholder="18" oninput="autoEstimateCalories()" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <input type="checkbox" id="cfAddImmediately" checked class="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500">
+                    <label for="cfAddImmediately" class="text-xs text-slate-600 dark:text-slate-300">Сразу добавить порцию в выбранный прием пищи</label>
+                </div>
+
+                <div class="flex gap-2.5 pt-3">
+                    <button type="button" onclick="closeCustomFoodModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-sm transition">
+                        Отмена
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 transition">
+                        Сохранить продукт
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        const BACKGROUND_ACTIVITY_LEVELS = [
+            { id: 'office', pct: 0.15, title: 'Сидячая / офисная работа', desc: 'Работа за компьютером, базовые бытовые дела (+15% к BMR)', icon: 'ph-desktop' },
+            { id: 'mixed', pct: 0.22, title: 'Смешанный бытовой фон', desc: 'Часть дня на ногах, домашние хлопоты, поездки (+22% к BMR)', icon: 'ph-house-line' },
+            { id: 'active_job', pct: 0.30, title: 'Подвижная работа весь день', desc: 'Работа на ногах, курьер, физический труд (+30% к BMR)', icon: 'ph-hammer' }
+        ];
+
+        const WORKOUT_INTENSITIES = [
+            { id: 'low', kcalPerKgHour: 3.5, title: 'Низкая интенсивность (~3.5 ккал/кг/ч)', desc: 'Спокойное кардио, пилатес, стретчинг, ЛФК, легкий велотренажер' },
+            { id: 'mod_low', kcalPerKgHour: 4.25, title: 'Невысокая / умеренная силовая (~4.25 ккал/кг/ч)', desc: 'Силовая тренировка в спокойном темпе с отдыхом 2–3 мин, ОФП' },
+            { id: 'moderate', kcalPerKgHour: 5.5, title: 'Интенсивная силовая / круговая (~5.5 ккал/кг/ч)', desc: 'Плотная тренировка, суперсеты, быстрый темп, игровой спорт' }
+        ];
+
+        const FITNESS_GOALS = [
+            { id: 'loss_fast', factor: 0.80, title: 'Похудение (-20%)', badge: 'Дефицит', color: 'text-rose-500' },
+            { id: 'loss_mild', factor: 0.88, title: 'Мягкая сушка (-12%)', badge: 'Комфорт', color: 'text-amber-500' },
+            { id: 'maintain', factor: 1.00, title: 'Поддержание (0%)', badge: 'Баланс', color: 'text-emerald-500' },
+            { id: 'gain_mild', factor: 1.12, title: 'Набор массы (+12%)', badge: 'Профицит', color: 'text-blue-500' },
+            { id: 'gain_fast', factor: 1.20, title: 'Активный набор (+20%)', badge: 'Сила', color: 'text-indigo-500' }
+        ];
+
+        const MACRO_PRESETS = [
+            { id: 'balanced', name: 'Сбалансированное', pGkg: 1.6, fGkg: 1.0, p: 22, f: 28, c: 50, desc: '1.6 г/кг белка, 1.0 г/кг жиров' },
+            { id: 'high_protein', name: 'Высокобелковое', pGkg: 2.1, fGkg: 0.9, p: 28, f: 27, c: 45, desc: '2.1 г/кг белка (для рельефа и мышц)' },
+            { id: 'low_carb', name: 'Низкоуглеводное', pGkg: 1.8, fGkg: 1.3, p: 26, f: 49, c: 25, desc: '1.8 г/кг белка, упор на жиры' },
+            { id: 'keto', name: 'Кето-диета', pGkg: 1.6, fGkg: 1.9, p: 20, f: 75, c: 5, desc: 'Минимум углеводов, энергия из жиров' },
+            { id: 'endurance', name: 'Энергия и Спорт', pGkg: 1.5, fGkg: 0.85, p: 18, f: 22, c: 60, desc: 'Максимум сложных углеводов' },
+            { id: 'custom', name: 'Свой вариант', pGkg: null, fGkg: null, p: null, f: null, c: null, desc: 'Ручная настройка ползунками' }
+        ];
+
+        const MEAL_TYPES = [
+            { id: 'breakfast', title: 'Завтрак', icon: '🍳', color: 'bg-amber-400' },
+            { id: 'lunch', title: 'Обед', icon: '🍲', color: 'bg-emerald-500' },
+            { id: 'dinner', title: 'Ужин', icon: '🥗', color: 'bg-indigo-500' },
+            { id: 'snack', title: 'Перекус', icon: '🍎', color: 'bg-pink-500' }
+        ];
+
+        const FOOD_CATEGORIES = [
+            { id: 'all', name: 'Все продукты' },
+            { id: 'lowcal', name: 'Диет / 0 ккал / Фитнес' },
+            { id: 'meat', name: 'Мясо и Птица' },
+            { id: 'fish', name: 'Рыба и Морепродукты' },
+            { id: 'dairy', name: 'Молочные и Яйца' },
+            { id: 'grains', name: 'Крупы и Хлеб' },
+            { id: 'veg', name: 'Овощи и Зелень' },
+            { id: 'fruit', name: 'Фрукты и Ягоды' },
+            { id: 'fats', name: 'Орехи и Масла' },
+            { id: 'custom', name: 'Мои продукты' }
+        ];
+
+        const DEFAULT_FOODS = [
+            // Диет / 0 ккал / Функциональные продукты
+            { id: 'f40', name: 'Рис Ширатаки / Конжаковая лапша', cat: 'lowcal', cal: 9, p: 0.2, f: 0.1, c: 0.6, portion: 200 },
+            { id: 'f41', name: 'Жидкий яичный белок пастеризованный', cat: 'lowcal', cal: 48, p: 11.0, f: 0.0, c: 0.7, portion: 150 },
+            { id: 'f42', name: 'Псиллиум (шелуха подорожника, клетчатка)', cat: 'lowcal', cal: 180, p: 1.5, f: 0.5, c: 12.0, portion: 10 },
+            { id: 'f43', name: 'Джем / Топпинг / Соус 0 ккал (Zero)', cat: 'lowcal', cal: 5, p: 0.1, f: 0.0, c: 1.0, portion: 30 },
+            { id: 'f16', name: 'Протеин сывороточный (Изолят / WPC)', cat: 'lowcal', cal: 390, p: 78.0, f: 5.5, c: 7.0, portion: 30 },
+            { id: 'f44', name: 'Творожный сыр Light / Рикотта Лайт', cat: 'lowcal', cal: 145, p: 11.0, f: 9.0, c: 4.0, portion: 40 },
+            { id: 'f45', name: 'Пудинг высокобелковый Ehrmann / Exponenta', cat: 'lowcal', cal: 76, p: 10.0, f: 1.5, c: 5.5, portion: 200 },
+            // Мясо и птица
+            { id: 'f1', name: 'Куриная грудка (филе отварное/гриль)', cat: 'meat', cal: 165, p: 31.0, f: 3.6, c: 0, portion: 160 },
+            { id: 'f2', name: 'Филе индейки (запеченное)', cat: 'meat', cal: 145, p: 29.0, f: 2.5, c: 0, portion: 160 },
+            { id: 'f3', name: 'Говядина постная (тушеная/ростбиф)', cat: 'meat', cal: 187, p: 26.0, f: 9.0, c: 0, portion: 150 },
+            { id: 'f4', name: 'Куриное бедро (без кожи)', cat: 'meat', cal: 185, p: 24.0, f: 9.5, c: 0, portion: 130 },
+            // Рыба и морепродукты
+            { id: 'f5', name: 'Лосось / Семга (запеченная/слабосоленая)', cat: 'fish', cal: 208, p: 20.4, f: 13.4, c: 0, portion: 120 },
+            { id: 'f6', name: 'Треска / Минтай (на пару или запеченная)', cat: 'fish', cal: 82, p: 17.8, f: 0.7, c: 0, portion: 180 },
+            { id: 'f7', name: 'Тунец консервированный в собственном соку', cat: 'fish', cal: 101, p: 23.0, f: 1.0, c: 0, portion: 130 },
+            { id: 'f8', name: 'Креветки / Кальмар отварные', cat: 'fish', cal: 95, p: 20.5, f: 1.2, c: 0, portion: 150 },
+            // Молочные и яйца
+            { id: 'f9', name: 'Яйцо куриное отварное (2 шт ~ 110г)', cat: 'dairy', cal: 155, p: 12.6, f: 10.6, c: 0.7, portion: 110 },
+            { id: 'f10', name: 'Творог 5% жирности', cat: 'dairy', cal: 121, p: 17.2, f: 5.0, c: 1.8, portion: 150 },
+            { id: 'f11', name: 'Творог обезжиренный 0.5–1%', cat: 'dairy', cal: 79, p: 18.0, f: 0.5, c: 1.8, portion: 180 },
+            { id: 'f12', name: 'Греческий йогурт натуральный 2%', cat: 'dairy', cal: 68, p: 9.5, f: 2.0, c: 3.2, portion: 140 },
+            { id: 'f13', name: 'Сыр твердый (Российский/Гауда 45%)', cat: 'dairy', cal: 356, p: 24.0, f: 29.0, c: 0, portion: 35 },
+            { id: 'f14', name: 'Сыр Моцарелла лайт', cat: 'dairy', cal: 196, p: 24.5, f: 10.5, c: 1.0, portion: 60 },
+            { id: 'f15', name: 'Молоко 1.5–2.5%', cat: 'dairy', cal: 53, p: 2.8, f: 2.5, c: 4.7, portion: 150 },
+            // Крупы и Хлеб
+            { id: 'f17', name: 'Овсяные хлопья Геркулес (сухие)', cat: 'grains', cal: 352, p: 12.3, f: 6.1, c: 61.8, portion: 60 },
+            { id: 'f18', name: 'Гречка отварная (на воде)', cat: 'grains', cal: 110, p: 4.2, f: 1.1, c: 21.3, portion: 180 },
+            { id: 'f19', name: 'Рис бурый/басмати отварной', cat: 'grains', cal: 116, p: 2.6, f: 0.8, c: 24.5, portion: 180 },
+            { id: 'f20', name: 'Макароны из тв. сортов (отварные)', cat: 'grains', cal: 131, p: 5.0, f: 1.1, c: 25.0, portion: 180 },
+            { id: 'f21', name: 'Хлеб цельнозерновой / белковый', cat: 'grains', cal: 247, p: 10.5, f: 3.4, c: 43.0, portion: 50 },
+            { id: 'f22', name: 'Хлебцы цельнозерновые хрустящие', cat: 'grains', cal: 315, p: 10.0, f: 2.5, c: 63.0, portion: 30 },
+            { id: 'f23', name: 'Картофель запеченный / отварной', cat: 'grains', cal: 86, p: 2.0, f: 0.4, c: 19.0, portion: 200 },
+            { id: 'f24', name: 'Чечевица / Нут отварные', cat: 'grains', cal: 116, p: 9.0, f: 0.4, c: 20.0, portion: 160 },
+            // Овощи и зелень
+            { id: 'f25', name: 'Огурцы свежие', cat: 'veg', cal: 15, p: 0.8, f: 0.1, c: 2.8, portion: 150 },
+            { id: 'f26', name: 'Помидоры (томаты) свежие', cat: 'veg', cal: 20, p: 0.9, f: 0.2, c: 3.9, portion: 150 },
+            { id: 'f27', name: 'Брокколи / Цветная капуста (на пару)', cat: 'veg', cal: 34, p: 2.8, f: 0.4, c: 6.6, portion: 160 },
+            { id: 'f28', name: 'Перец болгарский сладкий', cat: 'veg', cal: 27, p: 1.3, f: 0.1, c: 5.3, portion: 120 },
+            { id: 'f29', name: 'Салат листовой / Айсберг / Шпинат', cat: 'veg', cal: 17, p: 1.5, f: 0.2, c: 2.3, portion: 80 },
+            // Фрукты и ягоды
+            { id: 'f30', name: 'Банан очищенный', cat: 'fruit', cal: 89, p: 1.1, f: 0.3, c: 22.8, portion: 120 },
+            { id: 'f31', name: 'Яблоко зеленое / Груша', cat: 'fruit', cal: 52, p: 0.3, f: 0.2, c: 13.8, portion: 160 },
+            { id: 'f32', name: 'Ягоды (клубника, голубика, малина)', cat: 'fruit', cal: 41, p: 0.8, f: 0.4, c: 8.8, portion: 100 },
+            { id: 'f33', name: 'Апельсин / Грейпфрут', cat: 'fruit', cal: 43, p: 0.9, f: 0.2, c: 9.5, portion: 150 },
+            // Жиры, Орехи и Масла
+            { id: 'f34', name: 'Авокадо Хасс', cat: 'fats', cal: 160, p: 2.0, f: 14.7, c: 1.8, portion: 70 },
+            { id: 'f35', name: 'Миндаль / Грецкий орех / Кешью', cat: 'fats', cal: 609, p: 18.6, f: 54.5, c: 13.0, portion: 25 },
+            { id: 'f36', name: 'Оливковое масло Extra Virgin', cat: 'fats', cal: 884, p: 0, f: 100.0, c: 0, portion: 10 },
+            { id: 'f37', name: 'Масло сливочное 82.5%', cat: 'fats', cal: 748, p: 0.6, f: 82.5, c: 0.8, portion: 10 },
+            { id: 'f38', name: 'Арахисовая паста без сахара', cat: 'fats', cal: 588, p: 25.0, f: 50.0, c: 14.0, portion: 25 },
+            { id: 'f39', name: 'Шоколад горький 75-85%', cat: 'fats', cal: 565, p: 9.2, f: 43.0, c: 32.0, portion: 20 }
+        ];
+
+        let state = {
+            gender: 'male',
+            age: 35,
+            height: 169,
+            weight: 85,
+            bgActivityId: 'office',
+            dailySteps: 8000,
+            workoutMode: 'weekly_avg', // 'weekly_avg' или 'today_full'
+            workoutsPerWeek: 3,
+            workoutDurationMins: 60,
+            workoutIntensityId: 'mod_low',
+            includeTef: false,
+            goalCalcMode: 'target_weight', // 'target_weight' (по желаемому весу и сроку) или 'fixed_pct'
+            targetWeight: 73,
+            targetWeeks: 16,
+            goalId: 'loss_fast',
+            macroMode: 'gkg', // 'gkg' (научный по весу тела) или 'pct' (в процентах)
+            macroPresetId: 'high_protein',
+            macroGkg: { p: 1.9, f: 0.85 },
+            macroPct: { p: 30, f: 28, c: 42 },
+            activeMeal: 'breakfast',
+            selectedCategory: 'all',
+            customFoods: [],
+            diary: {
+                breakfast: [],
+                lunch: [],
+                dinner: [],
+                snack: []
+            }
+        };
+
+        // Load saved state if available
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('nutricalc_pro_state_v4');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                    if (!state.macroMode) state.macroMode = 'gkg';
+                    if (!state.macroGkg) state.macroGkg = { p: 2.0, f: 0.85 };
+                    if (!state.bgActivityId) state.bgActivityId = 'office';
+                    if (typeof state.dailySteps !== 'number') state.dailySteps = 8000;
+                    if (!state.workoutMode) state.workoutMode = 'weekly_avg';
+                    if (typeof state.workoutsPerWeek !== 'number') state.workoutsPerWeek = 3;
+                    if (typeof state.workoutDurationMins !== 'number') state.workoutDurationMins = 60;
+                    if (!state.workoutIntensityId) state.workoutIntensityId = 'mod_low';
+                    if (!state.goalCalcMode) state.goalCalcMode = 'target_weight';
+                    if (typeof state.targetWeight !== 'number') state.targetWeight = 73;
+                    if (typeof state.targetWeeks !== 'number') state.targetWeeks = 16;
+                } else {
+                    // Populate initial full day ration so the final calorie summary is immediately informative
+                    state.diary = {
+                        breakfast: [
+                            { uid: 'init1', foodId: 'f17', grams: 60 },
+                            { uid: 'init2', foodId: 'f41', grams: 150 },
+                            { uid: 'init3', foodId: 'f9', grams: 55 },
+                            { uid: 'init4', foodId: 'f32', grams: 100 }
+                        ],
+                        lunch: [
+                            { uid: 'init5', foodId: 'f1', grams: 180 },
+                            { uid: 'init6', foodId: 'f18', grams: 180 },
+                            { uid: 'init7', foodId: 'f26', grams: 150 },
+                            { uid: 'init8', foodId: 'f36', grams: 10 }
+                        ],
+                        dinner: [
+                            { uid: 'init9', foodId: 'f6', grams: 200 },
+                            { uid: 'init10', foodId: 'f40', grams: 200 },
+                            { uid: 'init11', foodId: 'f27', grams: 160 },
+                            { uid: 'init12', foodId: 'f34', grams: 65 }
+                        ],
+                        snack: [
+                            { uid: 'init13', foodId: 'f11', grams: 180 },
+                            { uid: 'init14', foodId: 'f16', grams: 30 },
+                            { uid: 'init15', foodId: 'f35', grams: 20 }
+                        ]
+                    };
+                }
+            } catch (e) {
+                console.warn('Could not load state from localStorage:', e);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('nutricalc_pro_state_v4', JSON.stringify(state));
+            } catch (e) {
+                console.warn('Could not save state to localStorage:', e);
+            }
+        }
+
+        function getAllFoods() {
+            return [... state.customFoods, ...DEFAULT_FOODS];
+        }
+
+        function calculateTargets() {
+            const w = parseFloat(state.weight) || 85;
+            const h = parseFloat(state.height) || 169;
+            const a = parseFloat(state.age) || 35;
+
+            // 1. Mifflin-St Jeor Formula (BMR)
+            let bmr = (10 * w) + (6.25 * h) - (5 * a);
+            bmr += (state.gender === 'male') ? 5 : -161;
+            bmr = Math.max(800, Math.round(bmr));
+
+            // BMI calculation
+            const heightM = h / 100;
+            const bmi = +(w / (heightM * heightM)).toFixed(1);
+
+            // 2. Background Non-Exercise Activity (without steps)
+            const bgObj = BACKGROUND_ACTIVITY_LEVELS.find(x => x.id === state.bgActivityId) || BACKGROUND_ACTIVITY_LEVELS[0];
+            const neatCal = Math.round(bmr * bgObj.pct);
+
+            // 3. Daily Steps Calories (adaptive to height stride length & body weight)
+            // Stride length ~ height(m) * 0.415; net walking burn ~ 0.5 kcal per kg per 1 km walked
+            const steps = Math.max(0, parseInt(state.dailySteps, 10) || 0);
+            const stepLengthM = +(heightM * 0.415).toFixed(2);
+            const distanceKm = +((steps * stepLengthM) / 1000).toFixed(1);
+            const stepsCal = Math.round(distanceKm * w * 0.5);
+
+            // 4. Workouts (low/moderate intensity) by duration & frequency
+            const intensityObj = WORKOUT_INTENSITIES.find(x => x.id === state.workoutIntensityId) || WORKOUT_INTENSITIES[1];
+            const durationMins = Math.max(0, parseInt(state.workoutDurationMins, 10) || 0);
+            const freqPerWeek = Math.max(0, parseInt(state.workoutsPerWeek, 10) || 0);
+
+            const singleWorkoutCal = Math.round((durationMins / 60) * w * intensityObj.kcalPerKgHour);
+            const workoutDailyCal = state.workoutMode === 'weekly_avg'
+                ? Math.round((singleWorkoutCal * freqPerWeek) / 7)
+                : singleWorkoutCal;
+
+            // 5. Optional TEF (Thermic Effect of Food +10%)
+            const subTotalTdee = bmr + neatCal + stepsCal + workoutDailyCal;
+            const tefCal = state.includeTef ? Math.round(subTotalTdee * 0.10) : 0;
+            const tdee = subTotalTdee + tefCal;
+
+            // 6. Goal calculation: either from Desired Weight & Period (7700 kcal/kg) or Fixed %
+            const goalObj = FITNESS_GOALS.find(x => x.id === state.goalId) || FITNESS_GOALS[0];
+            const desiredW = parseFloat(state.targetWeight) || w;
+            const weeks = Math.max(1, parseInt(state.targetWeeks, 10) || 12);
+            const days = weeks * 7;
+            const weightDelta = +(desiredW - w).toFixed(1); // negative = weight loss, positive = weight gain
+            const absWeightDelta = Math.abs(weightDelta);
+
+            // 1 kg of adipose tissue ≈ 7700 kcal
+            const totalKcalBank = Math.round(absWeightDelta * 7700);
+            const rawDailyDelta = days > 0 ? Math.round((weightDelta * 7700) / days) : 0; // negative for deficit
+            const weeklyRateKg = +(absWeightDelta / weeks).toFixed(2);
+            const weeklyRatePct = +((weeklyRateKg / w) * 100).toFixed(2);
+            const targetBmi = +(desiredW / (heightM * heightM)).toFixed(1);
+
+            // Adaptive gender & weight-specific minimum safe calories floor (scales properly for 30-60 kg women)
+            const adaptiveFloorByWeight = state.gender === 'female'
+                ? Math.max(1000, Math.min(1200, Math.round(w * 20)))
+                : Math.max(1250, Math.min(1500, Math.round(w * 20)));
+            const minSafeCal = Math.max(adaptiveFloorByWeight, Math.round(bmr * 0.85));
+            const rawTargetFromWeight = Math.round(tdee + rawDailyDelta);
+            const isBelowSafeFloor = rawTargetFromWeight < minSafeCal && weightDelta < 0;
+
+            let targetCalories;
+            let activeGoalDescription = '';
+
+            if (state.goalCalcMode === 'target_weight') {
+                if (Math.abs(weightDelta) < 0.2) {
+                    targetCalories = tdee;
+                    activeGoalDescription = `Удержание веса ${w} кг`;
+                } else {
+                    targetCalories = Math.max(adaptiveFloorByWeight, rawTargetFromWeight);
+                    const signStr = weightDelta < 0 ? `Похудение до ${desiredW} кг` : `Набор до ${desiredW} кг`;
+                    activeGoalDescription = `${signStr} за ${weeks} нед. (${rawDailyDelta > 0 ? '+' : ''}${rawDailyDelta} ккал/д)`;
+                }
+            } else {
+                targetCalories = Math.max(adaptiveFloorByWeight, Math.round(tdee * goalObj.factor));
+                activeGoalDescription = goalObj.title;
+            }
+
+            // Recommended optimal weeks if current pace is too aggressive (> 0.85% body weight/wk or below safe calorie floor)
+            const maxSafeDeficitFromBmr = Math.max(250, tdee - minSafeCal);
+            const optimalDailyDeficit = Math.min(600, maxSafeDeficitFromBmr, Math.max(250, Math.round(tdee * 0.20)));
+            const optimalWeeks = absWeightDelta > 0
+                ? Math.max(2, Math.ceil((absWeightDelta * 7700) / (optimalDailyDeficit * 7)))
+                : 12;
+
+            // Recommended physiological macros for the chosen goal (scaled by gender and pace)
+            const recProteinGkg = weightDelta < 0
+                ? (weeklyRatePct > 0.85 ? (state.gender === 'female' ? 1.8 : 2.0) : (state.gender === 'female' ? 1.6 : 1.8))
+                : (state.gender === 'female' ? 1.5 : 1.7);
+            const recFatGkg = weightDelta < 0
+                ? (state.gender === 'female' ? 0.9 : 0.85)
+                : 1.0;
+
+            let targetP, targetF, targetC;
+            let effectivePctP, effectivePctF, effectivePctC;
+
+            if (state.macroMode === 'gkg') {
+                // Special handling if keto preset is active in g/kg mode: fix carbs at ~30g and give rest to fats
+                if (state.macroPresetId === 'keto') {
+                    targetP = Math.round(w * state.macroGkg.p);
+                    targetC = 30;
+                    const remCalForFat = Math.max(360, targetCalories - (targetP * 4) - (targetC * 4));
+                    targetF = Math.round(remCalForFat / 9);
+                    state.macroGkg.f = +(targetF / w).toFixed(2);
+                } else {
+                    targetP = Math.round(w * state.macroGkg.p);
+                    targetF = Math.round(w * state.macroGkg.f);
+                    const usedCal = (targetP * 4) + (targetF * 9);
+                    const minCarbCal = 100; // minimum 25g carbs
+                    if (usedCal + minCarbCal > targetCalories) {
+                        const maxFatCal = Math.max(270, targetCalories - (targetP * 4) - minCarbCal);
+                        targetF = Math.round(maxFatCal / 9);
+                    }
+                    const remCal = Math.max(minCarbCal, targetCalories - (targetP * 4) - (targetF * 9));
+                    targetC = Math.round(remCal / 4);
+                }
+
+                effectivePctP = Math.round(((targetP * 4) / targetCalories) * 100);
+                effectivePctF = Math.round(((targetF * 9) / targetCalories) * 100);
+                effectivePctC = Math.max(0, 100 - effectivePctP - effectivePctF);
+            } else {
+                // Percentage mode
+                targetP = Math.round((targetCalories * (state.macroPct.p / 100)) / 4);
+                targetF = Math.round((targetCalories * (state.macroPct.f / 100)) / 9);
+                targetC = Math.round((targetCalories * (state.macroPct.c / 100)) / 4);
+
+                effectivePctP = state.macroPct.p;
+                effectivePctF = state.macroPct.f;
+                effectivePctC = state.macroPct.c;
+            }
+
+            const gkgP = +(targetP / w).toFixed(1);
+            const gkgF = +(targetF / w).toFixed(1);
+            const gkgC = +(targetC / w).toFixed(1);
+
+            return {
+                bmr, bmi, neatCal, steps, stepLengthCm: Math.round(stepLengthM * 100), distanceKm, stepsCal,
+                singleWorkoutCal, workoutDailyCal, tefCal, tdee, targetCalories,
+                targetP, targetF, targetC,
+                gkgP, gkgF, gkgC,
+                effectivePctP, effectivePctF, effectivePctC,
+                goalObj, bgObj, intensityObj,
+                desiredW, weeks, days, weightDelta, absWeightDelta,
+                totalKcalBank, rawDailyDelta, rawTargetFromWeight, minSafeCal, isBelowSafeFloor,
+                weeklyRateKg, weeklyRatePct, targetBmi, optimalWeeks, optimalDailyDeficit,
+                recProteinGkg, recFatGkg, activeGoalDescription
+            };
+        }
+
+        function calculateDiaryTotals() {
+            const allFoods = getAllFoods();
+            const mealTotals = {
+                breakfast: { cal: 0, p: 0, f: 0, c: 0, grams: 0 },
+                lunch: { cal: 0, p: 0, f: 0, c: 0, grams: 0 },
+                dinner: { cal: 0, p: 0, f: 0, c: 0, grams: 0 },
+                snack: { cal: 0, p: 0, f: 0, c: 0, grams: 0 }
+            };
+            const dayTotal = { cal: 0, p: 0, f: 0, c: 0, grams: 0, count: 0 };
+
+            MEAL_TYPES.forEach(meal => {
+                const items = state.diary[meal.id] || [];
+                items.forEach(entry => {
+                    const food = allFoods.find(f => f.id === entry.foodId);
+                    if (food) {
+                        const g = parseFloat(entry.grams) || 0;
+                        const ratio = g / 100;
+                        const cals = food.cal * ratio;
+                        const p = food.p * ratio;
+                        const f = food.f * ratio;
+                        const c = food.c * ratio;
+
+                        mealTotals[meal.id].cal += cals;
+                        mealTotals[meal.id].p += p;
+                        mealTotals[meal.id].f += f;
+                        mealTotals[meal.id].c += c;
+                        mealTotals[meal.id].grams += g;
+
+                        dayTotal.cal += cals;
+                        dayTotal.p += p;
+                        dayTotal.f += f;
+                        dayTotal.c += c;
+                        dayTotal.grams += g;
+                        dayTotal.count += 1;
+                    }
+                });
+            });
+
+            return { mealTotals, dayTotal };
+        }
+
+        function renderGenderButtons() {
+            const btnF = document.getElementById('btnFemale');
+            const btnM = document.getElementById('btnMale');
+            if (state.gender === 'female') {
+                btnF.className = 'py-3 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-sm flex items-center justify-center gap-2 transition shadow-sm';
+                btnM.className = 'py-3 px-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-semibold text-sm flex items-center justify-center gap-2 transition';
+            } else {
+                btnM.className = 'py-3 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-sm flex items-center justify-center gap-2 transition shadow-sm';
+                btnF.className = 'py-3 px-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-semibold text-sm flex items-center justify-center gap-2 transition';
+            }
+        }
+
+        function renderActivityList() {
+            const container = document.getElementById('activityList');
+            container.innerHTML = BACKGROUND_ACTIVITY_LEVELS.map(act => {
+                const active = state.bgActivityId === act.id;
+                return `
+                    <button type="button" onclick="setActivity('${act.id}')" class="w-full text-left p-2.5 rounded-2xl border-2 transition flex items-center gap-3 ${active ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40' : 'border-slate-100 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'}">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-emerald-500 text-white' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">
+                            <i class="ph ${act.icon} text-lg"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">${act.title}</span>
+                                <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">+${Math.round(act.pct * 100)}%</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">${act.desc}</p>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderWorkoutIntensities() {
+            const container = document.getElementById('workoutIntensityList');
+            container.innerHTML = WORKOUT_INTENSITIES.map(item => {
+                const active = state.workoutIntensityId === item.id;
+                return `
+                    <button type="button" onclick="setWorkoutIntensity('${item.id}')" class="w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${active ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 text-slate-900 dark:text-white' : 'border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300'}">
+                        <div class="min-w-0">
+                            <div class="font-bold text-xs text-slate-900 dark:text-white">${item.title}</div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">${item.desc}</div>
+                        </div>
+                        <span class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300 dark:border-slate-600'}">
+                            ${active ? '<i class="ph-bold ph-check text-[10px]"></i>' : ''}
+                        </span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderGoalList() {
+            const container = document.getElementById('goalList');
+            container.innerHTML = FITNESS_GOALS.map(g => {
+                const active = state.goalId === g.id;
+                return `
+                    <button type="button" onclick="setGoal('${g.id}')" class="p-3 rounded-2xl border-2 text-left transition flex flex-col justify-between ${active ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40' : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'}">
+                        <span class="text-[10px] font-bold uppercase tracking-wider ${g.color} mb-1">${g.badge}</span>
+                        <span class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug">${g.title}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderMacroPresets() {
+            const container = document.getElementById('macroPresetsContainer');
+            container.innerHTML = MACRO_PRESETS.map(preset => {
+                const active = state.macroPresetId === preset.id;
+                let subLabel = '';
+                if (preset.id !== 'custom') {
+                    subLabel = state.macroMode === 'gkg'
+                        ? `(${preset.pGkg} г/кг Б)`
+                        : `(${preset.p}/${preset.f}/${preset.c}%)`;
+                }
+                return `
+                    <button type="button" onclick="selectMacroPreset('${preset.id}')" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition border ${active ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/20' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}">
+                        ${preset.name} <span class="opacity-75 text-[11px]">${subLabel}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderMacroModeButtons() {
+            const btnGkg = document.getElementById('btnModeGkg');
+            const btnPct = document.getElementById('btnModePct');
+            const ctrlGkg = document.getElementById('controlsGkgMode');
+            const ctrlPct = document.getElementById('controlsPctMode');
+            const badge = document.getElementById('macroSumBadge');
+
+            if (state.macroMode === 'gkg') {
+                btnGkg.className = 'py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm';
+                btnPct.className = 'py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                ctrlGkg.classList.remove('hidden');
+                ctrlPct.classList.add('hidden');
+                badge.textContent = 'Научный (г/кг)';
+            } else {
+                btnPct.className = 'py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm';
+                btnGkg.className = 'py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                ctrlPct.classList.remove('hidden');
+                ctrlGkg.classList.add('hidden');
+                badge.textContent = '100%';
+            }
+        }
+
+        function updateDashboardUI() {
+            const targets = calculateTargets();
+            const { mealTotals, dayTotal } = calculateDiaryTotals();
+
+            // Update BMI & BMR
+            document.getElementById('bmiValue').textContent = targets.bmi;
+            document.getElementById('bmrValue').textContent = targets.bmr;
+            const bmiBadge = document.getElementById('bmiBadge');
+            if (targets.bmi < 18.5) {
+                bmiBadge.textContent = 'Дефицит';
+                bmiBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
+            } else if (targets.bmi < 25) {
+                bmiBadge.textContent = 'Норма';
+                bmiBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300';
+            } else if (targets.bmi < 30) {
+                bmiBadge.textContent = 'Избыток';
+                bmiBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
+            } else {
+                bmiBadge.textContent = 'Ожирение';
+                bmiBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300';
+            }
+
+            // Update Additive TDEE UI Elements
+            document.getElementById('tdeeHeaderBadge').textContent = `TDEE: ${targets.tdee} ккал`;
+            document.getElementById('lblNeatCal').textContent = `+${targets.neatCal} ккал`;
+
+            // Steps UI
+            document.getElementById('inputSteps').value = state.dailySteps;
+            document.getElementById('rangeSteps').value = Math.min(30000, state.dailySteps);
+            document.getElementById('lblStepsKm').textContent = `~${targets.distanceKm} км`;
+            document.getElementById('lblStepLen').textContent = `(шаг ${targets.stepLengthCm} см)`;
+            document.getElementById('lblStepsCal').textContent = `+${targets.stepsCal} ккал/день`;
+
+            // Workouts UI
+            const btnWkAvg = document.getElementById('btnWkAvg');
+            const btnWkToday = document.getElementById('btnWkToday');
+            const freqBlock = document.getElementById('workoutFreqBlock');
+            const durTitle = document.getElementById('lblWorkoutDurTitle');
+
+            if (state.workoutMode === 'weekly_avg') {
+                btnWkAvg.className = 'py-1.5 px-2 rounded-lg transition bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm';
+                btnWkToday.className = 'py-1.5 px-2 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                freqBlock.classList.remove('hidden');
+                durTitle.textContent = 'Длительность одной тренировки';
+                document.getElementById('lblWorkoutFormulaNote').textContent =
+                    `${state.workoutsPerWeek} трен. × ${targets.singleWorkoutCal} ккал ÷ 7 дней = +${targets.workoutDailyCal} ккал/сут`;
+            } else {
+                btnWkToday.className = 'py-1.5 px-2 rounded-lg transition bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm';
+                btnWkAvg.className = 'py-1.5 px-2 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                freqBlock.classList.add('hidden');
+                durTitle.textContent = 'Длительность тренировки сегодня';
+                document.getElementById('lblWorkoutFormulaNote').textContent =
+                    `Полный расход за тренировку сегодня (${state.workoutDurationMins} мин)`;
+            }
+
+            document.getElementById('inputWorkoutCount').value = state.workoutsPerWeek;
+            document.getElementById('rangeWorkoutCount').value = Math.min(7, state.workoutsPerWeek);
+            document.getElementById('inputWorkoutMins').value = state.workoutDurationMins;
+            document.getElementById('rangeWorkoutMins').value = Math.min(180, state.workoutDurationMins);
+            document.getElementById('lblSingleWorkoutCal').textContent = `${targets.singleWorkoutCal} ккал`;
+            document.getElementById('lblWorkoutDailyCal').textContent = `+${targets.workoutDailyCal} ккал/день`;
+
+            // Formula Breakdown & Stacked Bar
+            document.getElementById('chkIncludeTef').checked = !!state.includeTef;
+            document.getElementById('fBmrVal').textContent = targets.bmr;
+            document.getElementById('fNeatVal').textContent = targets.neatCal;
+            document.getElementById('fStepsVal').textContent = targets.stepsCal;
+            document.getElementById('fWorkoutVal').textContent = targets.workoutDailyCal;
+            document.getElementById('fTotalTdeeVal').textContent = targets.tdee;
+            document.getElementById('lblGoalResultCal').textContent = `Норма: ${targets.targetCalories} ккал`;
+
+            const tefRow = document.getElementById('fTefRow');
+            const tefBar = document.getElementById('tdeeBarTef');
+            if (state.includeTef) {
+                tefRow.classList.remove('hidden');
+                tefBar.classList.remove('hidden');
+                document.getElementById('fTefVal').textContent = targets.tefCal;
+            } else {
+                tefRow.classList.add('hidden');
+                tefBar.classList.add('hidden');
+            }
+
+            const totalTdeeSafe = Math.max(1, targets.tdee);
+            document.getElementById('tdeeBarBmr').style.width = `${Math.round((targets.bmr / totalTdeeSafe) * 100)}%`;
+            document.getElementById('tdeeBarNeat').style.width = `${Math.round((targets.neatCal / totalTdeeSafe) * 100)}%`;
+            document.getElementById('tdeeBarSteps').style.width = `${Math.round((targets.stepsCal / totalTdeeSafe) * 100)}%`;
+            document.getElementById('tdeeBarWorkout').style.width = `${Math.round((targets.workoutDailyCal / totalTdeeSafe) * 100)}%`;
+            document.getElementById('tdeeBarTef').style.width = `${Math.round((targets.tefCal / totalTdeeSafe) * 100)}%`;
+
+            // Update Target Weight & Timeline Planner UI
+            renderGoalPlannerSection(targets);
+
+            renderMacroModeButtons();
+
+            // Update g/kg controls
+            document.getElementById('lblGkgP').textContent = targets.gkgP;
+            document.getElementById('lblGkgGramP').textContent = targets.targetP;
+            document.getElementById('lblGkgPctP').textContent = targets.effectivePctP;
+            document.getElementById('rangeGkgP').value = state.macroGkg.p;
+
+            document.getElementById('lblGkgF').textContent = targets.gkgF;
+            document.getElementById('lblGkgGramF').textContent = targets.targetF;
+            document.getElementById('lblGkgPctF').textContent = targets.effectivePctF;
+            document.getElementById('rangeGkgF').value = state.macroGkg.f;
+
+            document.getElementById('lblGkgC').textContent = targets.gkgC;
+            document.getElementById('lblGkgGramC').textContent = targets.targetC;
+            document.getElementById('lblGkgPctC').textContent = targets.effectivePctC;
+
+            // Update Percentage controls
+            document.getElementById('lblPctP').textContent = state.macroPct.p;
+            document.getElementById('lblPctF').textContent = state.macroPct.f;
+            document.getElementById('lblPctC').textContent = state.macroPct.c;
+            document.getElementById('lblGramP').textContent = targets.targetP;
+            document.getElementById('lblGramF').textContent = targets.targetF;
+            document.getElementById('lblGramC').textContent = targets.targetC;
+            document.getElementById('lblPctGkgP').textContent = targets.gkgP;
+            document.getElementById('lblPctGkgF').textContent = targets.gkgF;
+            document.getElementById('lblPctGkgC').textContent = targets.gkgC;
+
+            document.getElementById('rangePctP').value = state.macroPct.p;
+            document.getElementById('rangePctF').value = state.macroPct.f;
+            document.getElementById('rangePctC').value = state.macroPct.c;
+
+            // Update visual ratio bar
+            document.getElementById('ratioBarP').style.width = `${targets.effectivePctP}%`;
+            document.getElementById('ratioBarF').style.width = `${targets.effectivePctF}%`;
+            document.getElementById('ratioBarC').style.width = `${targets.effectivePctC}%`;
+
+            // Physiological Safety Alert Check
+            const alertBox = document.getElementById('macroSafetyAlert');
+            const alertTitle = document.getElementById('macroSafetyTitle');
+            const alertText = document.getElementById('macroSafetyText');
+            if (targets.gkgP > 2.5) {
+                alertBox.classList.remove('hidden');
+                alertTitle.textContent = `Избыток белка: ${targets.gkgP} г на кг веса (${targets.targetP} г)`;
+                alertText.innerHTML = `Физиологический потолок усвоения даже для атлетов — <b>1.6–2.2 г/кг</b>. При высокой калорийности процентный расчет завышает белок. Рекомендуем переключиться на режим <b>«По весу (г/кг)»</b>.`;
+            } else if (targets.gkgF < 0.65) {
+                alertBox.classList.remove('hidden');
+                alertTitle.textContent = `Слишком мало жиров: ${targets.gkgF} г на кг веса`;
+                alertText.innerHTML = `Для здоровья гормональной системы не рекомендуется опускать жиры ниже <b>0.7–0.8 г/кг</b> веса тела.`;
+            } else {
+                alertBox.classList.add('hidden');
+            }
+
+            // Update Dashboard Goal Subtitle
+            document.getElementById('goalSubtitle').textContent =
+                `Цель: ${targets.activeGoalDescription} • Расход TDEE: ${targets.tdee} ккал (BMR ${targets.bmr} + Быт ${targets.neatCal} + Шаги ${targets.stepsCal} + Трен. ${targets.workoutDailyCal}${state.includeTef ? ' + TEF ' + targets.tefCal : ''})`;
+
+            // Update Radial Calorie Ring
+            const consumedCal = Math.round(dayTotal.cal);
+            const targetCal = targets.targetCalories;
+            document.getElementById('dashConsumedCal').textContent = consumedCal;
+            document.getElementById('dashTargetCal').textContent = targetCal;
+
+            const circumference = 414.69; // 2 * pi * 66
+            const calRatio = Math.min(1.15, consumedCal / targetCal);
+            const offset = circumference - (Math.min(1, calRatio) * circumference);
+            const ringEl = document.getElementById('calRingCircle');
+            ringEl.style.strokeDashoffset = offset;
+
+            const statusBadge = document.getElementById('calStatusBadge');
+            const diffCal = targetCal - consumedCal;
+            if (diffCal >= 0) {
+                statusBadge.textContent = `Осталось: ${diffCal} ккал`;
+                statusBadge.className = 'mt-2 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300';
+                ringEl.classList.remove('text-rose-500');
+                ringEl.classList.add('text-emerald-500');
+            } else {
+                statusBadge.textContent = `Превышение на ${Math.abs(diffCal)} ккал`;
+                statusBadge.className = 'mt-2 text-xs font-semibold px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300';
+                ringEl.classList.remove('text-emerald-500');
+                ringEl.classList.add('text-rose-500');
+            }
+
+            // Update Macro Progress Bars
+            const cP = Math.round(dayTotal.p);
+            const cF = Math.round(dayTotal.f);
+            const cC = Math.round(dayTotal.c);
+
+            const pctP = targets.targetP > 0 ? Math.round((cP / targets.targetP) * 100) : 0;
+            const pctF = targets.targetF > 0 ? Math.round((cF / targets.targetF) * 100) : 0;
+            const pctC = targets.targetC > 0 ? Math.round((cC / targets.targetC) * 100) : 0;
+
+            document.getElementById('dashConsumedP').textContent = cP;
+            document.getElementById('dashTargetP').textContent = targets.targetP;
+            document.getElementById('dashGkgP').textContent = `(${targets.gkgP} г/кг)`;
+            document.getElementById('dashPctP').textContent = `${pctP}%`;
+            document.getElementById('barProgressP').style.width = `${Math.min(100, pctP)}%`;
+
+            document.getElementById('dashConsumedF').textContent = cF;
+            document.getElementById('dashTargetF').textContent = targets.targetF;
+            document.getElementById('dashGkgF').textContent = `(${targets.gkgF} г/кг)`;
+            document.getElementById('dashPctF').textContent = `${pctF}%`;
+            document.getElementById('barProgressF').style.width = `${Math.min(100, pctF)}%`;
+
+            document.getElementById('dashConsumedC').textContent = cC;
+            document.getElementById('dashTargetC').textContent = targets.targetC;
+            document.getElementById('dashGkgC').textContent = `(${targets.gkgC} г/кг)`;
+            document.getElementById('dashPctC').textContent = `${pctC}%`;
+            document.getElementById('barProgressC').style.width = `${Math.min(100, pctC)}%`;
+
+            // Mobile badge count
+            document.getElementById('mobDiaryBadge').textContent = dayTotal.count;
+
+            // Meal Distribution Bar & Legend
+            const totalMealCal = Math.max(1, dayTotal.cal);
+            const bPct = dayTotal.cal > 0 ? Math.round((mealTotals.breakfast.cal / totalMealCal) * 100) : 25;
+            const lPct = dayTotal.cal > 0 ? Math.round((mealTotals.lunch.cal / totalMealCal) * 100) : 35;
+            const dPct = dayTotal.cal > 0 ? Math.round((mealTotals.dinner.cal / totalMealCal) * 100) : 25;
+            const sPct = dayTotal.cal > 0 ? Math.max(0, 100 - bPct - lPct - dPct) : 15;
+
+            document.getElementById('distBarBreakfast').style.width = `${bPct}%`;
+            document.getElementById('distBarLunch').style.width = `${lPct}%`;
+            document.getElementById('distBarDinner').style.width = `${dPct}%`;
+            document.getElementById('distBarSnack').style.width = `${sPct}%`;
+
+            const legendContainer = document.getElementById('mealDistLegend');
+            legendContainer.innerHTML = MEAL_TYPES.map(m => {
+                const mCal = Math.round(mealTotals[m.id].cal);
+                const mShare = dayTotal.cal > 0 ? Math.round((mCal / dayTotal.cal) * 100) : 0;
+                return `
+                    <div onclick="selectMealTab('${m.id}')" class="cursor-pointer p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0 ${m.color}"></span>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">${m.title}</div>
+                            <div class="text-[11px] text-slate-400">${mCal} ккал (${mShare}%)</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderMealTabs(mealTotals);
+            renderActiveMealItems(mealTotals[state.activeMeal]);
+            renderFinalSummaryCard(targets, mealTotals, dayTotal);
+        }
+
+        function renderGoalPlannerSection(targets) {
+            const btnWeight = document.getElementById('btnGoalModeWeight');
+            const btnPct = document.getElementById('btnGoalModePct');
+            const blockWeight = document.getElementById('goalWeightPlannerBlock');
+            const blockPct = document.getElementById('goalFixedPctBlock');
+
+            if (state.goalCalcMode === 'target_weight') {
+                btnWeight.className = 'py-2 px-2.5 rounded-xl transition flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm';
+                btnPct.className = 'py-2 px-2.5 rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                blockWeight.classList.remove('hidden');
+                blockPct.classList.add('hidden');
+            } else {
+                btnPct.className = 'py-2 px-2.5 rounded-xl transition flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm';
+                btnWeight.className = 'py-2 px-2.5 rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                blockPct.classList.remove('hidden');
+                blockWeight.classList.add('hidden');
+            }
+
+            // Sync inputs
+            document.getElementById('inp-target-weight-num').value = state.targetWeight;
+            document.getElementById('inp-target-weight').value = Math.min(160, Math.max(30, state.targetWeight));
+            document.getElementById('inputTargetWeeks').value = state.targetWeeks;
+            document.getElementById('rangeTargetWeeks').value = Math.min(52, Math.max(2, state.targetWeeks));
+
+            // Render gender-appropriate quick target weight preset buttons
+            const quickPresetsContainer = document.getElementById('targetWeightQuickPresets');
+            if (quickPresetsContainer) {
+                const presetWeights = state.gender === 'female'
+                    ? [42, 45, 48, 50, 52, 55, 58, 60, 65]
+                    : [65, 70, 73, 75, 78, 80, 85, 90];
+                quickPresetsContainer.innerHTML = presetWeights.map(pw => {
+                    const isSelected = Math.abs(state.targetWeight - pw) < 0.1;
+                    return `<button type="button" onclick="syncTargetWeight(${pw})" class="px-2 py-1 text-[11px] font-semibold rounded-lg border transition ${isSelected ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-500'}">${pw} кг</button>`;
+                }).join('');
+            }
+
+            const w = parseFloat(state.weight) || 85;
+            const delta = targets.weightDelta;
+            const deltaSummaryEl = document.getElementById('lblWeightDeltaSummary');
+            if (Math.abs(delta) < 0.2) {
+                deltaSummaryEl.textContent = `Удержание текущего веса (${w} кг)`;
+            } else if (delta < 0) {
+                deltaSummaryEl.textContent = `Цель: сбросить ${targets.absWeightDelta} кг (с ${w} до ${targets.desiredW} кг)`;
+            } else {
+                deltaSummaryEl.textContent = `Цель: набрать +${targets.absWeightDelta} кг (с ${w} до ${targets.desiredW} кг)`;
+            }
+
+            // Finish Date Calculation
+            const now = new Date();
+            const finishDate = new Date(now.getTime() + targets.days * 24 * 60 * 60 * 1000);
+            const dateFmt = finishDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+            const monthsApprox = (targets.days / 30.4).toFixed(1);
+            document.getElementById('lblPeriodDaysMonths').textContent =
+                `${targets.days} дн. (~${monthsApprox} мес) • Ожидаемая дата: ${dateFmt}`;
+
+            // Metrics Grid
+            const rateSign = delta < 0 ? '−' : (delta > 0 ? '+' : '');
+            document.getElementById('planWeeklyRate').textContent = `${rateSign}${targets.weeklyRateKg} кг/нед`;
+            document.getElementById('planWeeklyPct').textContent = `${targets.weeklyRatePct}% от массы/нед`;
+
+            const deltaTitleEl = document.getElementById('planDailyDeltaTitle');
+            const deltaValEl = document.getElementById('planDailyDeltaVal');
+            if (delta <= 0) {
+                deltaTitleEl.textContent = 'Дефицит в сутки';
+                deltaValEl.textContent = `${targets.rawDailyDelta} ккал`;
+                deltaValEl.className = 'font-extrabold text-sm sm:text-base text-amber-300 mt-0.5';
+            } else {
+                deltaTitleEl.textContent = 'Профицит в сутки';
+                deltaValEl.textContent = `+${targets.rawDailyDelta} ккал`;
+                deltaValEl.className = 'font-extrabold text-sm sm:text-base text-blue-300 mt-0.5';
+            }
+
+            document.getElementById('planTotalKcalBank').textContent =
+                `Всего: ${targets.totalKcalBank.toLocaleString('ru-RU')} ккал`;
+            document.getElementById('planTargetCalVal').textContent = `${targets.targetCalories} ккал`;
+
+            const pctOfTdee = targets.tdee > 0 ? Math.round((targets.rawDailyDelta / targets.tdee) * 100) : 0;
+            document.getElementById('planDeficitPctOfTdee').textContent =
+                `${pctOfTdee > 0 ? '+' : ''}${pctOfTdee}% от расхода TDEE`;
+
+            // Pace Assessment & Smart Recommendations
+            const badgeEl = document.getElementById('planPaceBadge');
+            const recListEl = document.getElementById('planRecommendationsList');
+            const actionsEl = document.getElementById('planQuickActions');
+
+            let recs = [];
+            let actionButtons = [];
+
+            const recPGrams = Math.round(w * targets.recProteinGkg);
+            const recFGrams = Math.round(w * targets.recFatGkg);
+
+            if (Math.abs(delta) < 0.2) {
+                badgeEl.textContent = 'Поддержание веса';
+                badgeEl.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
+                recs.push(`• Вы находитесь в целевом весе. Рекомендуется питаться на уровне суточного расхода <b>${targets.tdee} ккал</b>.`);
+            } else if (delta < 0) {
+                // Weight Loss Analysis
+                if (targets.weeklyRateKg <= 0.8 && !targets.isBelowSafeFloor && Math.abs(targets.rawDailyDelta) <= 750) {
+                    badgeEl.textContent = 'Оптимальный бережный темп';
+                    badgeEl.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
+                    recs.push(`• <b>Физиологичный дефицит (${Math.abs(targets.rawDailyDelta)} ккал/сут):</b> темп <b>${targets.weeklyRateKg} кг/нед</b> (${targets.weeklyRatePct}% от массы) позволяет сжигать именно жировую ткань, сохраняя мышцы и комфортный уровень сытости.`);
+                } else if (targets.weeklyRateKg <= 1.1 && !targets.isBelowSafeFloor) {
+                    badgeEl.textContent = 'Интенсивный темп';
+                    badgeEl.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30';
+                    recs.push(`• <b>Интенсивная сушка (${Math.abs(targets.rawDailyDelta)} ккал/сут):</b> чтобы избежать потери мышц и срывов при дефиците ${Math.abs(pctOfTdee)}%, обязательно держите белок не ниже <b>${recPGrams} г/день</b> (${targets.recProteinGkg} г/кг) и выбирайте объемные низкокалорийные продукты.`);
+                    actionButtons.push(`
+                        <button type="button" onclick="syncTargetWeeks(${targets.optimalWeeks})" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 font-semibold text-[11px] transition flex items-center gap-1.5">
+                            <i class="ph-fill ph-clock-counter-clockwise"></i> Смягчить срок до ${targets.optimalWeeks} нед (~0.65 кг/нед)
+                        </button>
+                    `);
+                } else {
+                    badgeEl.textContent = 'Слишком жесткий темп';
+                    badgeEl.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/25 text-rose-300 border border-rose-400/40';
+                    recs.push(`• <span class="text-rose-300 font-semibold">Внимание:</span> для сброса ${targets.absWeightDelta} кг за ${targets.weeks} нед требуется дефицит <b>${Math.abs(targets.rawDailyDelta)} ккал/сут</b> (рацион ${targets.rawTargetFromWeight} ккал — ниже вашего базового обмена BMR ${targets.bmr} ккал). Рекомендуем увеличить срок до <b>${targets.optimalWeeks} недель</b> или повысить расход за счет шагов.`);
+                    actionButtons.push(`
+                        <button type="button" onclick="syncTargetWeeks(${targets.optimalWeeks})" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[11px] transition flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-shield-check"></i> Установить безопасный срок: ${targets.optimalWeeks} нед
+                        </button>
+                    `);
+                }
+
+                // Combined Diet + Steps tip if deficit > 600 kcal
+                if (Math.abs(targets.rawDailyDelta) > 600) {
+                    const extraSteps = 3000;
+                    const extraStepsKcal = Math.round(((extraSteps * (targets.stepLengthCm / 100)) / 1000) * w * 0.5);
+                    const easierDietCal = targets.targetCalories + extraStepsKcal;
+                    recs.push(`• <b>Комбо-стратегия (Еда + Шаги):</b> если добавить <b>+${extraSteps} шагов в день</b> (+${extraStepsKcal} ккал к расходу), то при том же сроке (${targets.weeks} нед) вы сможете питаться сытнее — на <b>${easierDietCal} ккал/день</b> вместо ${targets.targetCalories} ккал.`);
+                    actionButtons.push(`
+                        <button type="button" onclick="syncSteps(${state.dailySteps + 3000})" class="px-3 py-1.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-400/30 text-teal-200 font-semibold text-[11px] transition flex items-center gap-1.5">
+                            <i class="ph-fill ph-footprints"></i> +3 000 шагов (+${extraStepsKcal} ккал к рациону)
+                        </button>
+                    `);
+                }
+            } else {
+                // Weight Gain Analysis
+                if (targets.weeklyRateKg <= 0.45) {
+                    badgeEl.textContent = 'Чистый набор мышц';
+                    badgeEl.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30';
+                    recs.push(`• <b>Контролируемый профицит (+${targets.rawDailyDelta} ккал/сут):</b> оптимальный темп для роста мышечной массы с минимальным набором жира.`);
+                } else {
+                    badgeEl.textContent = 'Быстрый набор массы';
+                    badgeEl.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30';
+                    recs.push(`• <b>Высокий профицит (+${targets.rawDailyDelta} ккал/сут):</b> темп выше 0.5 кг/нед может приводить к набору лишней жировой ткани. Рекомендуем растянуть период.`);
+                }
+            }
+
+            // Macro recommendation bullet
+            recs.push(`• <b>Рекомендуемые БЖУ под ваш план:</b> Белки <b>${recPGrams} г</b> (${targets.recProteinGkg} г/кг для защиты мышц), Жиры <b>${recFGrams} г</b> (${targets.recFatGkg} г/кг для гормонального фона), остаток калорий — сложные углеводы.`);
+
+            actionButtons.push(`
+                <button type="button" onclick="applyRecommendedMacros(${targets.recProteinGkg}, ${targets.recFatGkg})" class="px-3 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 font-semibold text-[11px] transition flex items-center gap-1.5">
+                    <i class="ph-fill ph-sliders"></i> Применить рекомендуемые БЖУ (${targets.recProteinGkg} / ${targets.recFatGkg} г/кг)
+                </button>
+            `);
+
+            recListEl.innerHTML = recs.map(r => `<p>${r}</p>`).join('');
+            actionsEl.innerHTML = actionButtons.join('');
+
+            // Target BMI & Milestones Grid
+            document.getElementById('planTargetBmiNote').textContent = `ИМТ в конце: ${targets.targetBmi} (сейчас ${targets.bmi})`;
+
+            const fractions = [0, 0.25, 0.5, 0.75, 1.0];
+            const milestonesGrid = document.getElementById('planMilestonesGrid');
+            milestonesGrid.innerHTML = fractions.map((frac, idx) => {
+                const mWeight = +(w + delta * frac).toFixed(1);
+                const mWeek = Math.round(targets.weeks * frac);
+                const mDate = new Date(now.getTime() + (targets.days * frac) * 24 * 60 * 60 * 1000);
+                const mDateStr = idx === 0 ? 'Сегодня' : mDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                const isLast = idx === fractions.length - 1;
+                return `
+                    <div class="p-2 rounded-xl ${isLast ? 'bg-emerald-500/25 border border-emerald-400/40' : 'bg-white/5 border border-white/10'}">
+                        <div class="text-[10px] ${isLast ? 'text-emerald-300 font-bold' : 'text-slate-400'}">${idx === 0 ? 'Старт' : mWeek + ' нед'}</div>
+                        <div class="font-extrabold text-xs sm:text-sm text-white my-0.5">${mWeight} кг</div>
+                        <div class="text-[9px] text-slate-400 truncate">${mDateStr}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setGoalCalcMode(mode) {
+            state.goalCalcMode = mode;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function syncTargetWeight(val) {
+            const num = parseFloat(val);
+            if (isNaN(num)) return;
+            state.targetWeight = Math.max(30, Math.min(160, num));
+            state.goalCalcMode = 'target_weight';
+            updateDashboardUI();
+            saveState();
+        }
+
+        function syncTargetWeeks(val) {
+            const num = parseInt(val, 10);
+            if (isNaN(num)) return;
+            state.targetWeeks = Math.max(1, Math.min(104, num));
+            state.goalCalcMode = 'target_weight';
+            updateDashboardUI();
+            saveState();
+        }
+
+        function applyRecommendedMacros(pGkg, fGkg) {
+            state.macroMode = 'gkg';
+            state.macroPresetId = 'custom';
+            state.macroGkg = { p: pGkg, f: fGkg };
+            renderMacroPresets();
+            updateDashboardUI();
+            saveState();
+            showToast(`Установлены рекомендуемые БЖУ: Белки ${pGkg} г/кг, Жиры ${fGkg} г/кг`);
+        }
+
+        function renderFinalSummaryCard(targets, mealTotals, dayTotal) {
+            const finalCal = Math.round(dayTotal.cal);
+            const targetCal = targets.targetCalories;
+            const diff = finalCal - targetCal;
+            const w = parseFloat(state.weight) || 85;
+
+            document.getElementById('finalTotalCal').textContent = finalCal;
+            document.getElementById('finalTotalWeight').textContent = `Общий вес пищи: ${Math.round(dayTotal.grams)} г (${dayTotal.count} поз.)`;
+            document.getElementById('finalTargetCal').textContent = targetCal;
+            document.getElementById('finalTargetSub').textContent = `Поддержка (TDEE): ${targets.tdee} ккал • BMR: ${targets.bmr} ккал`;
+
+            const diffEl = document.getElementById('finalDiffCal');
+            const diffStatusEl = document.getElementById('finalDiffStatus');
+            const diffLabelEl = document.getElementById('finalDiffLabel');
+
+            if (Math.abs(diff) <= 50) {
+                diffLabelEl.textContent = 'Идеальное попадание';
+                diffEl.textContent = diff > 0 ? `+${diff}` : `${diff}`;
+                diffEl.className = 'text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight';
+                diffStatusEl.textContent = 'Рацион точно соответствует вашей цели!';
+                diffStatusEl.className = 'text-[11px] text-emerald-300 mt-1';
+            } else if (diff < 0) {
+                diffLabelEl.textContent = 'Остаток калорий';
+                diffEl.textContent = `${Math.abs(diff)}`;
+                diffEl.className = 'text-3xl sm:text-4xl font-black text-amber-300 tracking-tight';
+                diffStatusEl.textContent = `Можно добавить еще ${Math.abs(diff)} ккал до нормы`;
+                diffStatusEl.className = 'text-[11px] text-amber-200/90 mt-1';
+            } else {
+                diffLabelEl.textContent = 'Перебор от цели';
+                diffEl.textContent = `+${diff}`;
+                diffEl.className = 'text-3xl sm:text-4xl font-black text-rose-400 tracking-tight';
+                diffStatusEl.textContent = `Превышение целевой нормы на ${diff} ккал`;
+                diffStatusEl.className = 'text-[11px] text-rose-300 mt-1';
+            }
+
+            // Final Macros & Percentages of actual consumed calories
+            const totalP = Math.round(dayTotal.p);
+            const totalF = Math.round(dayTotal.f);
+            const totalC = Math.round(dayTotal.c);
+
+            const macroCalSum = Math.max(1, (dayTotal.p * 4) + (dayTotal.f * 9) + (dayTotal.c * 4));
+            const shareP = dayTotal.cal > 0 ? Math.round(((dayTotal.p * 4) / macroCalSum) * 100) : 0;
+            const shareF = dayTotal.cal > 0 ? Math.round(((dayTotal.f * 9) / macroCalSum) * 100) : 0;
+            const shareC = dayTotal.cal > 0 ? Math.max(0, 100 - shareP - shareF) : 0;
+
+            document.getElementById('finalGramP').textContent = totalP;
+            document.getElementById('finalNormP').textContent = targets.targetP;
+            document.getElementById('finalPctP').textContent = `${shareP}% ккал`;
+            document.getElementById('finalGkgP').textContent = `Факт: ${(dayTotal.p / w).toFixed(1)} г/кг (план ${targets.gkgP} г/кг)`;
+
+            document.getElementById('finalGramF').textContent = totalF;
+            document.getElementById('finalNormF').textContent = targets.targetF;
+            document.getElementById('finalPctF').textContent = `${shareF}% ккал`;
+            document.getElementById('finalGkgF').textContent = `Факт: ${(dayTotal.f / w).toFixed(1)} г/кг (план ${targets.gkgF} г/кг)`;
+
+            document.getElementById('finalGramC').textContent = totalC;
+            document.getElementById('finalNormC').textContent = targets.targetC;
+            document.getElementById('finalPctC').textContent = `${shareC}% ккал`;
+            document.getElementById('finalGkgC').textContent = `Факт: ${(dayTotal.c / w).toFixed(1)} г/кг (план ${targets.gkgC} г/кг)`;
+
+            // Populate Summary Table by Meals
+            const tbody = document.getElementById('finalSummaryTableBody');
+            tbody.innerHTML = MEAL_TYPES.map(m => {
+                const mt = mealTotals[m.id];
+                const mCal = Math.round(mt.cal);
+                const mShare = finalCal > 0 ? Math.round((mCal / finalCal) * 100) : 0;
+                return `
+                    <tr onclick="selectMealTab('${m.id}')" class="hover:bg-white/5 cursor-pointer transition">
+                        <td class="py-3 px-4 font-semibold flex items-center gap-2">
+                            <span>${m.icon}</span>
+                            <span>${m.title}</span>
+                        </td>
+                        <td class="py-3 px-3 text-right text-slate-400">${Math.round(mt.grams)} г</td>
+                        <td class="py-3 px-3 text-right text-blue-300 font-medium">${mt.p.toFixed(1)} г</td>
+                        <td class="py-3 px-3 text-right text-amber-300 font-medium">${mt.f.toFixed(1)} г</td>
+                        <td class="py-3 px-3 text-right text-emerald-300 font-medium">${mt.c.toFixed(1)} г</td>
+                        <td class="py-3 px-3 text-right text-slate-400">${mShare}%</td>
+                        <td class="py-3 px-4 text-right font-bold text-white">${mCal} ккал</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const tfoot = document.getElementById('finalSummaryTableFoot');
+            tfoot.innerHTML = `
+                <tr>
+                    <td class="py-3.5 px-4 uppercase tracking-wider text-emerald-300">ИТОГО ЗА ДЕНЬ</td>
+                    <td class="py-3.5 px-3 text-right text-slate-300">${Math.round(dayTotal.grams)} г</td>
+                    <td class="py-3.5 px-3 text-right text-blue-300">${totalP} г</td>
+                    <td class="py-3.5 px-3 text-right text-amber-300">${totalF} г</td>
+                    <td class="py-3.5 px-3 text-right text-emerald-300">${totalC} г</td>
+                    <td class="py-3.5 px-3 text-right text-emerald-300">100%</td>
+                    <td class="py-3.5 px-4 text-right text-base sm:text-lg text-emerald-400">${finalCal} ккал</td>
+                </tr>
+            `;
+        }
+
+        function copyRationReport() {
+            const targets = calculateTargets();
+            const { mealTotals, dayTotal } = calculateDiaryTotals();
+            const allFoods = getAllFoods();
+            const finalCal = Math.round(dayTotal.cal);
+
+            let lines = [];
+            lines.push(`📊 ИТОГОВЫЙ РАЦИОН ПИТАНИЯ (NutriCalc Pro)`);
+            lines.push(`Параметры: ${state.gender === 'male' ? 'Мужчина' : 'Женщина'}, ${state.age} лет, ${state.height} см, ${state.weight} кг`);
+            lines.push(`Суточный расход (TDEE): ${targets.tdee} ккал = BMR (${targets.bmr}) + Быт (${targets.neatCal}) + Шаги ${targets.steps} (${targets.stepsCal} ккал) + Тренировки (${targets.workoutDailyCal} ккал)`);
+            lines.push(`Цель и план: ${targets.activeGoalDescription} | Целевая норма: ${targets.targetCalories} ккал (Б: ${targets.targetP}г, Ж: ${targets.targetF}г, У: ${targets.targetC}г)`);
+            lines.push(`----------------------------------------`);
+
+            MEAL_TYPES.forEach(m => {
+                const items = state.diary[m.id] || [];
+                const mt = mealTotals[m.id];
+                lines.push(`${m.icon} ${m.title.toUpperCase()} — ${Math.round(mt.cal)} ккал (Б: ${Math.round(mt.p)}г | Ж: ${Math.round(mt.f)}г | У: ${Math.round(mt.c)}г):`);
+                if (items.length === 0) {
+                    lines.push(`  • Пусто`);
+                } else {
+                    items.forEach(entry => {
+                        const food = allFoods.find(f => f.id === entry.foodId);
+                        if (food) {
+                            const ratio = (parseFloat(entry.grams) || 0) / 100;
+                            lines.push(`  • ${food.name}: ${entry.grams} г (${Math.round(food.cal * ratio)} ккал)`);
+                        }
+                    });
+                }
+            });
+
+            lines.push(`----------------------------------------`);
+            lines.push(`🔥 ФИНАЛЬНАЯ КАЛОРИЙНОСТЬ РАЦИОНА: ${finalCal} ккал из ${targets.targetCalories} ккал`);
+            lines.push(`Итого БЖУ за день: Белки ${Math.round(dayTotal.p)} г | Жиры ${Math.round(dayTotal.f)} г | Углеводы ${Math.round(dayTotal.c)} г`);
+
+            const textToCopy = lines.join('\n');
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Отчет с финальной калорийностью скопирован в буфер обмена!');
+            } catch (err) {
+                showToast('Не удалось скопировать отчет');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function renderMealTabs(mealTotals) {
+            const container = document.getElementById('mealTabsContainer');
+            container.innerHTML = MEAL_TYPES.map(m => {
+                const active = state.activeMeal === m.id;
+                const count = (state.diary[m.id] || []).length;
+                const cals = Math.round(mealTotals[m.id].cal);
+                return `
+                    <button type="button" onclick="selectMealTab('${m.id}')" class="py-2.5 px-3 rounded-xl text-left transition flex items-center justify-between ${active ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-lg">${m.icon}</span>
+                            <div class="truncate">
+                                <div class="font-bold text-xs sm:text-sm leading-tight">${m.title}</div>
+                                <div class="text-[10px] text-slate-400">${cals} ккал</div>
+                            </div>
+                        </div>
+                        ${count > 0 ? `<span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${active ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}">${count}</span>` : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderCategoryFilters() {
+            const container = document.getElementById('categoryFilterContainer');
+            container.innerHTML = FOOD_CATEGORIES.map(cat => {
+                const active = state.selectedCategory === cat.id;
+                return `
+                    <button type="button" onclick="selectCategory('${cat.id}')" class="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${active ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}">
+                        ${cat.name}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderFoodDatabase() {
+            const query = (document.getElementById('foodSearchInput').value || '').trim().toLowerCase();
+            const clearBtn = document.getElementById('clearSearchBtn');
+            clearBtn.classList.toggle('hidden', query.length === 0);
+
+            const allFoods = getAllFoods();
+            const filtered = allFoods.filter(item => {
+                const matchesCat = state.selectedCategory === 'all' || item.cat === state.selectedCategory;
+                const matchesQuery = !query || item.name.toLowerCase().includes(query);
+                return matchesCat && matchesQuery;
+            });
+
+            document.getElementById('dbCountLabel').textContent = `${filtered.length} продуктов`;
+
+            const container = document.getElementById('foodDatabaseList');
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-8 text-center text-slate-400 dark:text-slate-500">
+                        <i class="ph ph-magnifying-glass text-3xl mb-1 block mx-auto"></i>
+                        <p class="text-sm font-medium">Продукты не найдены</p>
+                        <button onclick="openCustomFoodModal()" class="mt-2 text-xs font-semibold text-emerald-500 hover:underline">+ Добавить свой продукт в базу</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(food => `
+                <div onclick="addFoodToMeal('${food.id}')" class="group cursor-pointer p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                            ${food.name}
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                            <span class="font-semibold text-slate-600 dark:text-slate-300">${food.cal} ккал</span>
+                            <span>•</span>
+                            <span class="text-blue-500">Б: ${food.p}</span>
+                            <span class="text-amber-500">Ж: ${food.f}</span>
+                            <span class="text-emerald-500">У: ${food.c}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-[11px] font-medium text-slate-400 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">+${food.portion}г</span>
+                        <div class="w-7 h-7 rounded-xl bg-emerald-500/10 group-hover:bg-emerald-500 text-emerald-600 group-hover:text-white flex items-center justify-center transition">
+                            <i class="ph-bold ph-plus text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderActiveMealItems(activeMealTotal) {
+            const mealObj = MEAL_TYPES.find(m => m.id === state.activeMeal);
+            document.getElementById('activeMealIcon').textContent = mealObj.icon;
+            document.getElementById('activeMealTitle').textContent = mealObj.title;
+            document.getElementById('activeMealMacrosSummary').textContent = 
+                `${Math.round(activeMealTotal.cal)} ккал • Белки: ${Math.round(activeMealTotal.p)}г • Жиры: ${Math.round(activeMealTotal.f)}г • Углеводы: ${Math.round(activeMealTotal.c)}г`;
+
+            const items = state.diary[state.activeMeal] || [];
+            const container = document.getElementById('activeMealItemsList');
+            const allFoods = getAllFoods();
+
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="py-8 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center">
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">В приеме пищи «${mealObj.title}» пока пусто</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Нажмите на любой продукт из базы выше, чтобы добавить его в рацион</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = items.map(entry => {
+                const food = allFoods.find(f => f.id === entry.foodId);
+                if (!food) return '';
+                const ratio = (parseFloat(entry.grams) || 0) / 100;
+                const itemCal = Math.round(food.cal * ratio);
+                const itemP = (food.p * ratio).toFixed(1);
+                const itemF = (food.f * ratio).toFixed(1);
+                const itemC = (food.c * ratio).toFixed(1);
+
+                return `
+                    <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-slide-in">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-semibold text-sm text-slate-900 dark:text-white truncate">${food.name}</div>
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <span class="font-bold text-slate-800 dark:text-slate-200">${itemCal} ккал</span>
+                                <span>•</span>
+                                <span class="text-blue-600 dark:text-blue-400 font-medium">Б: ${itemP}г</span>
+                                <span class="text-amber-600 dark:text-amber-400 font-medium">Ж: ${itemF}г</span>
+                                <span class="text-emerald-600 dark:text-emerald-400 font-medium">У: ${itemC}г</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between sm:justify-end gap-2">
+                            <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
+                                <button type="button" onclick="adjustGrams('${entry.uid}', -25)" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm flex items-center justify-center transition">−</button>
+                                <input type="number" min="1" max="2000" value="${entry.grams}" oninput="updateGrams('${entry.uid}', this.value)" class="w-14 text-center font-bold text-xs sm:text-sm bg-transparent text-slate-900 dark:text-white focus:outline-none">
+                                <span class="text-xs text-slate-400 pr-1">г</span>
+                                <button type="button" onclick="adjustGrams('${entry.uid}', 25)" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm flex items-center justify-center transition">+</button>
+                            </div>
+
+                            <button type="button" onclick="removeDiaryItem('${entry.uid}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition" title="Удалить">
+                                <i class="ph ph-trash text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setGender(g) {
+            const prevGender = state.gender;
+            state.gender = g;
+            // Smart adaptation of target weight if switching to Female with a high default male weight
+            if (g === 'female' && prevGender === 'male' && state.targetWeight > 68) {
+                if (state.weight > 75) {
+                    state.targetWeight = 55;
+                } else {
+                    state.targetWeight = Math.max(30, +(state.weight - 5).toFixed(1));
+                }
+            }
+            renderGenderButtons();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function syncParam(param, val) {
+            const num = parseFloat(val);
+            if (isNaN(num)) return;
+            state[param] = num;
+
+            if (param === 'age') {
+                document.getElementById('inputAge').value = val;
+                document.getElementById('rangeAge').value = val;
+            } else if (param === 'height') {
+                document.getElementById('inputHeight').value = val;
+                document.getElementById('rangeHeight').value = val;
+            } else if (param === 'weight') {
+                document.getElementById('inp-weight').value = val;
+                document.getElementById('rangeWeight').value = val;
+            }
+
+            updateDashboardUI();
+            saveState();
+        }
+
+        function setActivity(id) {
+            state.bgActivityId = id;
+            renderActivityList();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function syncSteps(val) {
+            const num = Math.max(0, Math.min(50000, parseInt(val, 10) || 0));
+            state.dailySteps = num;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function setWorkoutMode(mode) {
+            state.workoutMode = mode;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function syncWorkoutCount(val) {
+            const num = Math.max(0, Math.min(14, parseInt(val, 10) || 0));
+            state.workoutsPerWeek = num;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function syncWorkoutMins(val) {
+            const num = Math.max(0, Math.min(300, parseInt(val, 10) || 0));
+            state.workoutDurationMins = num;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function setWorkoutIntensity(id) {
+            state.workoutIntensityId = id;
+            renderWorkoutIntensities();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function toggleTef(checked) {
+            state.includeTef = !!checked;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function setGoal(id) {
+            state.goalId = id;
+            renderGoalList();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function setMacroMode(mode) {
+            state.macroMode = mode;
+            renderMacroPresets();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function selectMacroPreset(presetId) {
+            state.macroPresetId = presetId;
+            const preset = MACRO_PRESETS.find(p => p.id === presetId);
+            if (preset && preset.p !== null) {
+                state.macroPct = { p: preset.p, f: preset.f, c: preset.c };
+                state.macroGkg = { p: preset.pGkg, f: preset.fGkg };
+            }
+            renderMacroPresets();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function handleGkgMacroChange(key, rawVal) {
+            const val = parseFloat(rawVal);
+            if (isNaN(val)) return;
+            state.macroPresetId = 'custom';
+            state.macroGkg[key] = val;
+            renderMacroPresets();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function handleCustomMacroChange(changedKey, rawVal) {
+            let val = parseInt(rawVal, 10) || 10;
+            state.macroPresetId = 'custom';
+
+            const otherKeys = ['p', 'f', 'c'].filter(k => k !== changedKey);
+            const k1 = otherKeys[0];
+            const k2 = otherKeys[1];
+
+            const remainder = 100 - val;
+            const currentOtherSum = state.macroPct[k1] + state.macroPct[k2];
+
+            if (currentOtherSum > 0) {
+                const k1New = Math.max(5, Math.round((state.macroPct[k1] / currentOtherSum) * remainder));
+                const k2New = Math.max(5, remainder - k1New);
+                state.macroPct[changedKey] = 100 - k1New - k2New;
+                state.macroPct[k1] = k1New;
+                state.macroPct[k2] = k2New;
+            } else {
+                state.macroPct[changedKey] = val;
+                state.macroPct[k1] = Math.floor(remainder / 2);
+                state.macroPct[k2] = remainder - state.macroPct[k1];
+            }
+
+            renderMacroPresets();
+            updateDashboardUI();
+            saveState();
+        }
+
+        function selectMealTab(mealId) {
+            state.activeMeal = mealId;
+            updateDashboardUI();
+            saveState();
+        }
+
+        function selectCategory(catId) {
+            state.selectedCategory = catId;
+            renderCategoryFilters();
+            renderFoodDatabase();
+        }
+
+        function clearSearch() {
+            document.getElementById('foodSearchInput').value = '';
+            renderFoodDatabase();
+        }
+
+        function addFoodToMeal(foodId) {
+            const allFoods = getAllFoods();
+            const food = allFoods.find(f => f.id === foodId);
+            if (!food) return;
+
+            const list = state.diary[state.activeMeal];
+            // Check if already exists in current meal
+            const existing = list.find(item => item.foodId === foodId);
+            if (existing) {
+                existing.grams = parseInt(existing.grams, 10) + food.portion;
+            } else {
+                list.push({
+                    uid: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    foodId: food.id,
+                    grams: food.portion
+                });
+            }
+
+            const mealObj = MEAL_TYPES.find(m => m.id === state.activeMeal);
+            showToast(`Добавлено: ${food.name} (${food.portion}г) в «${mealObj.title}»`);
+            updateDashboardUI();
+            saveState();
+        }
+
+        function updateGrams(uid, newGrams) {
+            const val = Math.max(0, parseInt(newGrams, 10) || 0);
+            const list = state.diary[state.activeMeal];
+            const item = list.find(x => x.uid === uid);
+            if (item) {
+                item.grams = val;
+                updateDashboardUI();
+                saveState();
+            }
+        }
+
+        function adjustGrams(uid, delta) {
+            const list = state.diary[state.activeMeal];
+            const item = list.find(x => x.uid === uid);
+            if (item) {
+                item.grams = Math.max(5, (parseInt(item.grams, 10) || 0) + delta);
+                updateDashboardUI();
+                saveState();
+            }
+        }
+
+        function removeDiaryItem(uid) {
+            state.diary[state.activeMeal] = state.diary[state.activeMeal].filter(x => x.uid !== uid);
+            updateDashboardUI();
+            saveState();
+        }
+
+        function clearDiary() {
+            state.diary = { breakfast: [], lunch: [], dinner: [], snack: [] };
+            showToast('Дневник питания очищен');
+            updateDashboardUI();
+            saveState();
+        }
+
+        function loadDemoMenu() {
+            state.diary = {
+                breakfast: [
+                    { uid: 'd1', foodId: 'f17', grams: 60 },
+                    { uid: 'd2', foodId: 'f41', grams: 150 },
+                    { uid: 'd3', foodId: 'f9', grams: 55 },
+                    { uid: 'd4', foodId: 'f32', grams: 100 }
+                ],
+                lunch: [
+                    { uid: 'd5', foodId: 'f1', grams: 180 },
+                    { uid: 'd6', foodId: 'f18', grams: 180 },
+                    { uid: 'd7', foodId: 'f26', grams: 150 },
+                    { uid: 'd8', foodId: 'f36', grams: 10 }
+                ],
+                dinner: [
+                    { uid: 'd9', foodId: 'f6', grams: 200 },
+                    { uid: 'd10', foodId: 'f40', grams: 200 },
+                    { uid: 'd11', foodId: 'f27', grams: 160 },
+                    { uid: 'd12', foodId: 'f34', grams: 65 }
+                ],
+                snack: [
+                    { uid: 'd13', foodId: 'f11', grams: 180 },
+                    { uid: 'd14', foodId: 'f16', grams: 30 },
+                    { uid: 'd15', foodId: 'f35', grams: 20 }
+                ]
+            };
+            updateDashboardUI();
+            saveState();
+            showToast('Загружен пример сбалансированного рациона на день!');
+            if (window.innerWidth < 1024) {
+                switchMobileTab('diary');
+            }
+        }
+
+        function openCustomFoodModal() {
+            document.getElementById('customFoodModal').classList.remove('hidden');
+            document.getElementById('cfName').focus();
+        }
+
+        function closeCustomFoodModal() {
+            document.getElementById('customFoodModal').classList.add('hidden');
+            document.getElementById('customFoodForm').reset();
+        }
+
+        function autoEstimateCalories() {
+            const p = parseFloat(document.getElementById('cfP').value) || 0;
+            const f = parseFloat(document.getElementById('cfF').value) || 0;
+            const c = parseFloat(document.getElementById('cfC').value) || 0;
+            const est = Math.round((p * 4) + (f * 9) + (c * 4));
+            if (est > 0) {
+                document.getElementById('cfCal').value = est;
+            }
+        }
+
+        function saveCustomFood(e) {
+            e.preventDefault();
+            const name = document.getElementById('cfName').value.trim();
+            const cal = parseFloat(document.getElementById('cfCal').value) || 0;
+            const portion = parseInt(document.getElementById('cfPortion').value, 10) || 100;
+            const p = parseFloat(document.getElementById('cfP').value) || 0;
+            const f = parseFloat(document.getElementById('cfF').value) || 0;
+            const c = parseFloat(document.getElementById('cfC').value) || 0;
+            const addNow = document.getElementById('cfAddImmediately').checked;
+
+            const newFood = {
+                id: 'custom_' + Date.now(),
+                name,
+                cat: 'custom',
+                cal: Math.round(cal),
+                p: +p.toFixed(1),
+                f: +f.toFixed(1),
+                c: +c.toFixed(1),
+                portion
+            };
+
+            state.customFoods.unshift(newFood);
+            if (addNow) {
+                addFoodToMeal(newFood.id);
+            } else {
+                showToast(`Продукт «${name}» сохранен в базу`);
+            }
+
+            closeCustomFoodModal();
+            renderFoodDatabase();
+            saveState();
+        }
+
+        function switchMobileTab(tab) {
+            const secCalc = document.getElementById('sectionCalc');
+            const secDiary = document.getElementById('sectionDiary');
+            const btnCalc = document.getElementById('mobTabCalc');
+            const btnDiary = document.getElementById('mobTabDiary');
+
+            if (tab === 'calc') {
+                secCalc.classList.remove('hidden');
+                secDiary.classList.add('hidden');
+                btnCalc.className = 'flex-1 py-2.5 text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm';
+                btnDiary.className = 'flex-1 py-2.5 text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400';
+            } else {
+                secCalc.classList.add('hidden');
+                secDiary.classList.remove('hidden');
+                btnDiary.className = 'flex-1 py-2.5 text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm';
+                btnCalc.className = 'flex-1 py-2.5 text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400';
+            }
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 animate-slide-in';
+            toast.innerHTML = `<i class="ph-fill ph-check-circle text-emerald-400 dark:text-emerald-600 text-base"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2600);
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = 'ph ph-moon text-lg';
+                localStorage.setItem('nutricalc_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.className = 'ph ph-sun text-lg';
+                localStorage.setItem('nutricalc_theme', 'dark');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('nutricalc_theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeIcon').className = 'ph ph-sun text-lg';
+            }
+
+            loadState();
+
+            // Sync biometric inputs with loaded state
+            document.getElementById('inputAge').value = state.age;
+            document.getElementById('rangeAge').value = state.age;
+            document.getElementById('inputHeight').value = state.height;
+            document.getElementById('rangeHeight').value = state.height;
+            document.getElementById('inp-weight').value = state.weight;
+            document.getElementById('rangeWeight').value = state.weight;
+
+            renderGenderButtons();
+            renderActivityList();
+            renderWorkoutIntensities();
+            renderGoalList();
+            renderMacroPresets();
+            renderCategoryFilters();
+            renderFoodDatabase();
+            updateDashboardUI();
+        });
+    </script>
+</body>
+</html>
