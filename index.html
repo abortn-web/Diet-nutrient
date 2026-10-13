@@ -93,24 +93,22 @@
         <div>
           <div class="flex items-center gap-1.5">
             <span class="font-extrabold text-base sm:text-lg tracking-tight">NutriCalc</span>
-            <span id="badge-gender-theme" class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md theme-soft border transition-all">PRO · Deep Violet</span>
+            <span id="badge-gender-theme" class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md theme-soft border transition-all">PRO</span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-        <button onclick="switchProfile('p1')" id="btn-prof-p1" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1"><span>♂ Профиль 1</span></button>
-        <button onclick="switchProfile('p2')" id="btn-prof-p2" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1"><span>♀ Профиль 2</span></button>
+        <button onclick="switchProfile('p1')" id="btn-prof-p1" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all">♂ Профиль 1</button>
+        <button onclick="switchProfile('p2')" id="btn-prof-p2" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all">♀ Профиль 2</button>
       </div>
 
       <div class="flex items-center gap-1.5">
-        <button onclick="openAiModal()" class="px-2.5 py-1.5 rounded-xl theme-grad text-white text-xs font-bold shadow-sm flex items-center gap-1.5 hover:opacity-95 transition">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-          <span>Gemini AI</span>
+        <button onclick="openAiModal()" class="px-2.5 py-1.5 rounded-xl theme-grad text-white text-xs font-bold shadow-sm flex items-center gap-1.5">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>Gemini AI</span>
         </button>
-        <button onclick="downloadSelfHtml()" class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl border theme-soft text-xs font-semibold flex items-center gap-1 hover:opacity-90 transition">
-          <i data-lucide="download" class="w-4 h-4"></i>
-          <span class="hidden md:inline">Скачать</span>
+        <button onclick="downloadSelfHtml()" class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl border theme-soft text-xs font-semibold flex items-center gap-1" title="Скачать index.html">
+          <i data-lucide="download" class="w-4 h-4"></i><span class="hidden md:inline">Скачать</span>
         </button>
         <button onclick="openCustomFoodModal()" class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"><i data-lucide="plus-circle" class="w-4 h-4"></i></button>
         <button onclick="toggleTheme()" class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
@@ -123,13 +121,8 @@
 
   <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-3 lg:hidden">
     <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/75 dark:bg-slate-900 rounded-2xl">
-      <button onclick="switchMobileTab('calc')" id="mob-tab-calc" class="py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm transition">
-        <i data-lucide="sliders" class="w-3.5 h-3.5 theme-text"></i><span>Параметры</span>
-      </button>
-      <button onclick="switchMobileTab('diary')" id="mob-tab-diary" class="py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 transition">
-        <i data-lucide="utensils" class="w-3.5 h-3.5"></i><span>Дневник</span>
-        <span id="mob-diary-badge" class="px-1.5 py-0.2 rounded-full text-[10px] theme-bg text-white">0</span>
-      </button>
+      <button onclick="switchMobileTab('calc')" id="mob-tab-calc" class="py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm"><i data-lucide="sliders" class="w-3.5 h-3.5 theme-text"></i><span>Параметры</span></button>
+      <button onclick="switchMobileTab('diary')" id="mob-tab-diary" class="py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400"><i data-lucide="utensils" class="w-3.5 h-3.5"></i><span>Дневник</span><span id="mob-diary-badge" class="px-1.5 py-0.2 rounded-full text-[10px] theme-bg text-white">0</span></button>
     </div>
   </div>
 
@@ -145,8 +138,8 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
-          <button onclick="setParam('gender','female')" id="btn-gender-female" class="py-2.5 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition"><span>♀ Женщина</span></button>
-          <button onclick="setParam('gender','male')" id="btn-gender-male" class="py-2.5 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition"><span>♂ Мужчина</span></button>
+          <button onclick="setParam('gender','female')" id="btn-gender-female" class="py-2.5 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2">♀ Женщина (Тиффани)</button>
+          <button onclick="setParam('gender','male')" id="btn-gender-male" class="py-2.5 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2">♂ Мужчина (Фиолет)</button>
         </div>
 
         <div class="space-y-3">
@@ -221,7 +214,6 @@
           <div class="text-[11px] opacity-80 font-mono-num" id="txt-tdee-breakdown">BMR 1680 + Быт 202 + Шаги 238 + Трен 155</div>
         </div>
       </div>
-    </section>
     <section id="col-diary" class="lg:col-span-7 space-y-5 hidden lg:block">
       <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -229,7 +221,12 @@
             <span class="text-[11px] font-bold uppercase tracking-wider theme-text">Конструктор рациона</span>
             <h2 class="text-lg font-extrabold">Баланс калорий и БЖУ за день</h2>
           </div>
-          <button onclick="clearDiary()" class="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-rose-400 hover:text-rose-600 text-xs"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openAiModal('dinner')" class="px-2.5 py-1.5 rounded-xl theme-soft border text-xs font-bold flex items-center gap-1">
+              <i data-lucide="wand-2" class="w-3.5 h-3.5"></i><span>Подобрать под остаток</span>
+            </button>
+            <button onclick="clearDiary()" class="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-rose-400 hover:text-rose-600 text-xs"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          </div>
         </div>
 
         <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2">
@@ -256,7 +253,7 @@
 
         <div class="relative">
           <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-          <input type="text" id="inp-food-search" oninput="renderFoodCatalog()" placeholder="Поиск продукта (куриная грудка, творог...)" class="w-full pl-9 pr-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+          <input type="text" id="inp-food-search" oninput="renderFoodCatalog()" placeholder="Поиск продукта (куриная грудка, творог, ширатаки...)" class="w-full pl-9 pr-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
         </div>
 
         <div id="list-food-catalog" class="max-h-48 overflow-y-auto custom-scroll divide-y divide-slate-100 dark:divide-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl px-3"></div>
@@ -271,16 +268,51 @@
       </div>
 
       <div class="rounded-3xl p-5 theme-summary-card text-white shadow-lg space-y-4">
-        <h3 class="text-lg font-extrabold">Финальная калорийность рациона</h3>
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-extrabold">Финальная калорийность рациона</h3>
+          <button onclick="copyFinalReport()" class="px-3 py-1.5 rounded-xl bg-white/15 text-xs font-bold"><span id="txt-copy-btn">Копировать</span></button>
+        </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="p-3 rounded-2xl bg-white/10 border border-white/15">
             <div class="text-[11px] text-white/75">Калории</div>
             <div class="text-2xl font-extrabold font-mono-num text-white"><span id="fin-kcal">0</span> ккал</div>
           </div>
+          <div class="p-3 rounded-2xl bg-white/10 border border-white/15">
+            <div class="text-[11px] text-blue-200">Белки</div>
+            <div class="text-xl font-extrabold font-mono-num"><span id="fin-p">0</span> г</div>
+          </div>
+          <div class="p-3 rounded-2xl bg-white/10 border border-white/15">
+            <div class="text-[11px] text-amber-200">Жиры</div>
+            <div class="text-xl font-extrabold font-mono-num"><span id="fin-f">0</span> г</div>
+          </div>
+          <div class="p-3 rounded-2xl bg-white/10 border border-white/15">
+            <div class="text-[11px] text-teal-200">Углеводы</div>
+            <div class="text-xl font-extrabold font-mono-num"><span id="fin-c">0</span> г</div>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <tbody id="tbl-final-meals" class="divide-y divide-white/10 font-mono-num"></tbody>
+          </table>
         </div>
       </div>
     </section>
   </main>
+    <!-- MODAL: GEMINI AI ASSISTANT -->
+  <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="font-extrabold text-sm">AI-диетолог на базе Gemini</h3>
+        <button onclick="closeAiModal()" class="p-1.5 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <input type="password" id="inp-gemini-key" placeholder="API ключ Gemini (AIzaSy...)" class="w-full px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono-num">
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="runAiAction('dinner')" class="p-2.5 rounded-2xl border theme-soft text-xs font-bold">🍽 Подобрать ужин под остаток</button>
+        <button onclick="runAiAction('audit')" class="p-2.5 rounded-2xl border theme-soft text-xs font-bold">🔍 Экспресс-аудит рациона</button>
+      </div>
+      <div id="box-ai-output" class="hidden p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border text-xs whitespace-pre-line"></div>
+    </div>
+  </div>
 
   <script>
     const DEFAULT_FOODS = [
@@ -289,7 +321,9 @@
       { id: 'f7', name: 'Яйцо куриное (1 шт ~ 55 г)', cat: 'Яйца / Молочка', p: 12.7, f: 11.5, c: 0.7, kcal: 157 },
       { id: 'f9', name: 'Творог 2% мягкий / брикет', cat: 'Яйца / Молочка', p: 18.0, f: 2.0, c: 3.3, kcal: 103 },
       { id: 'f13', name: 'Гречка (крупа)', cat: 'Крупы / Углеводы', p: 12.6, f: 3.3, c: 62.1, kcal: 329, cookRatio: 2.8 },
-      { id: 'f17', name: 'Рис Ширатаки / Конжаковая лапша', cat: 'Диет / 0 ккал', p: 0.1, f: 0.1, c: 0.6, kcal: 9 }
+      { id: 'f17', name: 'Рис Ширатаки / Конжаковая лапша', cat: 'Диет / 0 ккал', p: 0.1, f: 0.1, c: 0.6, kcal: 9 },
+      { id: 'f18', name: 'Псиллиум (шелуха подорожника)', cat: 'Диет / 0 ккал', p: 1.5, f: 0.5, c: 7.0, kcal: 38 },
+      { id: 'f19', name: 'Соус / Джем 0 ккал (Mr. Djemius)', cat: 'Диет / 0 ккал', p: 0.4, f: 0.1, c: 4.5, kcal: 20 }
     ];
 
     const DEFAULT_PROFILES = {
@@ -299,7 +333,6 @@
 
     let appData = { activeProfile: 'p1', profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES)), customFoods: [], templates: [] };
     let activeMeal = 'breakfast';
-    let activeCategory = 'Все';
 
     function getProf() { return appData.profiles[appData.activeProfile]; }
     function getAllFoods() { return [...appData.customFoods, ...DEFAULT_FOODS]; }
@@ -346,12 +379,15 @@
       document.getElementById('rng-weight').value = p.weight;
       document.getElementById('val-bmr').textContent = m.bmr;
       document.getElementById('val-tdee-total').textContent = m.tdee + ' ккал';
+      document.getElementById('val-tdee-header').textContent = 'TDEE: ' + m.tdee + ' ккал';
       renderFoodCatalog();
+      renderDiary(m);
     }
 
     function renderFoodCatalog() {
       const foods = getAllFoods();
-      document.getElementById('list-food-catalog').innerHTML = foods.map(f => `
+      const q = (document.getElementById('inp-food-search').value || '').toLowerCase();
+      document.getElementById('list-food-catalog').innerHTML = foods.filter(f => f.name.toLowerCase().includes(q)).map(f => `
         <div class="py-2 flex items-center justify-between gap-2 text-xs">
           <div><div class="font-bold">${f.name}</div><div class="text-[10px] text-slate-400">${f.kcal} ккал на 100г</div></div>
           <button onclick="addFoodToMeal('${f.id}')" class="px-2.5 py-1 rounded-xl theme-soft border font-bold">+ Добавить</button>
@@ -366,6 +402,57 @@
 
     function selectMeal(mealKey) { activeMeal = mealKey; updateAllUI(); }
     function clearDiary() { getProf().diary = { breakfast: [], lunch: [], dinner: [], snack: [] }; updateAllUI(); }
+
+    function renderDiary(m) {
+      const p = getProf();
+      const foods = getAllFoods();
+      const items = p.diary[activeMeal] || [];
+      let mealKcal = 0;
+
+      document.getElementById('list-meal-items').innerHTML = items.map((item, idx) => {
+        const f = foods.find(x => x.id === item.foodId) || { name: 'Продукт', kcal: 100 };
+        mealKcal += Math.round(f.kcal * (item.grams / 100));
+        return `<div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex justify-between text-xs"><span>${f.name} (${item.grams}г)</span><button onclick="getProf().diary['${activeMeal}'].splice(${idx},1); updateAllUI();" class="text-rose-500">✕</button></div>`;
+      }).join('');
+
+      document.getElementById('kcal-current-meal').textContent = mealKcal + ' ккал';
+      let totK = 0, totP = 0, totF = 0, totC = 0;
+      ['breakfast','lunch','dinner','snack'].forEach(k => {
+        (p.diary[k] || []).forEach(item => {
+          const f = foods.find(x => x.id === item.foodId);
+          if(f) {
+            totK += f.kcal * (item.grams / 100);
+            totP += f.p * (item.grams / 100);
+            totF += f.f * (item.grams / 100);
+            totC += f.c * (item.grams / 100);
+          }
+        });
+      });
+      document.getElementById('eaten-kcal').textContent = Math.round(totK);
+      document.getElementById('fin-kcal').textContent = Math.round(totK);
+      document.getElementById('fin-p').textContent = Math.round(totP);
+      document.getElementById('fin-f').textContent = Math.round(totF);
+      document.getElementById('fin-c').textContent = Math.round(totC);
+    }
+
+    function openAiModal(action) { document.getElementById('modal-ai').classList.remove('hidden'); }
+    function closeAiModal() { document.getElementById('modal-ai').classList.add('hidden'); }
+    async function runAiAction(mode) {
+      const key = document.getElementById('inp-gemini-key').value.trim();
+      const out = document.getElementById('box-ai-output');
+      out.classList.remove('hidden');
+      if(!key) { out.textContent = '⚠️ Введите ключ Gemini API'; return; }
+      out.textContent = '✨ Генерация...';
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({contents: [{parts: [{text: 'Предложи легкий ужин под остаток калорий'}]}]})
+        });
+        const data = await res.json();
+        out.textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Готово';
+      } catch(e) { out.textContent = 'Ошибка запроса'; }
+    }
+
     function toggleTheme() { document.documentElement.classList.toggle('dark'); }
     function downloadSelfHtml() {
       const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
