@@ -8,25 +8,27 @@ const FAT_GRID = [0.7, 0.8, 0.9, 1.0, 1.2, 1.5];
 const ICR_GRID = [0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5];
 
 const DIABETES_STORIES = [
-  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник и ученый. Жил с диабетом, пересекал океаны на бальсовом плоту «Кон-Тики» и доказал, что болезнь — не преграда для великих открытий.' },
+  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник и ученый. Жил с диабетом, пересекал океаны на бальсовом плоту «Кон-Тики» и доказал, что диабет — это не преграда для великих открытий.' },
   { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С детским диабетом дает стадионные концерты, побеждает в шоу и ведет активный яркий образ жизни.' },
-  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах с инсулиновой помпой, опровергнув все мифы врачей.' },
-  { name: '📜 Дерек Пью', desc: 'Британский спринтер и олимпиец. Открыто выступал на международных соревнованиях высочайшего уровня с диабетом 1 типа.' },
-  { name: '⭐ Мэри Тайлер Мур', desc: 'Знаменитая американская актриса и лауреат премии «Эмми». Более 40 лет активно боролась с диабетом, став лицом фонда JDRF и вдохновив миллионы.' },
+  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах с инсулиновой помпой, доказывая всю силу характера.' },
+  { name: '📜 Дерек Пью', desc: 'Британский спринтер и олимпиец. Успешно выступал на международных соревнованиях высочайшего уровня с диабетом 1 типа.' },
+  { name: '⭐ Мэри Тайлер Мур', desc: 'Знаменитая американская актриса и лауреат премии «Эмми». Более 40 лет управляла диабетом, став лицом фонда JDRF и вдохновив миллионы людей.' },
   { name: '🏀 Адам Моррисон', desc: 'Профессиональный баскетболист НБА. Несмотря на диабет с подросткового возраста, играл на высшем мировом уровне в сильнейшей лиге планеты.' },
-  { name: '🔥 Билл Перл', desc: 'Легендарный культурист, признанный «Лучшим бодибилдером века». Достиг вершины атлетизма и мировых титулов, контролируя уровень сахара в крови.' },
+  { name: '🔥 Билл Перл', desc: 'Легендарный культурист, признанный «Лучшим бодибилдером века». Достиг вершины атлетизма, мастерски контролируя уровень сахара в крови.' },
   { name: '🏔️ Уилл Кросс', desc: 'Альпинист, покоривший высочайшие вершины всех семи континентов планеты (включая Эверест), имея диабет 1 типа.' }
 ];
 
 const DIABETES_SUPPORT_PHRASES = [
-  `❤️ Жить с диабетом и держать под контролем каждый прием пищи, КБЖУ и сахара — это ежедневный марафон без выходных. Вы имеете полное право уставать. Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки, и вы потрясающе справляетесь! 🌟`,
-  `🤗 Помните, что диабет — это не определение вашей личности, а лишь особенность, с которой вы научились мастерски обращаться. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️`,
-  `💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это проявление огромной любви и заботы о себе. Даже когда кажется, что силы на исходе, помните, как много вы уже преодолели. Вы справляетесь великолепно! 🌿`,
-  `☀️ Вы сильнее, чем думаете. Диабет пытается диктовать свои правила, но каждый раз, когда вы выравниваете сахара и делаете правильный выбор в еде — побеждаете именно вы. Гордитесь своими маленькими и большими победами! 🛡️`,
-  `✨ Ни один диагноз не способен ограничить вашу мечту, вашу радость и ваши цели. Вы управляете своей жизнью, а не болезнью. Разрешите себе иногда расслабиться — вы заслуживаете самого теплого отдыха и заботы. 🧸`,
-  `🌊 Бывают дни, когда сахара идут вверх и вниз без видимых причин, и это жутко выматывает. Это нормально — чувствовать раздражение. Главное — не винить себя. Вы делаете колоссальную работу каждый день! 💙`,
-  `🌱 Помните, что забота о себе — это не спринт, а долгий марафон. Прощайте себе мелкие ошибки, хвалите себя за дисциплину и помните, что вы достойны самой счастливой и полноценной жизни! 🌺`,
-  `🎯 Ваша внимательность к своему организму вызывает искреннее восхищение. Вы лучше кого-либо знаете свое тело. Доверяйте себе и своему опыту, у вас всё под контролем! 🧭`
+  `☕️ Диабет — это не болезнь, а особый образ жизни, который учит нас глубоко чувствовать свое тело, заботиться о себе и жить осознанно. Вы имеете полное право иногда уставать от этого ритма. Но помните: вы справляетесь просто великолепно! 🌟`,
+  `❤️ Помните, что диабет — это не диагноз и не ограничение, а особый образ жизни, требующий внимания и чуткости к себе. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️`,
+  `💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это не бремя, а проявление вашей осознанности и большой любви к себе. Диабет — это особый образ жизни, в котором вы — главный капитан своего корабля! ⛵️`,
+  `☀️ Вы сильнее, чем думаете. Да, диабет — это особый образ жизни со своими правилами, но каждый раз, когда вы находите баланс и делаете выбор в пользу своего здоровья — побеждаете именно вы. Гордитесь собой! 🛡️`,
+  `✨ Никакие особенности обмена веществ не способны ограничить вашу мечту, вашу радость и ваши цели. Диабет — это лишь особый образ жизни, который делает вас еще более организованным и сильным человеком. 🧸`,
+  `🌊 Бывают дни, когда сахара идут вверх и вниз без видимых причин, и это жутко выматывает. Это нормально — чувствовать усталость. Диабет — это особый образ жизни, где важен каждый момент отдыха. Позвольте себе передохнуть! 💙`,
+  `🌱 Помните, что забота о себе — это гармоничный путь. Диабет — это не болезнь, а особый образ жизни, который со временем становится естественной и привычной частью вашей гармонии. Вы на верном пути! 🌺`,
+  `🎯 Ваша внимательность к своему организму вызывает искреннее восхищение. Диабет — это особый образ жизни, требующий мастерства, и вы владеете им великолепно. Доверяйте своему опыту! 🧭`,
+  `🧸 Иногда хочется просто закрыть глаза и отдохнуть от всех подсчетов. И это абсолютно нормально! Диабет — это особый образ жизни, но вы — живой человек, которому нужны паузы для тепла и радости. Обнимаем вас! 🤗`,
+  `☕️ Помните главное: диабет — это не болезнь, а особый образ жизни, который делает вас экспертом своего тела. Вы научились понимать язык своего организма лучше многих. Вы огромный молодец! 🌟`
 ];
 
 const DIABETES_BREAKTHROUGHS = [
@@ -103,7 +105,7 @@ function renderApp() {
           </div>
 
           <div class="p-3 rounded-2xl theme-input space-y-2">
-            <div class="text-xs font-bold">🩺 Наличие сахарного диабета (меняет логику КБЖУ):</div>
+            <div class="text-xs font-bold">🩺 Диабет (подстраивает логику КБЖУ):</div>
             <div class="grid grid-cols-3 gap-1.5">
               <button onclick="setDiabetesType('none')" class="py-2 px-1 rounded-xl text-[11px] font-bold ${p.diabetesType==='none'?'theme-grad text-white shadow':'theme-soft'}">Нет (Стандарт)</button>
               <button onclick="setDiabetesType('dm1')" class="py-2 px-1 rounded-xl text-[11px] font-bold ${p.diabetesType==='dm1'?'theme-grad text-white shadow':'theme-soft'}">СД 1 типа</button>
@@ -152,7 +154,7 @@ function renderApp() {
               </div>
               <div class="text-[11px] opacity-90 leading-relaxed">
                 ${p.diabetesType==='dm1'
-                  ? `• Углеводы <strong>${m.normC} г (${m.totalXE} ХЕ)</strong> для защиты от кетоацидоза. На вкладке «Калькулятор Диабета» доступны суточные дозы инсулина и разовая компенсация.`
+                  ? `• Углеводы <strong>${m.normC} г (${m.totalXE} ХЕ)</strong> для стабильности. На вкладке «Калькулятор Диабета» доступны суточные дозы инсулина и разовая компенсация.`
                   : `• Углеводы до <strong>${m.normC} г/сут (${m.totalXE} ХЕ)</strong> с низким ГИ. На 1 прием: до <strong>${m.maxMealCarbs} г (${m.maxMealXE} ХЕ)</strong>. Клетчатка: <strong>${m.fiberNorm} г/сут</strong>.`}
               </div>
             </div>
@@ -260,46 +262,40 @@ function renderApp() {
           </div>
 
           <div class="space-y-2 text-xs">
-            <!-- ACTIVE COMPACT MANUAL INPUT FOR PROTEIN -->
-            <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('mprot')">
+            <!-- COMPACT MANUAL INPUT FOR PROTEIN (NO PLUS) -->
+            <div class="p-3 rounded-2xl theme-input space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold">Белки:</span>
-                <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                  <button onclick="setMealBolus('p',${Math.max(0, mealBolus.p - 5)})" class="px-2 py-1 rounded theme-soft font-bold">-5</button>
-                  <input type="number" value="${mealBolus.p}" min="0" max="300" onchange="setMealBolus('p',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="setMealBolus('p',${Math.max(0, mealBolus.p - 5)})" class="px-2.5 py-1 rounded theme-soft font-bold">-5</button>
+                  <input type="number" value="${mealBolus.p}" min="0" max="300" inputmode="numeric" onchange="setMealBolus('p',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
                   <span class="font-bold">г</span>
-                  <button onclick="setMealBolus('p',${mealBolus.p + 5})" class="px-2 py-1 rounded theme-soft font-bold">+5</button>
                 </div>
               </div>
-              ${activeOpenDropdown==='mprot'?`<div class="grid grid-cols-7 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[10,20,30,40,50,60,80].map(v=>`<button onclick="setMealBolus('p',${v});toggleDropdown('mprot');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${mealBolus.p===v?'theme-grad text-white':'theme-soft'}">${v}г</button>`).join('')}</div>`:''}
             </div>
 
-            <!-- ACTIVE COMPACT MANUAL INPUT FOR FAT -->
-            <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('mfat')">
+            <!-- COMPACT MANUAL INPUT FOR FAT (NO PLUS) -->
+            <div class="p-3 rounded-2xl theme-input space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold">Жиры:</span>
-                <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                  <button onclick="setMealBolus('f',${Math.max(0, mealBolus.f - 5)})" class="px-2 py-1 rounded theme-soft font-bold">-5</button>
-                  <input type="number" value="${mealBolus.f}" min="0" max="200" onchange="setMealBolus('f',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="setMealBolus('f',${Math.max(0, mealBolus.f - 5)})" class="px-2.5 py-1 rounded theme-soft font-bold">-5</button>
+                  <input type="number" value="${mealBolus.f}" min="0" max="200" inputmode="numeric" onchange="setMealBolus('f',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
                   <span class="font-bold">г</span>
-                  <button onclick="setMealBolus('f',${mealBolus.f + 5})" class="px-2 py-1 rounded theme-soft font-bold">+5</button>
                 </div>
               </div>
-              ${activeOpenDropdown==='mfat'?`<div class="grid grid-cols-7 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[5,10,15,20,25,35,50].map(v=>`<button onclick="setMealBolus('f',${v});toggleDropdown('mfat');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${mealBolus.f===v?'theme-grad text-white':'theme-soft'}">${v}г</button>`).join('')}</div>`:''}
             </div>
 
-            <!-- ACTIVE COMPACT MANUAL INPUT FOR CARBS -->
-            <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('mcarb')">
+            <!-- COMPACT MANUAL INPUT FOR CARBS (NO PLUS) -->
+            <div class="p-3 rounded-2xl theme-input space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold">Углеводы (${bolus.xe} ХЕ):</span>
-                <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                  <button onclick="setMealBolus('c',${Math.max(0, mealBolus.c - 6)})" class="px-2 py-1 rounded theme-soft font-bold">-6</button>
-                  <input type="number" value="${mealBolus.c}" min="0" max="300" onchange="setMealBolus('c',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="setMealBolus('c',${Math.max(0, mealBolus.c - 6)})" class="px-2.5 py-1 rounded theme-soft font-bold">-6</button>
+                  <input type="number" value="${mealBolus.c}" min="0" max="300" inputmode="numeric" onchange="setMealBolus('c',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
                   <span class="font-bold">г</span>
-                  <button onclick="setMealBolus('c',${mealBolus.c + 6})" class="px-2 py-1 rounded theme-soft font-bold">+6</button>
                 </div>
               </div>
-              ${activeOpenDropdown==='mcarb'?`<div class="grid grid-cols-7 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[12,24,36,48,60,72,84].map(v=>`<button onclick="setMealBolus('c',${v});toggleDropdown('mcarb');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${mealBolus.c===v?'theme-grad text-white':'theme-soft'}">${v}г</button>`).join('')}</div>`:''}
             </div>
           </div>
 
@@ -331,7 +327,7 @@ function renderApp() {
     <!-- MODAL WITH UNIFIED ROUNDED THEME HEADER -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-10" style="border-color:var(--brand);">
-        <div class="flex justify-between items-center sticky top-0 py-3 px-4 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-2">
+        <div class="flex justify-between items-center sticky top-0 py-3 px-4 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-2" style="background: var(--card-bg);">
           <h3 class="font-extrabold text-sm sm:text-base flex items-center gap-2 leading-tight"><span>🩺 Клинический AI-Ментор</span><span class="text-[10px] px-2 py-0.5 rounded theme-soft">${hasSavedKey?'☁️ Gemini API':'⚡ Локальный режим'}</span></h3>
           <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-8 h-8 rounded-full theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
         </div>
