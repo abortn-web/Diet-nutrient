@@ -11,7 +11,7 @@ let mealBolus = {
   c: 0,
   gi: 'mid',
   currBg: '',
-   initialized: false,
+  initialized: false,
   customEdited: false
 };
 
@@ -21,18 +21,6 @@ const INSULIN_TYPES = [
   { id: 'short', name: '⏱ Короткий инсулин', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р', preMin: 'За 25–30 мин ПЕРЕД едой', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
 
-const DEFAULT_PRESET_MEALS = [
-  { name: '🥣 Овсянка + 2 яйца', p: 22, f: 16, c: 36, gi: 'mid' },
-  { name: '🍗 Курица + Гречка', p: 42, f: 10, c: 48, gi: 'low' },
-  { name: '🧀 Творог 5% + Ягоды', p: 32, f: 10, c: 18, gi: 'low' },
-  { name: '🥩 Стейк/Рыба + Салат', p: 45, f: 24, c: 12, gi: 'low' }
-];
-
-function getTodayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function getProf() {
   const p = appData.profiles[appData.activeProfile];
   if (!p.macroBase) p.macroBase = 'target';
@@ -41,24 +29,18 @@ function getProf() {
   if (!p.icr || p.icr <= 0) p.icr = 1.2;
   if (!p.insulinType) p.insulinType = 'ultralong';
   if (!p.targetBg || p.targetBg < 4.0) p.targetBg = 5.6;
-  if (typeof p.customIsf === 'undefined') p.customIsf = 0; // 0 = Авто по формуле 100/TDD
-  if (!Array.isArray(p.savedMeals) || p.savedMeals.length === 0) {
-    p.savedMeals = JSON.parse(JSON.stringify(DEFAULT_PRESET_MEALS));
-  }
+  if (typeof p.customIsf === 'undefined') p.customIsf = 0;
   if (!Array.isArray(p.iobLog)) p.iobLog = [];
-  if (!p.dailyTracker || p.dailyTracker.date !== getTodayStr()) {
-    p.dailyTracker = { date: getTodayStr(), p: 0, f: 0, c: 0, kcal: 0, entries: [] };
-  }
   return p;
 }
 
 function saveStorage() {
-  try { localStorage.setItem('nutriingo_v10', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('nutriingo_v11', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('nutriingo_v10') || localStorage.getItem('nutriingo_v9') || localStorage.getItem('nutriingo_v8');
+    const raw = localStorage.getItem('nutriingo_v11') || localStorage.getItem('nutriingo_v10') || localStorage.getItem('nutriingo_v9');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.profiles) appData = parsed;
@@ -82,7 +64,6 @@ function calcTDEEForWeight(w, p) {
   return { bmr, neat, distKm, stepsKcal, workoutKcal, tdee: bmr + neat + stepsKcal + workoutKcal };
 }
 
-// Расчет активного инсулина в организме (IOB) с учетом времени жизни инсулина (DIA)
 function computeActiveIOB(p) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const diaMs = ins.diaHours * 3600 * 1000;
@@ -95,7 +76,6 @@ function computeActiveIOB(p) {
     if (elapsedMs >= 0 && elapsedMs < diaMs) {
       const elapsedMin = elapsedMs / 60000;
       const totalMin = ins.diaHours * 60;
-      // Первые 15 мин инсулин разворачивается (100% остатка), затем плавно убывает
       let remFrac = 1.0;
       if (elapsedMin > 15) {
         remFrac = Math.max(0, 1 - (elapsedMin - 15) / (totalMin - 15));
@@ -165,7 +145,6 @@ function computeDailyInsulinPlan(m, p) {
   const estBasal = +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
   const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1);
 
-  // Расчет ФЧИ (Фактора чувствительности к инсулину): на сколько ммоль/л 1 ЕД снижает сахар
   const autoIsf = +(ins.isfRule / Math.max(10, totalDailyDose)).toFixed(1);
   const effectiveIsf = (p.customIsf && p.customIsf > 0) ? +p.customIsf.toFixed(1) : autoIsf;
 
@@ -296,12 +275,10 @@ function computeMetrics() {
   };
 }
 
-// Расчет купирования гипогликемии по весу и текущему сахару
 function computeHypoRescue(currBgVal, p) {
   const bg = parseFloat(String(currBgVal).replace(',', '.')) || 3.2;
   const target = Math.max(5.2, p.targetBg || 5.6);
   const deficitMmol = Math.max(0.5, target - bg);
-  // 1 г быстрых углеводов поднимает ГК примерно на (20 / вес_кг) ммоль/л
   const raisePerGram = 20 / Math.max(35, p.weight);
   const rawGrams = Math.round(deficitMmol / raisePerGram);
   const fastCarbGrams = Math.max(10, Math.min(30, rawGrams));
@@ -391,63 +368,7 @@ function setMealBolus(k, v) {
   renderApp();
 }
 
-function applyPresetMeal(idx) {
-  const p = getProf();
-  const item = p.savedMeals[idx];
-  if (!item) return;
-  mealBolus.p = item.p;
-  mealBolus.f = item.f;
-  mealBolus.c = item.c;
-  if (item.gi) mealBolus.gi = item.gi;
-  mealBolus.customEdited = true;
-  renderApp();
-}
-
-function saveCurrentMealAsPreset() {
-  const name = prompt('Введите короткое название для тарелки (например: «Обед на работе»):');
-  if (!name || !name.trim()) return;
-  const p = getProf();
-  p.savedMeals.unshift({
-    name: '🍽 ' + name.trim().slice(0, 22),
-    p: mealBolus.p,
-    f: mealBolus.f,
-    c: mealBolus.c,
-    gi: mealBolus.gi
-  });
-  if (p.savedMeals.length > 8) p.savedMeals = p.savedMeals.slice(0, 8);
-  saveStorage();
-  renderApp();
-}
-
-function deletePresetMeal(idx, e) {
-  if (e) e.stopPropagation();
-  const p = getProf();
-  p.savedMeals.splice(idx, 1);
-  saveStorage();
-  renderApp();
-}
-
-function addMealToDailyTracker() {
-  const p = getProf();
-  const kcal = Math.round(mealBolus.p * 4 + mealBolus.f * 9 + mealBolus.c * 4);
-  p.dailyTracker.p += mealBolus.p;
-  p.dailyTracker.f += mealBolus.f;
-  p.dailyTracker.c += mealBolus.c;
-  p.dailyTracker.kcal += kcal;
-  const tStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  p.dailyTracker.entries.unshift({ time: tStr, p: mealBolus.p, f: mealBolus.f, c: mealBolus.c, kcal });
-  saveStorage();
-  renderApp();
-}
-
-function resetDailyTracker() {
-  const p = getProf();
-  p.dailyTracker = { date: getTodayStr(), p: 0, f: 0, c: 0, kcal: 0, entries: [] };
-  saveStorage();
-  renderApp();
-}
-
-// Умный парсер текста из FatSecret / Yazio / заметок
+// Быстрый парсер чистых цифр БЖУ из стороннего трекера
 function parseSmartFoodText(rawText) {
   if (!rawText || !rawText.trim()) return false;
   const txt = rawText.toLowerCase().replace(/,/g, '.');
@@ -465,7 +386,6 @@ function parseSmartFoodText(rawText) {
     return true;
   }
 
-  // Если просто 3 числа через пробел или слэш (например: "35 15 48" или "35/15/48")
   const nums = txt.match(/\d+(?:\.\d+)?/g);
   if (nums && nums.length >= 3) {
     mealBolus.p = Math.round(parseFloat(nums[0]));
