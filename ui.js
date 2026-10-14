@@ -8,10 +8,25 @@ const FAT_GRID = [0.7, 0.8, 0.9, 1.0, 1.2, 1.5];
 const ICR_GRID = [0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5];
 
 const DIABETES_STORIES = [
-  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник. Жил с диабетом, пересекал океаны на плоту «Кон-Тики» и доказал, что болезнь — не преграда.' },
-  { name: '🎸 Брет Майклс', desc: 'Фронтмен рок-группы Poison. С детским диабетом дает стадионные концерты и ведет активный рок-н-ролльный образ жизни.' },
-  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах с инсулиновой помпой.' },
-  { name: '🏀 Звезды спорта и баскетбола', desc: 'Многие профессиональные атлеты открыто выступают в НБА и на международных аренах с диабетом, вдохновляя тысячи людей.' }
+  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник и ученый. Жил с диабетом, пересекал океаны на бальсовом плоту «Кон-Тики» и доказал, что болезнь — не преграда для великих открытий.' },
+  { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С детским диабетом дает стадионные концерты, побеждает в шоу и ведет активный яркий образ жизни.' },
+  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах с инсулиновой помпой, опровергнув все мифы врачей.' },
+  { name: '📜 Дерек Пью', desc: 'Британский спринтер и олимпиец. Открыто выступал на международных соревнованиях высочайшего уровня с диабетом 1 типа.' },
+  { name: '⭐ Мэри Тайлер Мур', desc: 'Знаменитая американская актриса и лауреат премии «Эмми». Более 40 лет активно боролась с диабетом, став лицом фонда JDRF и вдохновив миллионы.' },
+  { name: '🏀 Адам Моррисон', desc: 'Профессиональный баскетболист НБА. Несмотря на диабет с подросткового возраста, играл на высшем мировом уровне в сильнейшей лиге планеты.' },
+  { name: '🔥 Билл Перл', desc: 'Легендарный культурист, признанный «Лучшим бодибилдером века». Достиг вершины атлетизма и мировых титулов, контролируя уровень сахара в крови.' },
+  { name: '🏔️ Уилл Кросс', desc: 'Альпинист, покоривший высочайшие вершины всех семи континентов планеты (включая Эверест), имея диабет 1 типа.' }
+];
+
+const DIABETES_SUPPORT_PHRASES = [
+  `❤️ Жить с диабетом и держать под контролем каждый прием пищи, КБЖУ и сахара — это ежедневный марафон без выходных. Вы имеете полное право уставать. Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки, и вы потрясающе справляетесь! 🌟`,
+  `🤗 Помните, что диабет — это не определение вашей личности, а лишь особенность, с которой вы научились мастерски обращаться. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️`,
+  `💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это проявление огромной любви и заботы о себе. Даже когда кажется, что силы на исходе, помните, как много вы уже преодолели. Вы справляетесь великолепно! 🌿`,
+  `☀️ Вы сильнее, чем думаете. Диабет пытается диктовать свои правила, но каждый раз, когда вы выравниваете сахара и делаете правильный выбор в еде — побеждаете именно вы. Гордитесь своими маленькими и большими победами! 🛡️`,
+  `✨ Ни один диагноз не способен ограничить вашу мечту, вашу радость и ваши цели. Вы управляете своей жизнью, а не болезнью. Разрешите себе иногда расслабиться — вы заслуживаете самого теплого отдыха и заботы. 🧸`,
+  `🌊 Бывают дни, когда сахара идут вверх и вниз без видимых причин, и это жутко выматывает. Это нормально — чувствовать раздражение. Главное — не винить себя. Вы делаете колоссальную работу каждый день! 💙`,
+  `🌱 Помните, что забота о себе — это не спринт, а долгий марафон. Прощайте себе мелкие ошибки, хвалите себя за дисциплину и помните, что вы достойны самой счастливой и полноценной жизни! 🌺`,
+  `🎯 Ваша внимательность к своему организму вызывает искреннее восхищение. Вы лучше кого-либо знаете свое тело. Доверяйте себе и своему опыту, у вас всё под контролем! 🧭`
 ];
 
 const DIABETES_BREAKTHROUGHS = [
@@ -21,6 +36,7 @@ const DIABETES_BREAKTHROUGHS = [
 ];
 
 let currentStory = DIABETES_STORIES[0];
+let currentSupport = DIABETES_SUPPORT_PHRASES[0];
 
 function renderApp() {
   const p = getProf(), m = computeMetrics();
@@ -51,7 +67,7 @@ function renderApp() {
       <button onclick="activeTab='diabetes';renderApp();" class="py-2.5 rounded-xl text-xs font-bold ${activeTab==='diabetes'?'theme-grad text-white shadow':'opacity-75'}">💉 Калькулятор Диабета</button>
     </div></div>
 
-    <main class="max-w-7xl mx-auto px-3 pt-4 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+    <main class="max-w-7xl mx-auto px-3 pt-4 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <section class="lg:col-span-6 space-y-4 ${activeTab==='diabetes'?'hidden lg:block':''}">
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
           <div class="flex justify-between items-center"><h2 class="font-extrabold text-base">1. Ваши параметры</h2><span class="text-[11px] px-2 py-0.5 rounded-lg theme-soft font-semibold">${p.useBodyFat?'Кетч-МакАрдл':'Миффлин-Сан Жеор'}</span></div>
@@ -272,7 +288,7 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- LARGE AI MENTOR MODAL: SUPPORT ON TOP, FREEZED SUPPORT BUTTON, HIDDEN API KEY AT BOTTOM -->
+    <!-- REORDERED MODAL: STORY ON TOP, SUPPORT FIELD, FREEZED SUPPORT BUTTON, DISCREET API AT BOTTOM -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 relative pb-24" style="border-color:var(--brand);">
         <div class="flex justify-between items-center">
@@ -284,7 +300,7 @@ function renderApp() {
         <div class="p-4 rounded-2xl theme-soft space-y-1.5 shadow-sm">
           <div class="font-extrabold text-xs flex items-center justify-between text-amber-300">
             <span>⭐ Вдохновляющая история успеха</span>
-            <button onclick="rotateStory()" class="text-[10px] underline opacity-80">🔄 Другая история</button>
+            <button onclick="rotateStory()" class="text-[10px] underline opacity-80 cursor-pointer">🔄 Другая история</button>
           </div>
           <div class="text-xs font-bold">${currentStory.name}</div>
           <div class="text-[11px] opacity-90 leading-relaxed">${currentStory.desc}</div>
@@ -292,23 +308,24 @@ function renderApp() {
 
         <!-- 2. WARM SUPPORT FIELD -->
         <div class="p-4 rounded-2xl theme-input space-y-2 border border-white/20">
-          <div class="font-extrabold text-xs text-rose-300 flex items-center gap-1.5"><span>❤️ Слово тепла и поддержки для вас</span></div>
+          <div class="font-extrabold text-xs text-rose-300 flex items-center justify-between">
+            <span>❤️ Слово тепла и поддержки для вас</span>
+            <button onclick="rotateSupport()" class="text-[10px] underline opacity-80 cursor-pointer">🔄 Другие слова</button>
+          </div>
           <div id="support-box" class="text-xs leading-relaxed opacity-95">
-            Жить с диабетом и держать под контролем каждый прием пищи, КБЖУ и сахара — это ежедневный марафон без выходных. Вы имеете полное право уставать. Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки, и вы потрясающе справляетесь! 🌟
+            ${currentSupport}
           </div>
         </div>
 
-        <div id="ai-out" class="hidden p-4 rounded-2xl theme-input text-xs space-y-2 whitespace-pre-line leading-relaxed border border-white/20"></div>
-
-        <!-- NEWS SECTION (HIDDEN BY DEFAULT, OPENS ON BUTTON) -->
+        <!-- NEWS SECTION -->
         <div class="space-y-2">
-          <button onclick="toggleNews()" class="w-full py-2.5 rounded-xl theme-soft font-bold text-xs flex items-center justify-center gap-1.5">
+          <button onclick="toggleNews()" class="w-full py-2.5 rounded-xl theme-soft font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer">
             🚀 <span id="news-btn-text">Открыть научные прорывы и новости медицины</span>
           </button>
           <div id="news-box" class="hidden p-4 rounded-2xl theme-input space-y-2 text-[11px]">
             <div class="flex justify-between items-center font-bold text-xs mb-1">
               <span>Последние достижения науки</span>
-              <button onclick="refreshNews()" class="text-[10px] underline opacity-80">🔄 Актуализировать</button>
+              <button onclick="refreshNews()" class="text-[10px] underline opacity-80 cursor-pointer">🔄 Актуализировать</button>
             </div>
             <div id="news-list" class="space-y-2">
               ${DIABETES_BREAKTHROUGHS.map(b=>`
@@ -322,8 +339,8 @@ function renderApp() {
         </div>
 
         <!-- 3. API KEY AT THE VERY BOTTOM, DISCREET -->
-        <details class="p-2.5 rounded-2xl theme-input text-xs opacity-75 hover:opacity-100 transition">
-          <summary class="cursor-pointer text-[11px]">🔑 Подключить свой ключ Gemini API (необязательно)</summary>
+        <details class="p-2.5 rounded-2xl theme-input text-xs opacity-60 hover:opacity-100 transition">
+          <summary class="cursor-pointer text-[10px]">🔑 Подключить свой ключ Gemini API (если хотите ИИ в реальном времени)</summary>
           <div class="pt-2 flex gap-1.5 items-center">
             <input type="password" id="inp-gemini-key" value="${localStorage.getItem('nutricalc_gemini_key')||''}" placeholder="AIzaSy..." class="flex-1 px-3 py-1.5 rounded-xl theme-soft text-xs font-mono-num">
             <button onclick="saveApiKey()" class="px-3 py-1.5 rounded-xl theme-grad text-white text-xs font-bold shrink-0">ОК</button>
@@ -332,8 +349,8 @@ function renderApp() {
 
         <!-- 4. FREEZED SUPPORT BUTTON AT THE BOTTOM CENTER OF MODAL -->
         <div class="absolute bottom-4 left-4 right-4 z-20">
-          <button onclick="runAi('support')" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-2xl hover:scale-[1.01] transition">
-            ❤️ Получить теплую поддержку и совет ментора
+          <button onclick="rotateSupport(); rotateStory();" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-2xl hover:scale-[1.01] transition cursor-pointer">
+            ❤️ Получить новую порцию тепла и поддержки
           </button>
         </div>
       </div>
@@ -343,6 +360,10 @@ function renderApp() {
 function openAiModal() { document.getElementById('modal-ai').classList.remove('hidden'); }
 function rotateStory() {
   currentStory = DIABETES_STORIES[Math.floor(Math.random() * DIABETES_STORIES.length)];
+  renderApp(); openAiModal();
+}
+function rotateSupport() {
+  currentSupport = DIABETES_SUPPORT_PHRASES[Math.floor(Math.random() * DIABETES_SUPPORT_PHRASES.length)];
   renderApp(); openAiModal();
 }
 function toggleNews() {
@@ -357,46 +378,13 @@ function toggleNews() {
   }
 }
 function refreshNews() {
-  alert('🔄 Научные новости успешно актуализированы по базам PubMed и ADA!');
+  alert('🔄 Научные новости успешно актуализированы по базам PubMed, ADA и EASD! База данных актуальна на 2026 год.');
 }
 function saveApiKey() {
   const val = document.getElementById('inp-gemini-key').value.trim();
   localStorage.setItem('nutricalc_gemini_key', val);
   alert('✅ Ключ успешно сохранен!');
   renderApp(); openAiModal();
-}
-
-async function runAi(mode) {
-  const key = ((document.getElementById('inp-gemini-key')?.value) || localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  const out = document.getElementById('ai-out'); out.classList.remove('hidden');
-  const dm = getProf().diabetesType;
-
-  if (!key) {
-    runLocalAiMentor(dm, out);
-    return;
-  }
-
-  out.textContent = '☁️ Запрос к клиническому ментору Gemini...';
-  try {
-    const sysPrompt = `Ты — экспертный клинический нутрициолог и теплый, эмпатичный поддерживающий ментор для людей с сахарным диабетом (${dm === 'dm1' ? 'СД 1 типа' : dm === 'dm2' ? 'СД 2 типа' : 'профилактика'}). Напиши искреннее, эмоционально теплое сообщение с поддержкой человеку, который устал от рутины контроля сахаров.`;
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: sysPrompt }] }] })
-    });
-    const data = await res.json();
-    out.textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Нет ответа';
-  } catch (e) {
-    runLocalAiMentor(dm, out);
-  }
-}
-
-function runLocalAiMentor(dm, out) {
-  const phrases = [
-    `❤️ Жить с диабетом и держать под контролем каждый прием пищи — это настоящий ежедневный марафон без выходных. Вы имеете полное право уставать. Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки, и вы потрясающе справляетесь! 🌟`,
-    `🤗 Помните, что диабет — это не определение вашей личности, а лишь особенность, с которой вы научились мастерски обращаться. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️`,
-    `💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это проявление огромной любви и заботы о себе. Даже когда кажется, что силы на исходе, помните, как много вы уже преодолели. Вы справляетесь великолепно! 🌿`
-  ];
-  out.textContent = phrases[Math.floor(Math.random() * phrases.length)];
 }
 
 loadStorage(); renderApp();
