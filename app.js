@@ -17,13 +17,14 @@ let lastLocalPresets = [];
 function getProf() {
   const p = appData.profiles[appData.activeProfile];
   if (!p.macroBase) p.macroBase = 'target';
+  if (!p.dietType) p.dietType = 'highprot';
   return p;
 }
 function getAllFoods() { return [...appData.customFoods, ...DEFAULT_FOODS]; }
-function saveStorage() { try { localStorage.setItem('nutriingo_v1', JSON.stringify(appData)); } catch (e) {} }
+function saveStorage() { try { localStorage.setItem('nutriingo_v2', JSON.stringify(appData)); } catch (e) {} }
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('nutriingo_v1') || localStorage.getItem('nutricalc_pro_v10');
+    const raw = localStorage.getItem('nutriingo_v2') || localStorage.getItem('nutriingo_v1');
     if (raw) { const parsed = JSON.parse(raw); if (parsed && parsed.profiles) appData = parsed; }
   } catch (e) {}
 }
@@ -63,7 +64,7 @@ function computeMetrics() {
     weeklyKg = +((dailyDelta * 7) / 7700).toFixed(2);
   }
 
-  const minSafe = p.gender === 'female' ? Math.max(1100, Math.round(curr.bmr * 0.88)) : Math.max(1350, Math.round(curr.bmr * 0.90));
+  const minSafe = p.gender === 'female' ? Math.max(1150, Math.round(curr.bmr * 0.88)) : Math.max(1400, Math.round(curr.bmr * 0.90));
   const effectiveKcal = Math.max(minSafe, targetKcal);
 
   const estBf = p.useBodyFat ? p.bodyFat : (p.gender === 'female' ? 24 : 18);
@@ -72,17 +73,42 @@ function computeMetrics() {
   if (p.macroBase === 'current') { refWeight = p.weight; refLabel = 'текущего веса'; }
   else if (p.macroBase === 'lbm') { refWeight = lbmWeight; refLabel = 'сухой массы'; }
 
-  let normP = 0, normF = 0, normC = 0;
-  if (p.macroMode === 'gkg') {
-    normP = Math.round(refWeight * p.protGkg);
-    normF = Math.round(refWeight * p.fatGkg);
-    normC = Math.round(Math.max(80, effectiveKcal - (normP * 4 + normF * 9)) / 4);
+  let normP = Math.round(refWeight * p.protGkg);
+  let normF = Math.round(refWeight * p.fatGkg);
+  let normC = 0;
+
+  if (p.dietType === 'keto') {
+    // Строгий Кето-протокол: углеводы <= 30 г (5% ккал), белок по норме г/кг, остаток калорий — жиры
+    normC = Math.min(30, Math.max(15, Math.round((effectiveKcal * 0.05) / 4)));
+    const remForFat = Math.max(450, effectiveKcal - normP * 4 - normC * 4);
+    normF = Math.round(remForFat / 9);
+    p.fatGkg = +(normF / refWeight).toFixed(2);
+  } else if (p.dietType === 'lowcarb') {
+    // Low-Carb протокол: углеводы не более 90-110 г (до 22% ккал), остаток идет в жиры
+    const rawRemKcal = effectiveKcal - normP * 4 - normF * 9;
+    const maxLowCarbG = Math.min(105, Math.round((effectiveKcal * 0.22) / 4));
+    if (rawRemKcal / 4 > maxLowCarbG) {
+      normC = maxLowCarbG;
+      normF = Math.round(Math.max(400, effectiveKcal - normP * 4 - normC * 4) / 9);
+      p.fatGkg = +(normF / refWeight).toFixed(2);
+    } else {
+      normC = Math.max(40, Math.round(rawRemKcal / 4));
+    }
   } else {
-    normP = Math.round((effectiveKcal * (p.pPct / 100)) / 4);
-    normF = Math.round((effectiveKcal * (p.fPct / 100)) / 9);
-    normC = Math.round((effectiveKcal * (p.cPct / 100)) / 4);
+    // Сбалансированное, Высокобелковое, Сила: точный баланс Б и Ж по г/кг, остаток в углеводы
+    let remKcal = effectiveKcal - (normP * 4 + normF * 9);
+    if (remKcal < 160) {
+      normF = Math.max(Math.round(refWeight * 0.7), Math.round((effectiveKcal - normP * 4 - 160) / 9));
+      remKcal = Math.max(120, effectiveKcal - (normP * 4 + normF * 9));
+    }
+    normC = Math.round(remKcal / 4);
   }
-  return { ...curr, bmi, targetBmi, targetKcal, effectiveKcal, minSafe, dailyDelta, weeklyKg, refWeight, refLabel, lbmWeight, normP, normF, normC };
+
+  const realPpct = Math.round((normP * 4 / effectiveKcal) * 100);
+  const realFpct = Math.round((normF * 9 / effectiveKcal) * 100);
+  const realCpct = Math.max(0, 100 - realPpct - realFpct);
+
+  return { ...curr, bmi, targetBmi, targetKcal, effectiveKcal, minSafe, dailyDelta, weeklyKg, refWeight, refLabel, lbmWeight, normP, normF, normC, realPpct, realFpct, realCpct };
 }
 
 function formatDateOffset(days) {
@@ -99,14 +125,15 @@ function selectDietType(typeId) {
 
 function setParam(key, val) {
   const p = getProf();
-  if (['age','height','steps','workoutDays','workoutMins','targetWeeks'].includes(key)) p[key] = parseInt(val, 10) || 0;
-  else if (['weight','bodyFat','neatLevel','targetWeight','presetDelta','protGkg','fatGkg'].includes(key)) p[key] = parseFloat(val) || 0;
+  if (['age','height','steps','workoutDays','workoutMins','targetWeeks'].includes(key)) p[key] = Math.max(0, parseInt(val, 10) || 0);
+  else if (['weight','bodyFat','neatLevel','targetWeight','presetDelta','protGkg','fatGkg'].includes(key)) p[key] = Math.max(0, parseFloat(val) || 0);
   else p[key] = val;
+  if (key === 'fatGkg' && (p.dietType === 'keto' || p.dietType === 'lowcarb')) p.dietType = 'highprot';
   saveStorage(); renderApp();
 }
 
 function switchProfile(pk) { appData.activeProfile = pk; saveStorage(); renderApp(); }
-function applySmartMacros(protG, fatG) { const p = getProf(); p.macroMode = 'gkg'; p.protGkg = protG; p.fatGkg = fatG; saveStorage(); renderApp(); }
+function applySmartMacros(protG, fatG) { const p = getProf(); p.dietType = 'highprot'; p.protGkg = protG; p.fatGkg = fatG; saveStorage(); renderApp(); }
 function getItemEffectiveGrams(item, food) { return (!item.isCooked || !food.cookRatio) ? item.grams : Math.round(item.grams / food.cookRatio); }
 
 function addFoodToMeal(foodId, grams = 100) {
