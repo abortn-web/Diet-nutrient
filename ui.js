@@ -79,25 +79,21 @@ function renderApp() {
           <div class="flex justify-between items-center"><h2 class="font-extrabold text-base">1. Ваши параметры</h2><span class="text-[11px] px-2 py-0.5 rounded-lg theme-soft font-semibold">${p.useBodyFat?'Кетч-МакАрдл':'Миффлин-Сан Жеор'}</span></div>
           <div class="grid grid-cols-2 gap-2"><button onclick="setParam('gender','female')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border ${p.gender==='female'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♀ Женщина</button><button onclick="setParam('gender','male')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border ${p.gender==='male'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♂ Мужчина</button></div>
 
-          <!-- AGE DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('age')">
             <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ВОЗРАСТ (ЛЕТ)</span><div class="flex items-center gap-1.5"><button onclick="event.stopPropagation();setParam('age',${p.age-1})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-12 text-center font-mono-num font-extrabold text-sm">${p.age}</span><button onclick="event.stopPropagation();setParam('age',${p.age+1})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='age'?`<div class="grid grid-cols-5 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${AGE_GRID.map(a=>`<button onclick="setParam('age',${a});toggleDropdown('age');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.age===a?'theme-grad text-white':'theme-soft'}">${a}</button>`).join('')}</div>`:''}
           </div>
 
-          <!-- HEIGHT DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('height')">
             <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">РОСТ (СМ)</span><div class="flex items-center gap-1.5"><button onclick="event.stopPropagation();setParam('height',${p.height-1})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-12 text-center font-mono-num font-extrabold text-sm">${p.height}</span><button onclick="event.stopPropagation();setParam('height',${p.height+1})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='height'?`<div class="grid grid-cols-6 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${HEIGHT_GRID.map(h=>`<button onclick="setParam('height',${h});toggleDropdown('height');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.height===h?'theme-grad text-white':'theme-soft'}">${h}</button>`).join('')}</div>`:''}
           </div>
 
-          <!-- WEIGHT DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weight')">
             <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ТЕКУЩИЙ ВЕС (КГ)</span><div class="flex items-center gap-1.5"><button onclick="event.stopPropagation();setParam('weight',${+(p.weight-0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-14 text-center font-mono-num font-extrabold text-sm">${p.weight}</span><button onclick="event.stopPropagation();setParam('weight',${+(p.weight+0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='weight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('weight',${w});toggleDropdown('weight');" class="py-1.5 rounded-lg text-[11px] font-mono-num font-bold ${p.weight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
           </div>
 
-          <!-- BODY FAT DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2">
             <div class="flex items-center justify-between">
               <label class="flex items-center cursor-pointer text-xs font-bold"><input type="checkbox" ${p.useBodyFat?'checked':''} onchange="setParam('useBodyFat',this.checked)" class="w-4 h-4 mr-2">Учитывать % жира</label>
@@ -122,7 +118,6 @@ function renderApp() {
           <div class="flex justify-between items-center"><h2 class="font-extrabold text-base">2. Активность: Шаги + Тренировки</h2><span class="text-xs font-mono-num font-extrabold px-2 py-0.5 rounded-lg theme-soft">TDEE: ${m.tdee} ккал</span></div>
           <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('neatLevel',0.12)" class="p-2 rounded-xl text-left text-xs ${p.neatLevel===0.12?'theme-grad text-white font-bold':'theme-input'}"><div>Сидячий</div><div class="text-[10px] opacity-75">+12%</div></button><button onclick="setParam('neatLevel',0.18)" class="p-2 rounded-xl text-left text-xs ${p.neatLevel===0.18?'theme-grad text-white font-bold':'theme-input'}"><div>Умеренный</div><div class="text-[10px] opacity-75">+18%</div></button><button onclick="setParam('neatLevel',0.25)" class="p-2 rounded-xl text-left text-xs ${p.neatLevel===0.25?'theme-grad text-white font-bold':'theme-input'}"><div>Активный</div><div class="text-[10px] opacity-75">+25%</div></button></div>
           
-          <!-- STEPS DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('steps')">
             <div class="flex justify-between items-center"><div><div class="text-xs font-bold">👣 Шагов в день: ${p.steps}</div><div class="text-[11px] opacity-75">~${m.distKm.toFixed(1)} км · +${m.stepsKcal} ккал</div></div><div class="flex gap-1" onclick="event.stopPropagation()"><button onclick="setParam('steps',${Math.max(0,p.steps-1000)})" class="px-2.5 py-1 rounded-lg theme-soft font-bold text-xs">-1к</button><button onclick="setParam('steps',${p.steps+1000})" class="px-2.5 py-1 rounded-lg theme-soft font-bold text-xs">+1к</button></div></div>
             ${activeOpenDropdown==='steps'?`<div class="grid grid-cols-5 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${STEPS_GRID.map(st=>`<button onclick="setParam('steps',${st});toggleDropdown('steps');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.steps===st?'theme-grad text-white':'theme-soft'}">${st}</button>`).join('')}</div>`:''}
@@ -139,13 +134,11 @@ function renderApp() {
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
           <h2 class="font-extrabold text-base">3. Цель, Контрольные точки и Норма КБЖУ</h2>
           
-          <!-- TARGET WEIGHT DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('tweight')">
             <div class="flex justify-between items-center"><span class="text-xs font-bold">🎯 Желаемый вес (кг)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('targetWeight',${+(p.targetWeight-0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-14 text-center font-mono-num font-extrabold text-sm">${p.targetWeight}</span><button onclick="setParam('targetWeight',${+(p.targetWeight+0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='tweight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('targetWeight',${w});toggleDropdown('tweight');" class="py-1.5 rounded-lg text-[11px] font-mono-num font-bold ${p.targetWeight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
           </div>
 
-          <!-- WEEKS DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weeks')">
             <div class="flex justify-between items-center text-xs font-bold"><span>📅 Срок: ${p.targetWeeks} нед. (${totalDays} дн.)</span><div class="flex items-center gap-1" onclick="event.stopPropagation()"><button onclick="setParam('targetWeeks',${Math.max(1,p.targetWeeks-1)})" class="w-7 h-6 rounded theme-soft font-bold">-</button><span class="font-mono-num px-1">${m.dailyDelta>0?'+':''}${m.dailyDelta} ккал/дн</span><button onclick="setParam('targetWeeks',${p.targetWeeks+1})" class="w-7 h-6 rounded theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='weeks'?`<div class="grid grid-cols-6 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEEKS_GRID.map(wk=>`<button onclick="setParam('targetWeeks',${wk});toggleDropdown('weeks');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.targetWeeks===wk?'theme-grad text-white':'theme-soft'}">${wk}н</button>`).join('')}</div>`:''}
@@ -172,7 +165,6 @@ function renderApp() {
 
           <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-2.5 rounded-xl text-left flex justify-between items-center ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2 py-0.5 rounded bg-black/20 text-white">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
 
-          <!-- PROT GRID DROPDOWN -->
           <div class="p-3 rounded-2xl theme-input space-y-2.5 text-xs cursor-pointer" onclick="toggleDropdown('prot')">
             <div class="text-[10px] opacity-80 font-bold">База расчета белка и жиров (г/кг):</div>
             <div class="grid grid-cols-3 gap-1" onclick="event.stopPropagation()"><button onclick="setParam('macroBase','target')" class="py-1.5 px-1 rounded-lg text-[10px] font-bold ${p.macroBase==='target'?'theme-grad text-white':'theme-soft'}">Желаемый (${p.targetWeight}кг)</button><button onclick="setParam('macroBase','current')" class="py-1.5 px-1 rounded-lg text-[10px] font-bold ${p.macroBase==='current'?'theme-grad text-white':'theme-soft'}">Текущий (${p.weight}кг)</button><button onclick="setParam('macroBase','lbm')" class="py-1.5 px-1 rounded-lg text-[10px] font-bold ${p.macroBase==='lbm'?'theme-grad text-white':'theme-soft'}">Сухая (${m.lbmWeight}кг)</button></div>
@@ -211,7 +203,6 @@ function renderApp() {
             </div>
           </div>
 
-          <!-- ICR DROPDOWN FIELD -->
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('icr')">
             <div class="flex justify-between items-center"><span class="text-xs font-bold">Ваш индекс УК (ЕД на 1 ХЕ):</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('icr',${+(p.icr-0.1).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-12 text-center font-mono-num font-extrabold text-sm">${p.icr}</span><button onclick="setParam('icr',${+(p.icr+0.1).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='icr'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${ICR_GRID.map(v=>`<button onclick="setParam('icr',${v});toggleDropdown('icr');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.icr===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
@@ -310,29 +301,29 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- AI MENTOR MODAL WITH SCROLLABLE CONTENT & DISCREET API AT BOTTOM -->
+    <!-- FIXED HEADER OVERLAP & HIGH CONTRAST TEXT COLORS FOR FEMALE/MALE MODES -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-10" style="border-color:var(--brand);">
-        <div class="flex justify-between items-center sticky top-0 bg-[#1e1b4b]/90 backdrop-blur pb-2 z-10 border-b border-white/10">
-          <h3 class="font-extrabold text-base flex items-center gap-2"><span>🩺 Клинический AI-Ментор</span><span class="text-[10px] px-2 py-0.5 rounded theme-soft">${hasSavedKey?'☁️ Gemini API':'⚡ Локальный режим'}</span></h3>
-          <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-8 h-8 rounded-full theme-soft font-bold flex items-center justify-center">✕</button>
+        <div class="flex justify-between items-center sticky top-0 bg-[#1e1b4b]/95 backdrop-blur py-2 z-10 border-b border-white/10 gap-2">
+          <h3 class="font-extrabold text-sm sm:text-base flex items-center gap-2 leading-tight"><span>🩺 Клинический AI-Ментор</span><span class="text-[10px] px-2 py-0.5 rounded theme-soft">${hasSavedKey?'☁️ Gemini API':'⚡ Локальный режим'}</span></h3>
+          <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-8 h-8 rounded-full theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
         </div>
 
         <!-- 1. INSPIRING STORY ON TOP -->
         <div class="p-4 rounded-2xl theme-soft space-y-1.5 shadow-sm">
-          <div class="font-extrabold text-xs flex items-center justify-between text-amber-300">
+          <div class="font-extrabold text-xs flex items-center justify-between font-bold" style="color:var(--text-main);">
             <span>⭐ Вдохновляющая история успеха</span>
-            <button onclick="rotateStory()" class="text-[10px] underline opacity-80 cursor-pointer">🔄 Другая история</button>
+            <button onclick="rotateStory()" class="text-sm underline cursor-pointer p-1" title="Другая история">🔄</button>
           </div>
-          <div class="text-xs font-bold">${currentStory.name}</div>
+          <div class="text-xs font-extrabold">${currentStory.name}</div>
           <div class="text-[11px] opacity-90 leading-relaxed">${currentStory.desc}</div>
         </div>
 
         <!-- 2. WARM SUPPORT FIELD -->
         <div class="p-4 rounded-2xl theme-input space-y-2 border border-white/20">
-          <div class="font-extrabold text-xs text-rose-300 flex items-center justify-between">
+          <div class="font-extrabold text-xs flex items-center justify-between font-bold" style="color:var(--text-main);">
             <span>❤️ Слово тепла и поддержки для вас</span>
-            <button onclick="rotateSupport()" class="text-[10px] underline opacity-80 cursor-pointer">🔄 Другие слова</button>
+            <button onclick="rotateSupport()" class="text-sm underline cursor-pointer p-1" title="Другие слова">🔄</button>
           </div>
           <div id="support-box" class="text-xs leading-relaxed opacity-95">
             ${currentSupport}
@@ -360,14 +351,14 @@ function renderApp() {
           </div>
         </div>
 
-        <!-- 3. SUPPORT BUTTON IN THE FLOW (NO OVERLAP) -->
+        <!-- 3. SUPPORT BUTTON IN THE FLOW -->
         <div class="pt-2">
           <button onclick="rotateSupport(); rotateStory();" class="w-full py-3.5 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01] transition cursor-pointer">
             ❤️ Получить новую порцию тепла и поддержки
           </button>
         </div>
 
-        <!-- 4. API KEY AT THE VERY BOTTOM, DISCREET -->
+        <!-- 4. API KEY AT THE VERY BOTTOM -->
         <details class="p-2.5 rounded-2xl theme-input text-xs opacity-60 hover:opacity-100 transition mt-4">
           <summary class="cursor-pointer text-[10px]">🔑 Подключить свой ключ Gemini API (если хотите ИИ в реальном времени)</summary>
           <div class="pt-2 flex gap-1.5 items-center">
@@ -385,11 +376,8 @@ function rotateStory() {
   renderApp(); openAiModal();
 }
 function rotateSupport() {
-  currentSupport = DIABETES_SUPPORT_PHRASES[Math.floor(Math.random() * DIETA_SUPPORT_PHRASES_FIX())];
+  currentSupport = DIABETES_SUPPORT_PHRASES[Math.floor(Math.random() * DIABETES_SUPPORT_PHRASES.length)];
   renderApp(); openAiModal();
-}
-function DIETA_SUPPORT_PHRASES_FIX() {
-  return Math.floor(Math.random() * DIABETES_SUPPORT_PHRASES.length);
 }
 function toggleNews() {
   const box = document.getElementById('news-box');
