@@ -70,12 +70,9 @@ function computeDailyInsulinPlan(m, p) {
   const dayCarbBolus = +(dayXE * p.icr).toFixed(1);
   const dayBjeBolus = +(dayBJE * p.icr * 0.45).toFixed(1);
   const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
-
-  // Базальный (продленный) инсулин обычно составляет ~45% от общей суточной потребности (или ~0.22-0.28 ЕД/кг)
   const estBasal = +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
   const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1);
 
-  // Распределение по приемам пищи с учетом циркадной чувствительности к инсулину (утром УК выше на 15%, вечером ниже на 10%)
   const splits = [
     { name: '🌅 Завтрак (30%)', share: 0.30, icrMult: 1.15 },
     { name: '☀️ Обед (35%)', share: 0.35, icrMult: 1.00 },
