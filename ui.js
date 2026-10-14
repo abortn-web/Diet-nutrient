@@ -260,18 +260,45 @@ function renderApp() {
           </div>
 
           <div class="space-y-2 text-xs">
+            <!-- ACTIVE MANUAL INPUT FOR PROTEIN -->
             <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('mprot')">
-              <div class="flex justify-between items-center"><span class="font-bold">Белки: <strong>${mealBolus.p} г</strong></span><div class="flex gap-1" onclick="event.stopPropagation()"><button onclick="setMealBolus('p',${mealBolus.p-5})" class="px-2 py-1 rounded theme-soft font-bold">-5г</button><button onclick="setMealBolus('p',${mealBolus.p+5})" class="px-2 py-1 rounded theme-soft font-bold">+5г</button></div></div>
+              <div class="flex justify-between items-center">
+                <span class="font-bold">Белки:</span>
+                <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                  <button onclick="setMealBolus('p',${Math.max(0, mealBolus.p - 5)})" class="px-2 py-1 rounded theme-soft font-bold">-5</button>
+                  <input type="number" value="${mealBolus.p}" min="0" max="300" onchange="setMealBolus('p',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft">
+                  <span class="font-bold">г</span>
+                  <button onclick="setMealBolus('p',${mealBolus.p + 5})" class="px-2 py-1 rounded theme-soft font-bold">+5</button>
+                </div>
+              </div>
               ${activeOpenDropdown==='mprot'?`<div class="grid grid-cols-7 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[10,20,30,40,50,60,80].map(v=>`<button onclick="setMealBolus('p',${v});toggleDropdown('mprot');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${mealBolus.p===v?'theme-grad text-white':'theme-soft'}">${v}г</button>`).join('')}</div>`:''}
             </div>
 
+            <!-- ACTIVE MANUAL INPUT FOR FAT -->
             <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('mfat')">
-              <div class="flex justify-between items-center"><span class="font-bold">Жиры: <strong>${mealBolus.f} г</strong></span><div class="flex gap-1" onclick="event.stopPropagation()"><button onclick="setMealBolus('f',${mealBolus.f-5})" class="px-2 py-1 rounded theme-soft font-bold">-5г</button><button onclick="setMealBolus('f',${mealBolus.f+5})" class="px-2 py-1 rounded theme-soft font-bold">+5г</button></div></div>
+              <div class="flex justify-between items-center">
+                <span class="font-bold">Жиры:</span>
+                <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                  <button onclick="setMealBolus('f',${Math.max(0, mealBolus.f - 5)})" class="px-2 py-1 rounded theme-soft font-bold">-5</button>
+                  <input type="number" value="${mealBolus.f}" min="0" max="200" onchange="setMealBolus('f',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft">
+                  <span class="font-bold">г</span>
+                  <button onclick="setMealBolus('f',${mealBolus.f + 5})" class="px-2 py-1 rounded theme-soft font-bold">+5</button>
+                </div>
+              </div>
               ${activeOpenDropdown==='mfat'?`<div class="grid grid-cols-7 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[5,10,15,20,25,35,50].map(v=>`<button onclick="setMealBolus('f',${v});toggleDropdown('mfat');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${mealBolus.f===v?'theme-grad text-white':'theme-soft'}">${v}г</button>`).join('')}</div>`:''}
             </div>
 
+            <!-- ACTIVE MANUAL INPUT FOR CARBS -->
             <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('mcarb')">
-              <div class="flex justify-between items-center"><span class="font-bold">Углеводы: <strong>${mealBolus.c} г (${bolus.xe} ХЕ)</strong></span><div class="flex gap-1" onclick="event.stopPropagation()"><button onclick="setMealBolus('c',${mealBolus.c-6})" class="px-2 py-1 rounded theme-soft font-bold">-0.5ХЕ</button><button onclick="setMealBolus('c',${mealBolus.c+6})" class="px-2 py-1 rounded theme-soft font-bold">+0.5ХЕ</button></div></div>
+              <div class="flex justify-between items-center">
+                <span class="font-bold">Углеводы (${bolus.xe} ХЕ):</span>
+                <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                  <button onclick="setMealBolus('c',${Math.max(0, mealBolus.c - 6)})" class="px-2 py-1 rounded theme-soft font-bold">-6</button>
+                  <input type="number" value="${mealBolus.c}" min="0" max="300" onchange="setMealBolus('c',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft">
+                  <span class="font-bold">г</span>
+                  <button onclick="setMealBolus('c',${mealBolus.c + 6})" class="px-2 py-1 rounded theme-soft font-bold">+6</button>
+                </div>
+              </div>
               ${activeOpenDropdown==='mcarb'?`<div class="grid grid-cols-7 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[12,24,36,48,60,72,84].map(v=>`<button onclick="setMealBolus('c',${v});toggleDropdown('mcarb');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${mealBolus.c===v?'theme-grad text-white':'theme-soft'}">${v}г</button>`).join('')}</div>`:''}
             </div>
           </div>
@@ -301,31 +328,31 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- FIXED HEADER OVERLAP & HIGH CONTRAST TEXT COLORS FOR FEMALE/MALE MODES -->
+    <!-- MODAL WITH ADAPTIVE THEME HEADER BACKGROUND & SYMBOL REFRESH BUTTONS -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-10" style="border-color:var(--brand);">
-        <div class="flex justify-between items-center sticky top-0 bg-[#1e1b4b]/95 backdrop-blur py-2 z-10 border-b border-white/10 gap-2">
+        <div class="flex justify-between items-center sticky top-0 py-2.5 z-10 border-b border-white/10 gap-2" style="background: var(--card-bg);">
           <h3 class="font-extrabold text-sm sm:text-base flex items-center gap-2 leading-tight"><span>🩺 Клинический AI-Ментор</span><span class="text-[10px] px-2 py-0.5 rounded theme-soft">${hasSavedKey?'☁️ Gemini API':'⚡ Локальный режим'}</span></h3>
           <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-8 h-8 rounded-full theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
         </div>
 
         <!-- 1. INSPIRING STORY ON TOP -->
         <div class="p-4 rounded-2xl theme-soft space-y-1.5 shadow-sm">
-          <div class="font-extrabold text-xs flex items-center justify-between font-bold" style="color:var(--text-main);">
-            <span>⭐ Вдохновляющая история успеха</span>
-            <button onclick="rotateStory()" class="text-sm underline cursor-pointer p-1" title="Другая история">🔄</button>
+          <div class="font-extrabold text-xs flex items-center justify-between">
+            <span class="font-extrabold" style="color:var(--text-main);">⭐ Вдохновляющая история успеха</span>
+            <button onclick="rotateStory()" class="px-3 py-1 rounded-xl theme-input text-sm font-bold flex items-center justify-center cursor-pointer shadow-sm hover:opacity-90" title="Другая история">🔄</button>
           </div>
-          <div class="text-xs font-extrabold">${currentStory.name}</div>
+          <div class="text-xs font-extrabold mt-1" style="color:var(--text-main);">${currentStory.name}</div>
           <div class="text-[11px] opacity-90 leading-relaxed">${currentStory.desc}</div>
         </div>
 
         <!-- 2. WARM SUPPORT FIELD -->
         <div class="p-4 rounded-2xl theme-input space-y-2 border border-white/20">
-          <div class="font-extrabold text-xs flex items-center justify-between font-bold" style="color:var(--text-main);">
-            <span>❤️ Слово тепла и поддержки для вас</span>
-            <button onclick="rotateSupport()" class="text-sm underline cursor-pointer p-1" title="Другие слова">🔄</button>
+          <div class="font-extrabold text-xs flex items-center justify-between">
+            <span class="font-extrabold" style="color:var(--text-main);">❤️ Слово тепла и поддержки для вас</span>
+            <button onclick="rotateSupport()" class="px-3 py-1 rounded-xl theme-soft text-sm font-bold flex items-center justify-center cursor-pointer shadow-sm hover:opacity-90" title="Другие слова">🔄</button>
           </div>
-          <div id="support-box" class="text-xs leading-relaxed opacity-95">
+          <div id="support-box" class="text-xs leading-relaxed opacity-95 mt-1">
             ${currentSupport}
           </div>
         </div>
