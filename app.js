@@ -4,29 +4,65 @@ let appData = {
 };
 
 let activeTab = 'calc';
-let mealBolus = { p: 35, f: 15, c: 48 };
+let mealTimeSlot = 'lunch';
+let mealBolus = {
+  p: 0,
+  f: 0,
+  c: 0,
+  gi: 'mid',
+  currBg: '',
+   initialized: false,
+  customEdited: false
+};
 
 const INSULIN_TYPES = [
-  { id: 'ultrafast', name: '⚡ Сверхбыстрый инсулин', brands: 'Фиасп, Люмжев', preMin: 'За 0–5 мин до еды (или в начале еды)', postTiming: 'через 60–90 мин после еды', coversBJE: false },
-  { id: 'ultralong', name: '🚀 Ультракороткий инсулин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст', preMin: 'За 10–15 мин ПЕРЕД едой', postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
-  { id: 'short', name: '⏱ Короткий инсулин', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р', preMin: 'За 25–30 мин ПЕРЕД едой', postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
+  { id: 'ultrafast', name: '⚡ Сверхбыстрый инсулин', brands: 'Фиасп, Люмжев', preMin: 'За 0–5 мин до еды (или в начале еды)', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин после еды', coversBJE: false },
+  { id: 'ultralong', name: '🚀 Ультракороткий инсулин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст', preMin: 'За 10–15 мин ПЕРЕД едой', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'short', name: '⏱ Короткий инсулин', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р', preMin: 'За 25–30 мин ПЕРЕД едой', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
+
+const DEFAULT_PRESET_MEALS = [
+  { name: '🥣 Овсянка + 2 яйца', p: 22, f: 16, c: 36, gi: 'mid' },
+  { name: '🍗 Курица + Гречка', p: 42, f: 10, c: 48, gi: 'low' },
+  { name: '🧀 Творог 5% + Ягоды', p: 32, f: 10, c: 18, gi: 'low' },
+  { name: '🥩 Стейк/Рыба + Салат', p: 45, f: 24, c: 12, gi: 'low' }
+];
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function getProf() {
   const p = appData.profiles[appData.activeProfile];
   if (!p.macroBase) p.macroBase = 'target';
   if (!p.dietType) p.dietType = 'highprot';
   if (!p.diabetesType) p.diabetesType = 'none';
-  if (!p.icr) p.icr = 1.2;
+  if (!p.icr || p.icr <= 0) p.icr = 1.2;
   if (!p.insulinType) p.insulinType = 'ultralong';
+  if (!p.targetBg || p.targetBg < 4.0) p.targetBg = 5.6;
+  if (typeof p.customIsf === 'undefined') p.customIsf = 0; // 0 = Авто по формуле 100/TDD
+  if (!Array.isArray(p.savedMeals) || p.savedMeals.length === 0) {
+    p.savedMeals = JSON.parse(JSON.stringify(DEFAULT_PRESET_MEALS));
+  }
+  if (!Array.isArray(p.iobLog)) p.iobLog = [];
+  if (!p.dailyTracker || p.dailyTracker.date !== getTodayStr()) {
+    p.dailyTracker = { date: getTodayStr(), p: 0, f: 0, c: 0, kcal: 0, entries: [] };
+  }
   return p;
 }
 
-function saveStorage() { try { localStorage.setItem('nutriingo_v7', JSON.stringify(appData)); } catch (e) {} }
+function saveStorage() {
+  try { localStorage.setItem('nutriingo_v10', JSON.stringify(appData)); } catch (e) {}
+}
+
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('nutriingo_v7') || localStorage.getItem('nutriingo_v6');
-    if (raw) { const parsed = JSON.parse(raw); if (parsed && parsed.profiles) appData = parsed; }
+    const raw = localStorage.getItem('nutriingo_v10') || localStorage.getItem('nutriingo_v9') || localStorage.getItem('nutriingo_v8');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.profiles) appData = parsed;
+    }
   } catch (e) {}
 }
 
@@ -46,19 +82,57 @@ function calcTDEEForWeight(w, p) {
   return { bmr, neat, distKm, stepsKcal, workoutKcal, tdee: bmr + neat + stepsKcal + workoutKcal };
 }
 
-function computeBolusForMeal(pGrams, fGrams, cGrams, p) {
+// Расчет активного инсулина в организме (IOB) с учетом времени жизни инсулина (DIA)
+function computeActiveIOB(p) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
-  const xe = +(cGrams / 12).toFixed(1);
-  const fpKcal = Math.round(pGrams * 4 + fGrams * 9);
-  const bje = +(fpKcal / 100).toFixed(1);
-  const carbUnits = +(xe * p.icr).toFixed(1);
-  const bjeUnits = bje >= 1.0 ? +(bje * p.icr * 0.5).toFixed(1) : 0;
-  const totalUnits = +(carbUnits + bjeUnits).toFixed(1);
-  const splitWaves = bjeUnits >= 0.4 && !ins.coversBJE;
-  const preUnits = splitWaves ? carbUnits : totalUnits;
-  const postUnits = splitWaves ? bjeUnits : 0;
-  const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : 5));
-  return { ins, xe, fpKcal, bje, carbUnits, bjeUnits, totalUnits, preUnits, postUnits, splitWaves, waveHours };
+  const diaMs = ins.diaHours * 3600 * 1000;
+  const now = Date.now();
+  let totalIob = 0;
+  const activeRecords = [];
+
+  (p.iobLog || []).forEach(item => {
+    const elapsedMs = now - item.ts;
+    if (elapsedMs >= 0 && elapsedMs < diaMs) {
+      const elapsedMin = elapsedMs / 60000;
+      const totalMin = ins.diaHours * 60;
+      // Первые 15 мин инсулин разворачивается (100% остатка), затем плавно убывает
+      let remFrac = 1.0;
+      if (elapsedMin > 15) {
+        remFrac = Math.max(0, 1 - (elapsedMin - 15) / (totalMin - 15));
+      }
+      const remUnits = +(item.units * remFrac).toFixed(2);
+      if (remUnits >= 0.05) {
+        totalIob += remUnits;
+        const leftMin = Math.round(totalMin - elapsedMin);
+        activeRecords.push({
+          ...item,
+          remUnits: +remUnits.toFixed(1),
+          leftText: leftMin >= 60 ? `${Math.floor(leftMin / 60)}ч ${leftMin % 60}м` : `${leftMin} мин`
+        });
+      }
+    }
+  });
+
+  return { totalIob: +totalIob.toFixed(1), activeRecords, diaHours: ins.diaHours };
+}
+
+function logInsulinInjection(units) {
+  const u = parseFloat(units);
+  if (!u || u <= 0) return;
+  const p = getProf();
+  const d = new Date();
+  const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  p.iobLog.unshift({ ts: Date.now(), units: +u.toFixed(1), timeStr });
+  if (p.iobLog.length > 10) p.iobLog = p.iobLog.slice(0, 10);
+  saveStorage();
+  renderApp();
+}
+
+function clearIobLog() {
+  const p = getProf();
+  p.iobLog = [];
+  saveStorage();
+  renderApp();
 }
 
 function computeDailyInsulinPlan(m, p) {
@@ -67,17 +141,11 @@ function computeDailyInsulinPlan(m, p) {
   const dayFpKcal = Math.round(m.normP * 4 + m.normF * 9);
   const dayBJE = +(dayFpKcal / 100).toFixed(1);
 
-  const dayCarbBolus = +(dayXE * p.icr).toFixed(1);
-  const dayBjeBolus = +(dayBJE * p.icr * 0.45).toFixed(1);
-  const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
-  const estBasal = +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
-  const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1);
-
   const splits = [
-    { name: '🌅 Завтрак (30%)', share: 0.30, icrMult: 1.15 },
-    { name: '☀️ Обед (35%)', share: 0.35, icrMult: 1.00 },
-    { name: '🌙 Ужин (25%)', share: 0.25, icrMult: 0.90 },
-    { name: '🍏 Перекус (10%)', share: 0.10, icrMult: 1.00 }
+    { slot: 'morning', name: '🌅 Завтрак (30%)', share: 0.30, icrMult: 1.15 },
+    { slot: 'lunch',   name: '☀️ Обед (35%)',    share: 0.35, icrMult: 1.00 },
+    { slot: 'evening', name: '🌙 Ужин (25%)',    share: 0.25, icrMult: 0.90 },
+    { slot: 'night',   name: '🍏 Перекус (10%)', share: 0.10, icrMult: 0.95 }
   ].map(s => {
     const cG = Math.round(m.normC * s.share);
     const pG = Math.round(m.normP * s.share);
@@ -86,12 +154,31 @@ function computeDailyInsulinPlan(m, p) {
     const bje = +((pG * 4 + fG * 9) / 100).toFixed(1);
     const effIcr = +(p.icr * s.icrMult).toFixed(2);
     const preU = +(xe * effIcr).toFixed(1);
-    const postU = (!ins.coversBJE && bje >= 1.0) ? +(bje * effIcr * 0.45).toFixed(1) : 0;
+    const postU = (!ins.coversBJE && bje >= 1.0) ? +(bje * effIcr * 0.5).toFixed(1) : 0;
     const totU = +(preU + postU).toFixed(1);
     return { ...s, cG, pG, fG, xe, bje, effIcr, preU, postU, totU };
   });
 
-  return { ins, dayXE, dayBJE, dayCarbBolus, dayBjeBolus, totalBolusDay, estBasal, totalDailyDose, splits };
+  const dayCarbBolus = +(splits.reduce((acc, s) => acc + s.preU, 0)).toFixed(1);
+  const dayBjeBolus = +(splits.reduce((acc, s) => acc + s.postU, 0)).toFixed(1);
+  const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
+  const estBasal = +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
+  const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1);
+
+  // Расчет ФЧИ (Фактора чувствительности к инсулину): на сколько ммоль/л 1 ЕД снижает сахар
+  const autoIsf = +(ins.isfRule / Math.max(10, totalDailyDose)).toFixed(1);
+  const effectiveIsf = (p.customIsf && p.customIsf > 0) ? +p.customIsf.toFixed(1) : autoIsf;
+
+  if (!mealBolus.initialized || !mealBolus.customEdited) {
+    const activeSlot = typeof mealTimeSlot !== 'undefined' ? mealTimeSlot : 'lunch';
+    const found = splits.find(x => x.slot === activeSlot) || splits[1];
+    mealBolus.p = found.pG;
+    mealBolus.f = found.fG;
+    mealBolus.c = found.cG;
+    mealBolus.initialized = true;
+  }
+
+  return { ins, dayXE, dayBJE, dayCarbBolus, dayBjeBolus, totalBolusDay, estBasal, totalDailyDose, autoIsf, effectiveIsf, splits };
 }
 
 function computeMetrics() {
@@ -101,20 +188,18 @@ function computeMetrics() {
   const bmi = +(p.weight / (hm * hm)).toFixed(1);
   const targetBmi = +(p.targetWeight / (hm * hm)).toFixed(1);
 
-  let targetKcal = curr.tdee, dailyDelta = 0, weeklyKg = 0;
   const diffKg = p.targetWeight - p.weight;
-  dailyDelta = Math.round((diffKg * 7700) / Math.max(7, p.targetWeeks * 7));
-  weeklyKg = +(diffKg / p.targetWeeks).toFixed(2);
-  targetKcal = curr.tdee + dailyDelta;
+  const dailyDelta = Math.round((diffKg * 7700) / Math.max(7, p.targetWeeks * 7));
+  const weeklyKg = +(diffKg / Math.max(1, p.targetWeeks)).toFixed(2);
+  const targetKcal = curr.tdee + dailyDelta;
 
-  // Умный физиологический минимум с прямым учетом текущего веса
-  let weightBasedMin = Math.round(p.weight * (p.diabetesType !== 'none' ? 23.5 : 21.0));
+  const weightBasedMin = Math.round(p.weight * (p.diabetesType !== 'none' ? 23.0 : 20.5));
   let bmrBasedMin = p.gender === 'female' ? Math.round(curr.bmr * 0.88) : Math.round(curr.bmr * 0.90);
   if (p.diabetesType !== 'none') {
-    bmrBasedMin = Math.max(bmrBasedMin, Math.round(curr.tdee * 0.78));
+    bmrBasedMin = Math.max(bmrBasedMin, Math.round(curr.tdee * 0.76));
   }
   let minSafe = Math.max(weightBasedMin, bmrBasedMin);
-  minSafe = p.diabetesType === 'none' ? Math.max(1150, minSafe) : Math.max(1400, minSafe);
+  minSafe = p.diabetesType === 'none' ? Math.max(1200, minSafe) : Math.max(1400, minSafe);
 
   const effectiveKcal = Math.max(minSafe, targetKcal);
 
@@ -126,82 +211,286 @@ function computeMetrics() {
 
   let normP = Math.round(refWeight * p.protGkg);
   let normF = Math.round(refWeight * p.fatGkg);
-  let normC = 0;
 
-  if (p.diabetesType === 'dm2') {
-    const maxDm2Carbs = Math.min(120, Math.round((effectiveKcal * 0.28) / 4));
-    const minDm2Carbs = 80;
-    const rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-    normC = Math.max(minDm2Carbs, Math.min(maxDm2Carbs, rawRemC));
-    normF = Math.round(Math.max(400, effectiveKcal - normP * 4 - normC * 4) / 9);
-    p.fatGkg = +(normF / refWeight).toFixed(2);
-  } else if (p.diabetesType === 'dm1') {
-    const minDm1Carbs = 110;
-    const maxDm1Carbs = Math.min(145, Math.round((effectiveKcal * 0.38) / 4));
-    const rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-    normC = Math.max(minDm1Carbs, Math.min(maxDm1Carbs, rawRemC));
-    normF = Math.round(Math.max(360, effectiveKcal - normP * 4 - normC * 4) / 9);
-    p.fatGkg = +(normF / refWeight).toFixed(2);
-  } else if (p.dietType === 'keto') {
-    normC = Math.min(30, Math.max(15, Math.round((effectiveKcal * 0.05) / 4)));
-    normF = Math.round(Math.max(450, effectiveKcal - normP * 4 - normC * 4) / 9);
-    p.fatGkg = +(normF / refWeight).toFixed(2);
-  } else if (p.dietType === 'lowcarb') {
-    const rawRemKcal = effectiveKcal - normP * 4 - normF * 9;
-    const maxLowCarbG = Math.min(105, Math.round((effectiveKcal * 0.22) / 4));
-    if (rawRemKcal / 4 > maxLowCarbG) {
-      normC = maxLowCarbG;
-      normF = Math.round(Math.max(400, effectiveKcal - normP * 4 - normC * 4) / 9);
-      p.fatGkg = +(normF / refWeight).toFixed(2);
-    } else normC = Math.max(40, Math.round(rawRemKcal / 4));
-  } else {
-    let remKcal = effectiveKcal - (normP * 4 + normF * 9);
-    if (remKcal < 160) {
-      normF = Math.max(Math.round(refWeight * 0.7), Math.round((effectiveKcal - normP * 4 - 160) / 9));
-      remKcal = Math.max(120, effectiveKcal - (normP * 4 + normF * 9));
+  const maxProtG = Math.round((effectiveKcal * 0.42) / 4);
+  if (normP > maxProtG) normP = maxProtG;
+  const minFatG = Math.round(refWeight * 0.65);
+  if (normF < minFatG) normF = minFatG;
+
+  let minCarbG = 40;
+  let maxCarbG = 400;
+
+  if (p.dietType === 'keto') {
+    if (p.diabetesType === 'dm1') {
+      minCarbG = 80;
+      maxCarbG = 110;
+    } else {
+      minCarbG = 20;
+      maxCarbG = 35;
     }
-    normC = Math.round(remKcal / 4);
+  } else if (p.dietType === 'lowcarb') {
+    if (p.diabetesType === 'dm1') {
+      minCarbG = 90;
+      maxCarbG = 120;
+    } else if (p.diabetesType === 'dm2') {
+      minCarbG = 60;
+      maxCarbG = 95;
+    } else {
+      minCarbG = 50;
+      maxCarbG = 105;
+    }
+  } else if (p.dietType === 'highprot') {
+    if (p.diabetesType === 'dm2') {
+      minCarbG = 75;
+      maxCarbG = Math.min(125, Math.round((effectiveKcal * 0.30) / 4));
+    } else if (p.diabetesType === 'dm1') {
+      minCarbG = 110;
+      maxCarbG = Math.min(155, Math.round((effectiveKcal * 0.38) / 4));
+    } else {
+      minCarbG = 80;
+      maxCarbG = Math.round((effectiveKcal * 0.45) / 4);
+    }
+  } else {
+    if (p.diabetesType === 'dm2') {
+      minCarbG = 85;
+      maxCarbG = Math.min(135, Math.round((effectiveKcal * 0.33) / 4));
+    } else if (p.diabetesType === 'dm1') {
+      minCarbG = 120;
+      maxCarbG = Math.min(175, Math.round((effectiveKcal * 0.42) / 4));
+    } else {
+      minCarbG = 100;
+      maxCarbG = Math.round((effectiveKcal * 0.55) / 4);
+    }
+  }
+
+  if (maxCarbG < minCarbG) maxCarbG = minCarbG;
+
+  let rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
+  let normC = Math.max(minCarbG, Math.min(maxCarbG, rawRemC));
+
+  let remForFatKcal = effectiveKcal - normP * 4 - normC * 4;
+  if (remForFatKcal < minFatG * 9) {
+    normF = minFatG;
+    const minProtG = Math.round(refWeight * 1.35);
+    const neededProtKcal = effectiveKcal - normF * 9 - normC * 4;
+    normP = Math.max(minProtG, Math.round(neededProtKcal / 4));
+    normC = Math.max(20, Math.round((effectiveKcal - normP * 4 - normF * 9) / 4));
+  } else {
+    normF = Math.round(remForFatKcal / 9);
   }
 
   const realPpct = Math.round((normP * 4 / effectiveKcal) * 100);
   const realFpct = Math.round((normF * 9 / effectiveKcal) * 100);
   const realCpct = Math.max(0, 100 - realPpct - realFpct);
   const totalXE = +(normC / 12).toFixed(1);
-  const maxMealCarbs = p.diabetesType === 'dm2' ? Math.min(35, Math.round(normC / 3.5)) : Math.round(normC / 3.5);
+  const maxMealCarbs = p.diabetesType === 'dm2' ? Math.min(36, Math.round(normC / 3.2)) : Math.round(normC / 3.2);
   const maxMealXE = +(maxMealCarbs / 12).toFixed(1);
   const fiberNorm = Math.round((effectiveKcal / 1000) * (p.diabetesType === 'none' ? 14 : 18));
+  const effProtGkg = +(normP / refWeight).toFixed(1);
+  const effFatGkg = +(normF / refWeight).toFixed(1);
 
-  return { ...curr, bmi, targetBmi, targetKcal, effectiveKcal, minSafe, dailyDelta, weeklyKg, refWeight, refLabel, lbmWeight, normP, normF, normC, realPpct, realFpct, realCpct, totalXE, maxMealCarbs, maxMealXE, fiberNorm };
+  return {
+    ...curr, bmi, targetBmi, targetKcal, effectiveKcal, minSafe, dailyDelta, weeklyKg,
+    refWeight, refLabel, lbmWeight, normP, normF, normC, realPpct, realFpct, realCpct,
+    totalXE, maxMealCarbs, maxMealXE, fiberNorm, effProtGkg, effFatGkg
+  };
+}
+
+// Расчет купирования гипогликемии по весу и текущему сахару
+function computeHypoRescue(currBgVal, p) {
+  const bg = parseFloat(String(currBgVal).replace(',', '.')) || 3.2;
+  const target = Math.max(5.2, p.targetBg || 5.6);
+  const deficitMmol = Math.max(0.5, target - bg);
+  // 1 г быстрых углеводов поднимает ГК примерно на (20 / вес_кг) ммоль/л
+  const raisePerGram = 20 / Math.max(35, p.weight);
+  const rawGrams = Math.round(deficitMmol / raisePerGram);
+  const fastCarbGrams = Math.max(10, Math.min(30, rawGrams));
+  const xe = +(fastCarbGrams / 12).toFixed(1);
+  const sugarCubes = Math.max(2, Math.round(fastCarbGrams / 5));
+  const juiceMl = Math.round((fastCarbGrams / 11) * 100);
+  const dextroseTabs = Math.max(2, Math.round(fastCarbGrams / 4));
+  return { bg, target, fastCarbGrams, xe, sugarCubes, juiceMl, dextroseTabs };
 }
 
 function setDiabetesType(dType) {
-  const p = getProf(); p.diabetesType = dType;
-  if (dType === 'dm1') { if (p.dietType === 'keto') p.dietType = 'balanced'; p.protGkg = 1.6; p.fatGkg = 1.0; }
-  else if (dType === 'dm2') { p.dietType = 'lowcarb'; p.protGkg = 1.8; p.fatGkg = 1.0; }
-  saveStorage(); renderApp();
+  const p = getProf();
+  p.diabetesType = dType;
+  if (dType === 'dm1') {
+    if (p.dietType === 'keto') p.dietType = 'lowcarb';
+    p.protGkg = 1.7;
+    p.fatGkg = 1.0;
+  } else if (dType === 'dm2') {
+    if (p.dietType === 'balanced') p.dietType = 'lowcarb';
+    p.protGkg = 1.8;
+    p.fatGkg = 1.0;
+  }
+  mealBolus.customEdited = false;
+  saveStorage();
+  renderApp();
 }
 
 function formatDateOffset(days) {
-  const d = new Date(); d.setDate(d.getDate() + Math.round(days));
+  const d = new Date();
+  d.setDate(d.getDate() + Math.round(days));
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 function selectDietType(typeId) {
-  const p = getProf(), dt = DIET_TYPES.find(x => x.id === typeId); if (!dt) return;
-  if (p.diabetesType === 'dm1' && typeId === 'keto') { alert('⚠️ При СД 1 типа строгое Кето повышает риск кетоацидоза. Выбран безопасный Low-Carb.'); typeId = 'lowcarb'; }
-  p.dietType = typeId; p.pPct = dt.p; p.fPct = dt.f; p.cPct = dt.c; p.protGkg = dt.pGkg; p.fatGkg = dt.fGkg;
-  saveStorage(); renderApp();
+  const p = getProf();
+  if (p.diabetesType === 'dm1' && typeId === 'keto') {
+    alert('⚠️ При СД 1 типа строгое Кето не рекомендуется. Выбран безопасный низкоуглеводный режим (Low-Carb).');
+    typeId = 'lowcarb';
+  }
+  const dt = DIET_TYPES.find(x => x.id === typeId);
+  if (!dt) return;
+  p.dietType = typeId;
+  p.pPct = dt.p;
+  p.fPct = dt.f;
+  p.cPct = dt.c;
+  p.protGkg = dt.pGkg;
+  p.fatGkg = dt.fGkg;
+  mealBolus.customEdited = false;
+  saveStorage();
+  renderApp();
 }
 
 function setParam(key, val) {
   const p = getProf();
-  if (['age','height','steps','workoutDays','workoutMins','targetWeeks'].includes(key)) p[key] = Math.max(0, parseInt(val, 10) || 0);
-  else if (['weight','bodyFat','neatLevel','targetWeight','presetDelta','protGkg','fatGkg','icr'].includes(key)) p[key] = Math.max(0, parseFloat(val) || 0);
-  else p[key] = val;
-  if (key === 'fatGkg' && p.diabetesType === 'none' && (p.dietType === 'keto' || p.dietType === 'lowcarb')) p.dietType = 'highprot';
-  saveStorage(); renderApp();
+  const cleanVal = String(val).replace(',', '.');
+  if (['age', 'height', 'steps', 'workoutDays', 'workoutMins', 'targetWeeks'].includes(key)) {
+    p[key] = Math.max(0, parseInt(cleanVal, 10) || 0);
+  } else if (['weight', 'bodyFat', 'neatLevel', 'targetWeight', 'presetDelta', 'protGkg', 'fatGkg', 'icr', 'targetBg', 'customIsf'].includes(key)) {
+    p[key] = Math.max(0, parseFloat(cleanVal) || 0);
+  } else {
+    p[key] = val;
+  }
+  if (key === 'icr' && p.icr < 0.1) p.icr = 0.1;
+  if (key === 'targetBg') p.targetBg = Math.max(4.2, Math.min(9.0, p.targetBg));
+  if (key === 'age' && p.age < 10) p.age = 10;
+  if (key === 'height' && p.height < 100) p.height = 100;
+  if (key === 'weight' && p.weight < 30) p.weight = 30;
+  if (key === 'targetWeight' && p.targetWeight < 30) p.targetWeight = 30;
+  if (key === 'targetWeeks' && p.targetWeeks < 1) p.targetWeeks = 1;
+
+  mealBolus.customEdited = false;
+  saveStorage();
+  renderApp();
 }
 
-function setMealBolus(k, v) { mealBolus[k] = Math.max(0, Math.round(parseFloat(v) || 0)); renderApp(); }
-function switchProfile(pk) { appData.activeProfile = pk; saveStorage(); renderApp(); }
-function applySmartMacros(protG, fatG) { const p = getProf(); p.protGkg = protG; p.fatGkg = fatG; saveStorage(); renderApp(); }
+function setMealBolus(k, v) {
+  if (k === 'gi') {
+    mealBolus.gi = v;
+  } else if (k === 'currBg') {
+    const clean = String(v).replace(',', '.').trim();
+    mealBolus.currBg = clean === '' ? '' : Math.max(1.5, Math.min(35, parseFloat(clean) || 0));
+  } else {
+    const cleanVal = String(v).replace(',', '.');
+    mealBolus[k] = Math.max(0, Math.round(parseFloat(cleanVal) || 0));
+    mealBolus.customEdited = true;
+  }
+  renderApp();
+}
+
+function applyPresetMeal(idx) {
+  const p = getProf();
+  const item = p.savedMeals[idx];
+  if (!item) return;
+  mealBolus.p = item.p;
+  mealBolus.f = item.f;
+  mealBolus.c = item.c;
+  if (item.gi) mealBolus.gi = item.gi;
+  mealBolus.customEdited = true;
+  renderApp();
+}
+
+function saveCurrentMealAsPreset() {
+  const name = prompt('Введите короткое название для тарелки (например: «Обед на работе»):');
+  if (!name || !name.trim()) return;
+  const p = getProf();
+  p.savedMeals.unshift({
+    name: '🍽 ' + name.trim().slice(0, 22),
+    p: mealBolus.p,
+    f: mealBolus.f,
+    c: mealBolus.c,
+    gi: mealBolus.gi
+  });
+  if (p.savedMeals.length > 8) p.savedMeals = p.savedMeals.slice(0, 8);
+  saveStorage();
+  renderApp();
+}
+
+function deletePresetMeal(idx, e) {
+  if (e) e.stopPropagation();
+  const p = getProf();
+  p.savedMeals.splice(idx, 1);
+  saveStorage();
+  renderApp();
+}
+
+function addMealToDailyTracker() {
+  const p = getProf();
+  const kcal = Math.round(mealBolus.p * 4 + mealBolus.f * 9 + mealBolus.c * 4);
+  p.dailyTracker.p += mealBolus.p;
+  p.dailyTracker.f += mealBolus.f;
+  p.dailyTracker.c += mealBolus.c;
+  p.dailyTracker.kcal += kcal;
+  const tStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  p.dailyTracker.entries.unshift({ time: tStr, p: mealBolus.p, f: mealBolus.f, c: mealBolus.c, kcal });
+  saveStorage();
+  renderApp();
+}
+
+function resetDailyTracker() {
+  const p = getProf();
+  p.dailyTracker = { date: getTodayStr(), p: 0, f: 0, c: 0, kcal: 0, entries: [] };
+  saveStorage();
+  renderApp();
+}
+
+// Умный парсер текста из FatSecret / Yazio / заметок
+function parseSmartFoodText(rawText) {
+  if (!rawText || !rawText.trim()) return false;
+  const txt = rawText.toLowerCase().replace(/,/g, '.');
+
+  const pMatch = txt.match(/(?:бел[а-я]*|б|prot[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+  const fMatch = txt.match(/(?:жир[а-я]*|ж|fat[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+  const cMatch = txt.match(/(?:угл[а-я]*|у|carb[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
+
+  if (pMatch || fMatch || cMatch) {
+    if (pMatch) mealBolus.p = Math.round(parseFloat(pMatch[1]));
+    if (fMatch) mealBolus.f = Math.round(parseFloat(fMatch[1]));
+    if (cMatch) mealBolus.c = Math.round(parseFloat(cMatch[1]));
+    mealBolus.customEdited = true;
+    renderApp();
+    return true;
+  }
+
+  // Если просто 3 числа через пробел или слэш (например: "35 15 48" или "35/15/48")
+  const nums = txt.match(/\d+(?:\.\d+)?/g);
+  if (nums && nums.length >= 3) {
+    mealBolus.p = Math.round(parseFloat(nums[0]));
+    mealBolus.f = Math.round(parseFloat(nums[1]));
+    mealBolus.c = Math.round(parseFloat(nums[2]));
+    mealBolus.customEdited = true;
+    renderApp();
+    return true;
+  }
+  return false;
+}
+
+function switchProfile(pk) {
+  appData.activeProfile = pk;
+  mealBolus.initialized = false;
+  mealBolus.customEdited = false;
+  saveStorage();
+  renderApp();
+}
+
+function applySmartMacros(protG, fatG) {
+  const p = getProf();
+  p.protGkg = protG;
+  p.fatGkg = fatG;
+  mealBolus.customEdited = false;
+  saveStorage();
+  renderApp();
+}
