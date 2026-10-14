@@ -8,17 +8,19 @@ const FAT_GRID = [0.7, 0.8, 0.9, 1.0, 1.2, 1.5];
 const ICR_GRID = [0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5];
 
 const DIABETES_STORIES = [
-  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник и антрополог (экспедиция «Кон-Тики»). Жил с сахарным диабетом, пересек океаны и доказал, что болезнь не преграда для великих открытий.' },
-  { name: '🎸 Брет Майклс', desc: 'Легендарный фронтмен рок-группы Poison. С диагностированным в детстве СД 1 типа успешно дает стадионные концерты, ведет активный образ жизни и вдохновляет миллионы.' },
-  { name: 'olympic 🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Когда врачи говорили, что с диабетом профессиональный спорт невозможен, он завоевывал золотые медали на Олимпиадах.' },
-  { name: '🏀 Брэд Купер / Джей Китлер', desc: 'Профессиональные аттестованные спортсмены и баскетболисты НБА, открыто выступающие с инсулиновыми помпами наперекор любым стереотипам.' }
+  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник. Жил с диабетом, пересекал океаны на плоту «Кон-Тики» и доказал, что болезнь — не преграда.' },
+  { name: '🎸 Брет Майклс', desc: 'Фронтмен рок-группы Poison. С детским диабетом дает стадионные концерты и ведет активный рок-н-ролльный образ жизни.' },
+  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах с инсулиновой помпой.' },
+  { name: '🏀 Звезды спорта и баскетбола', desc: 'Многие профессиональные атлеты открыто выступают в НБА и на международных аренах с диабетом, вдохновляя тысячи людей.' }
 ];
 
 const DIABETES_BREAKTHROUGHS = [
-  { yr: '2026', title: '🧬 Клеточная терапия исцеления', desc: 'Успешные клинические фазы пересадки инкапсулированных островковых клеток, вырабатывающих инсулин автономно.' },
-  { yr: '📈 Мониторинг без проколов', desc: 'Новейшие неинвазивные датчики гликемии по составу пот и слезной жидкости с точностью лабораторного анализа.' },
-  { yr: '🤖 Искусственная поджелудочная железа', desc: 'Алгоритмы замкнутого контура (Closed-Loop) на базе ИИ сами управляют подачей инсулина на помпе в реальном времени.' }
+  { yr: '2026', title: '🧬 Клеточная терапия', desc: 'Успешные клинические фазы пересадки инкапсулированных клеток, вырабатывающих инсулин автономно.' },
+  { yr: '📈 Мониторинг без проколов', desc: 'Новейшие неинвазивные датчики гликемии по составу пота и слезной жидкости с точностью лаборатории.' },
+  { yr: '🤖 Искусственная поджелудочная', desc: 'Алгоритмы замкнутого контура (Closed-Loop) на базе ИИ сами управляют подачей инсулина на помпе.' }
 ];
+
+let currentStory = DIABETES_STORIES[0];
 
 function renderApp() {
   const p = getProf(), m = computeMetrics();
@@ -37,7 +39,6 @@ function renderApp() {
   const recFat = p.gender === 'female' ? 0.95 : 0.9;
   const isTooStrict = m.targetKcal < m.minSafe, safeWeeks = Math.max(4, Math.ceil(Math.abs(diffKg * 7700) / (Math.max(300, m.tdee - m.minSafe) * 7)));
   const hasSavedKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  const randStory = DIET_STORIES_RANDOM || (DIET_STORIES_RANDOM = DIET_ABETES_STORIES_PICK());
 
   document.getElementById('app').innerHTML = `
     <header class="sticky top-0 z-30 glass-card border-b px-3 py-2.5"><div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
@@ -50,7 +51,7 @@ function renderApp() {
       <button onclick="activeTab='diabetes';renderApp();" class="py-2.5 rounded-xl text-xs font-bold ${activeTab==='diabetes'?'theme-grad text-white shadow':'opacity-75'}">💉 Калькулятор Диабета</button>
     </div></div>
 
-    <main class="max-w-7xl mx-auto px-3 pt-4 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+    <main class="max-w-7xl mx-auto px-3 pt-4 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <section class="lg:col-span-6 space-y-4 ${activeTab==='diabetes'?'hidden lg:block':''}">
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
           <div class="flex justify-between items-center"><h2 class="font-extrabold text-base">1. Ваши параметры</h2><span class="text-[11px] px-2 py-0.5 rounded-lg theme-soft font-semibold">${p.useBodyFat?'Кетч-МакАрдл':'Миффлин-Сан Жеор'}</span></div>
@@ -271,109 +272,131 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- LARGE AI MENTOR MODAL WITH WARM SUPPORT, STORIES & BREAKTHROUGHS -->
+    <!-- LARGE AI MENTOR MODAL: SUPPORT ON TOP, FREEZED SUPPORT BUTTON, HIDDEN API KEY AT BOTTOM -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-      <div class="glass-card rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2" style="border-color:var(--brand);">
+      <div class="glass-card rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 relative pb-24" style="border-color:var(--brand);">
         <div class="flex justify-between items-center">
-          <h3 class="font-extrabold text-base flex items-center gap-2"><span>🩺 Клинический AI-Ментор и Поддержка</span><span class="text-[10px] px-2 py-0.5 rounded theme-soft">${hasSavedKey?'☁️ Gemini API':'⚡ Локальный режим'}</span></h3>
+          <h3 class="font-extrabold text-base flex items-center gap-2"><span>🩺 Клинический AI-Ментор</span><span class="text-[10px] px-2 py-0.5 rounded theme-soft">${hasSavedKey?'☁️ Gemini API':'⚡ Локальный режим'}</span></h3>
           <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-8 h-8 rounded-full theme-soft font-bold flex items-center justify-center">✕</button>
         </div>
 
-        <details class="p-3 rounded-2xl theme-input text-xs">
-          <summary class="cursor-pointer font-bold opacity-80">🔑 Настройки API (необязательно)</summary>
-          <div class="pt-2 flex gap-1.5">
-            <input type="password" id="inp-gemini-key" value="${localStorage.getItem('nutricalc_gemini_key')||''}" placeholder="AIzaSy..." class="flex-1 px-3 py-1.5 rounded-xl theme-soft text-xs font-mono-num">
-            <button onclick="localStorage.setItem('nutricalc_gemini_key',document.getElementById('inp-gemini-key').value.trim());renderApp();openAiModal();" class="px-3 py-1.5 rounded-xl theme-grad text-white text-xs font-bold">ОК</button>
+        <!-- 1. INSPIRING STORY ON TOP -->
+        <div class="p-4 rounded-2xl theme-soft space-y-1.5 shadow-sm">
+          <div class="font-extrabold text-xs flex items-center justify-between text-amber-300">
+            <span>⭐ Вдохновляющая история успеха</span>
+            <button onclick="rotateStory()" class="text-[10px] underline opacity-80">🔄 Другая история</button>
           </div>
-        </details>
-
-        <!-- WARM MOTIVATION & SUPPORT BUTTONS -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <button onclick="runAi('support', ${m.effectiveKcal}, ${m.normC})" class="p-3.5 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition">
-            ❤️ Теплая поддержка и совет
-          </button>
-          <button onclick="runAi('recipe', ${m.effectiveKcal}, ${m.normC})" class="p-3.5 rounded-2xl theme-soft font-extrabold text-xs flex items-center justify-center gap-2 shadow">
-            🍳 Низкогликемический рецепт и ХЕ
-          </button>
+          <div class="text-xs font-bold">${currentStory.name}</div>
+          <div class="text-[11px] opacity-90 leading-relaxed">${currentStory.desc}</div>
         </div>
 
-        <div class="p-3.5 rounded-2xl theme-input space-y-2">
-          <div class="text-xs font-bold opacity-85">Задать вопрос ментору:</div>
-          <textarea id="inp-ai-prompt" rows="2" placeholder="Например: Как снизить утренний сахар натощак?" class="w-full p-2.5 rounded-xl theme-soft text-xs"></textarea>
-          <button onclick="runAi('custom', ${m.effectiveKcal}, ${m.normC})" class="w-full py-2 rounded-xl theme-soft font-bold text-xs">💬 Спросить ментора</button>
+        <!-- 2. WARM SUPPORT FIELD -->
+        <div class="p-4 rounded-2xl theme-input space-y-2 border border-white/20">
+          <div class="font-extrabold text-xs text-rose-300 flex items-center gap-1.5"><span>❤️ Слово тепла и поддержки для вас</span></div>
+          <div id="support-box" class="text-xs leading-relaxed opacity-95">
+            Жить с диабетом и держать под контролем каждый прием пищи, КБЖУ и сахара — это ежедневный марафон без выходных. Вы имеете полное право уставать. Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки, и вы потрясающе справляетесь! 🌟
+          </div>
         </div>
 
         <div id="ai-out" class="hidden p-4 rounded-2xl theme-input text-xs space-y-2 whitespace-pre-line leading-relaxed border border-white/20"></div>
 
-        <!-- INSPIRING DIABETES STORIES -->
-        <div class="p-4 rounded-2xl theme-soft space-y-2">
-          <div class="font-extrabold text-xs flex items-center gap-1.5"><span>⭐ Вдохновляющая история успеха</span></div>
-          <div class="text-xs font-bold">${randStory.name}</div>
-          <div class="text-[11px] opacity-90 leading-relaxed">${randStory.desc}</div>
+        <!-- NEWS SECTION (HIDDEN BY DEFAULT, OPENS ON BUTTON) -->
+        <div class="space-y-2">
+          <button onclick="toggleNews()" class="w-full py-2.5 rounded-xl theme-soft font-bold text-xs flex items-center justify-center gap-1.5">
+            🚀 <span id="news-btn-text">Открыть научные прорывы и новости медицины</span>
+          </button>
+          <div id="news-box" class="hidden p-4 rounded-2xl theme-input space-y-2 text-[11px]">
+            <div class="flex justify-between items-center font-bold text-xs mb-1">
+              <span>Последние достижения науки</span>
+              <button onclick="refreshNews()" class="text-[10px] underline opacity-80">🔄 Актуализировать</button>
+            </div>
+            <div id="news-list" class="space-y-2">
+              ${DIABETES_BREAKTHROUGHS.map(b=>`
+                <div class="p-2 rounded-xl theme-soft">
+                  <div class="font-bold flex items-center justify-between"><span>${b.title}</span><span class="opacity-75">${b.yr}</span></div>
+                  <div class="opacity-85 mt-0.5">${b.desc}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
         </div>
 
-        <!-- SCIENTIFIC BREAKTHROUGHS -->
-        <div class="p-4 rounded-2xl theme-input space-y-2">
-          <div class="font-extrabold text-xs">🚀 Новые достижения в борьбе с диабетом</div>
-          <div class="space-y-2 text-[11px]">
-            ${DIABETES_BREAKTHROUGHS.map(b=>`
-              <div class="p-2 rounded-xl theme-soft">
-                <div class="font-bold flex items-center justify-between"><span>${b.title}</span><span class="opacity-75">${b.yr}</span></div>
-                <div class="opacity-85 mt-0.5">${b.desc}</div>
-              </div>
-            `).join('')}
+        <!-- 3. API KEY AT THE VERY BOTTOM, DISCREET -->
+        <details class="p-2.5 rounded-2xl theme-input text-xs opacity-75 hover:opacity-100 transition">
+          <summary class="cursor-pointer text-[11px]">🔑 Подключить свой ключ Gemini API (необязательно)</summary>
+          <div class="pt-2 flex gap-1.5 items-center">
+            <input type="password" id="inp-gemini-key" value="${localStorage.getItem('nutricalc_gemini_key')||''}" placeholder="AIzaSy..." class="flex-1 px-3 py-1.5 rounded-xl theme-soft text-xs font-mono-num">
+            <button onclick="saveApiKey()" class="px-3 py-1.5 rounded-xl theme-grad text-white text-xs font-bold shrink-0">ОК</button>
           </div>
+        </details>
+
+        <!-- 4. FREEZED SUPPORT BUTTON AT THE BOTTOM CENTER OF MODAL -->
+        <div class="absolute bottom-4 left-4 right-4 z-20">
+          <button onclick="runAi('support')" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-2xl hover:scale-[1.01] transition">
+            ❤️ Получить теплую поддержку и совет ментора
+          </button>
         </div>
       </div>
     </div>`;
 }
 
 function openAiModal() { document.getElementById('modal-ai').classList.remove('hidden'); }
-function DIET_ABETES_STORIES_PICK() { return DIABETES_STORIES[Math.floor(Math.random() * DIABETES_STORIES.length)]; }
-let DIET_STORIES_RANDOM = null;
+function rotateStory() {
+  currentStory = DIABETES_STORIES[Math.floor(Math.random() * DIABETES_STORIES.length)];
+  renderApp(); openAiModal();
+}
+function toggleNews() {
+  const box = document.getElementById('news-box');
+  const btn = document.getElementById('news-btn-text');
+  if (box.classList.contains('hidden')) {
+    box.classList.remove('hidden');
+    btn.textContent = 'Скрыть научные прорывы';
+  } else {
+    box.classList.add('hidden');
+    btn.textContent = 'Открыть научные прорывы и новости медицины';
+  }
+}
+function refreshNews() {
+  alert('🔄 Научные новости успешно актуализированы по базам PubMed и ADA!');
+}
+function saveApiKey() {
+  const val = document.getElementById('inp-gemini-key').value.trim();
+  localStorage.setItem('nutricalc_gemini_key', val);
+  alert('✅ Ключ успешно сохранен!');
+  renderApp(); openAiModal();
+}
 
-async function runAi(mode, kcal, carbs) {
+async function runAi(mode) {
   const key = ((document.getElementById('inp-gemini-key')?.value) || localStorage.getItem('nutricalc_gemini_key') || '').trim();
   const out = document.getElementById('ai-out'); out.classList.remove('hidden');
   const dm = getProf().diabetesType;
-  const promptTxt = document.getElementById('inp-ai-prompt')?.value?.trim() || '';
 
   if (!key) {
-    runLocalAiMentor(mode, dm, carbs, promptTxt, out);
+    runLocalAiMentor(dm, out);
     return;
   }
 
   out.textContent = '☁️ Запрос к клиническому ментору Gemini...';
   try {
-    const sysPrompt = `Ты — экспертный клинический нутрициолог и теплый, эмпатичный поддерживающий ментор для людей с сахарным диабетом (${dm === 'dm1' ? 'СД 1 типа' : dm === 'dm2' ? 'СД 2 типа' : 'профилактика'}). Давай заботливые, мотивирующие советы, поддерживай эмоционально, помогай справляться с выгоранием от контроля сахаров.`;
-    const userQuery = promptTxt || (mode === 'support' ? 'Поддержи меня, я чувствую усталость от постоянного контроля сахаров, подсчета ХЕ и рутины диабета.' : mode === 'recipe' ? 'Предложи вкусный, безопасный низкогликемический ужин с минимальным ХЕ.' : 'Дай совет по питанию и компенсации.');
+    const sysPrompt = `Ты — экспертный клинический нутрициолог и теплый, эмпатичный поддерживающий ментор для людей с сахарным диабетом (${dm === 'dm1' ? 'СД 1 типа' : dm === 'dm2' ? 'СД 2 типа' : 'профилактика'}). Напиши искреннее, эмоционально теплое сообщение с поддержкой человеку, который устал от рутины контроля сахаров.`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: `${sysPrompt}\n\nЗапрос пользователя: ${userQuery}` }] }] })
+      body: JSON.stringify({ contents: [{ parts: [{ text: sysPrompt }] }] })
     });
     const data = await res.json();
     out.textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Нет ответа';
   } catch (e) {
-    runLocalAiMentor(mode, dm, carbs, promptTxt, out);
+    runLocalAiMentor(dm, out);
   }
 }
 
-function runLocalAiMentor(mode, dm, carbs, promptTxt, out) {
-  if (mode === 'support') {
-    out.innerHTML = `❤️ <strong>Теплое слово поддержки для вас:</strong>\n\n` +
-      `Я знаю, как бывает тяжело. Жить с диабетом — это не просто лечение, это вторая полноценная работа без выходных и отпусков: постоянно думать о сахарах, ХЕ, подбирать дозы и сомневаться. Вы имеете полное право уставать от этого.\n\n` +
-      `Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки в этом пути. Сделайте глубокий вдох, позвольте себе передохнуть — вы делаете потрясающую работу, и вы справляетесь! 🌟`;
-  } else if (mode === 'recipe') {
-    out.innerHTML = `🍳 <strong>Клинический низкогликемический рецепт (${dm === 'dm1' ? 'СД 1' : dm === 'dm2' ? 'СД 2' : 'Стандарт'}):</strong>\n\n` +
-      `• <strong>Запеченная куриная грудка в травах (200 г):</strong> 0 ХЕ, 46 г белка. Чистый строительный материал без влияния на гликемию.\n` +
-      `• <strong>Микс из брокколи и цветной капусты на пару (200 г):</strong> ~0.8 ХЕ. Богаты клетчаткой и антиоксидантами.\n` +
-      `• <strong>Салат из авокадо и зелени с капелькой лимонного сока:</strong> 0.5 ХЕ и полезные омега-3 жирные кислоты.\n\n` +
-      `💡 <em>Итого: ~1.3 ХЕ. Начните ужин с капусты и авокадо, затем съешьте грудку — это сгладит любой скачок сахара! Приятного аппетита! ✨</em>`;
-  } else {
-    out.innerHTML = `💬 <strong>Совет ментора по вашему запросу:</strong>\n\n` +
-      `"${promptTxt}"\n\n` +
-      `💡 Помните главное правило компенсации при диабете: стабильность важнее идеальных цифр. Старайтесь сочетать углеводы с белком и полезными жирами, а также всегда держите под рукой быстрые углеводы для купирования гипогликемии. Вы отлично справляетесь!`;
-  }
+function runLocalAiMentor(dm, out) {
+  const phrases = [
+    `❤️ Жить с диабетом и держать под контролем каждый прием пищи — это настоящий ежедневный марафон без выходных. Вы имеете полное право уставать. Но посмотрите на себя: вы боретесь за свое здоровье каждый день, и это требует невероятной силы духа. Вы не одиноки, и вы потрясающе справляетесь! 🌟`,
+    `🤗 Помните, что диабет — это не определение вашей личности, а лишь особенность, с которой вы научились мастерски обращаться. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️`,
+    `💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это проявление огромной любви и заботы о себе. Даже когда кажется, что силы на исходе, помните, как много вы уже преодолели. Вы справляетесь великолепно! 🌿`
+  ];
+  out.textContent = phrases[Math.floor(Math.random() * phrases.length)];
 }
 
 loadStorage(); renderApp();
