@@ -116,6 +116,7 @@ function setMealTime(slot) {
   renderApp();
 }
 
+// УМНЫЙ КЛИНИЧЕСКИЙ РАСЧЕТ: Учет торможения углеводов жирами («Эффект пиццы») + белковый глюконеогенез (БЖЕ)
 function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const xe = +(cGrams / 12).toFixed(1);
@@ -130,8 +131,12 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
 
   const effIcr = +(p.icr * timeMult).toFixed(2);
   const carbUnits = +(xe * effIcr).toFixed(1);
-  const bjeUnits = bje >= 1.0 ? +(bje * effIcr * 0.5).toFixed(1) : 0;
+  
+  // При высокой доле жиров (>30г) + углеводов возникает временная жировая инсулинорезистентность (коэф. БЖЕ 0.55 вместо 0.5)
+  const bjeFactor = (fGrams >= 30 && cGrams >= 25) ? 0.55 : 0.50;
+  const bjeUnits = bje >= 1.0 ? +(bje * effIcr * bjeFactor).toFixed(1) : 0;
 
+  // Расчет ДПС (коррекции по текущему сахару) с вычетом активного инсулина (IOB)
   const isf = dayPlan ? dayPlan.effectiveIsf : 2.5;
   let rawDps = 0;
   let safeDps = 0;
@@ -150,13 +155,21 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     }
   }
 
-  const splitWaves = bjeUnits >= 0.4 && !ins.coversBJE;
-  const basePre = splitWaves ? carbUnits : +(carbUnits + bjeUnits).toFixed(1);
-  const preUnits = Math.max(0, +(basePre + safeDps).toFixed(1));
-  const postUnits = splitWaves ? bjeUnits : 0;
-  const totalUnits = Math.max(0, +(preUnits + postUnits).toFixed(1));
-  const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : 5));
+  // ЭФФЕКТ ПИЦЦЫ / БУРГЕРА: Если много жиров (>=25г) и есть углеводы (>=24г), жир физически тормозит всасывание углеводов.
+  // Чтобы избежать гипы на пике ультракороткого инсулина, часть углеводного болюса (25-30%) переносится во второй укол!
+  const isPizzaEffect = !ins.coversBJE && fGrams >= 25 && cGrams >= 24;
+  const delayedCarbShare = isPizzaEffect ? (fGrams >= 40 ? 0.30 : 0.25) : 0;
+  const delayedCarbUnits = +(carbUnits * delayedCarbShare).toFixed(1);
+  const upfrontCarbUnits = +(carbUnits - delayedCarbUnits).toFixed(1);
 
+  const splitWaves = (bjeUnits >= 0.4 || delayedCarbUnits >= 0.4) && !ins.coversBJE;
+  const basePre = splitWaves ? upfrontCarbUnits : +(carbUnits + bjeUnits).toFixed(1);
+  const preUnits = Math.max(0, +(basePre + safeDps).toFixed(1));
+  const postUnits = splitWaves ? +(bjeUnits + delayedCarbUnits).toFixed(1) : 0;
+  const totalUnits = Math.max(0, +(preUnits + postUnits).toFixed(1));
+  const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
+
+  // ДИНАМИЧЕСКАЯ ПАУЗА С УЧЕТОМ ТОРМОЖЕНИЯ ЖИРАМИ И БЕЛКАМИ
   let waitMin = ins.baseWait;
   if (mealBolus.gi === 'low') waitMin -= 7;
   else if (mealBolus.gi === 'high') waitMin += 7;
@@ -164,19 +177,56 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   if (mealTimeSlot === 'evening' || mealTimeSlot === 'night') waitMin -= 4;
   if (hasBg && bgVal > 8.5) waitMin += 5;
 
+  // Жиры обволакивают желудок и гасят скорость даже быстрых углеводов:
+  if (fGrams >= 35) {
+    waitMin -= 10; // Сильное жировое торможение
+  } else if (fGrams >= 20) {
+    waitMin -= 6;  // Умеренное жировое торможение
+  }
+  if (pGrams >= 45 && cGrams > 0) {
+    waitMin -= 3;  // Большая порция белка также замедляет опорожнение желудка
+  }
+
   let dynamicWaitText = ins.preMin;
   if (hasBg && bgVal < 4.4) {
     dynamicWaitText = '⚠️ СНАЧАЛА купируйте низкий сахар, укол ПОСЛЕ начала еды!';
+  } else if (fGrams >= 28 && mealBolus.gi === 'high') {
+    dynamicWaitText = waitMin <= 2
+      ? '⚡ Жир затормозит быстрые углеводы! Колите прямо перед едой (без длинной паузы)'
+      : `⚡ Пауза сокращена до ~${waitMin} мин (жиры ${fGrams}г замедлят высокий ГИ)`;
   } else if (waitMin <= 0) {
-    dynamicWaitText = 'Укол во время еды или сразу после (медленные углеводы)';
+    dynamicWaitText = 'Укол во время еды или сразу после (еда усваивается медленно)';
   } else {
-    dynamicWaitText = `Пауза ~${waitMin}–${waitMin + 4} мин ПЕРЕД едой (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
+    dynamicWaitText = `Пауза ~${waitMin}–${waitMin + 4} мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'}${fGrams >= 20 ? `, учтены жиры ${fGrams}г` : ''})`;
+  }
+
+  // Точный тайминг второго укола (зависит от того, что доминирует — жировое замедление или белковый глюконеогенез)
+  let postTimingText = ins.postTiming;
+  if (splitWaves) {
+    if (isPizzaEffect) {
+      postTimingText = 'через 60–75 мин ПОСЛЕ еды (задержанные жиром угл. + БЖЕ)';
+    } else if (pGrams >= 35 && fGrams < 20) {
+      postTimingText = 'через 90–120 мин ПОСЛЕ еды (на поздний выброс глюкозы из белка)';
+    } else {
+      postTimingText = 'через 75–90 мин ПОСЛЕ еды (на волну БЖЕ)';
+    }
+  }
+
+  // Клиническая подсказка по кинетике конкретного приема пищи
+  const kineticAlerts = [];
+  if (isPizzaEffect) {
+    kineticAlerts.push(`🍕 <strong>Эффект жирной пищи (${fGrams}г жиров):</strong> жиры тормозят всасывание даже быстрых углеводов. Чтобы избежать гипогликемии в первый час, <strong>${delayedCarbUnits} ЕД</strong> из углеводной дозы перенесено во 2-й укол.`);
+  }
+  if (pGrams >= 30) {
+    const protKcal = pGrams * 4;
+    kineticAlerts.push(`🥩 <strong>Белковый «дострел» (${pGrams}г белка = ${protKcal} ккал):</strong> через 2–4 часа печень превратит часть аминокислот в глюкозу (глюконеогенез). Это учтено во 2-й дозе (${bjeUnits} ЕД на БЖЕ).`);
   }
 
   return {
-    ins, xe, fpKcal, bje, carbUnits, bjeUnits, totalUnits, preUnits, postUnits,
-    splitWaves, waveHours, effIcr, isf, hasBg, bgVal, rawDps: +rawDps.toFixed(1),
-    safeDps, iobSubtracted, dynamicWaitText
+    ins, xe, fpKcal, bje, carbUnits, upfrontCarbUnits, delayedCarbUnits, bjeUnits,
+    totalUnits, preUnits, postUnits, splitWaves, waveHours, effIcr, isf, hasBg, bgVal,
+    rawDps: +rawDps.toFixed(1), safeDps, iobSubtracted, dynamicWaitText, postTimingText,
+    isPizzaEffect, kineticAlerts
   };
 }
 
@@ -494,7 +544,6 @@ function renderApp() {
           </div>
         </div>
 
-        <!-- CLEAN MACRO-ONLY SINGLE MEAL CALCULATOR (NO PLATES / NO FOOD DIARY) -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
           <div class="flex items-center justify-between">
             <h2 class="font-extrabold text-base">🍽 3. Разовый расчет по КБЖУ</h2>
@@ -585,21 +634,28 @@ function renderApp() {
               <div class="text-[11px] font-bold opacity-80">1️⃣ ПЕРЕД ЕДОЙ (УК ~${bolus.effIcr})</div>
               <div class="text-2xl font-extrabold font-mono-num">${bolus.preUnits} ЕД</div>
               <div class="text-[11px] opacity-95 font-semibold">⏱ ${bolus.dynamicWaitText}</div>
-              <div class="text-[10px] opacity-75">Еда: ${bolus.carbUnits} ЕД (${bolus.xe} ХЕ) ${bolus.hasBg ? `· ДПС: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД` : ''}</div>
+              <div class="text-[10px] opacity-75">На угл. сейчас: ${bolus.upfrontCarbUnits} ЕД ${bolus.hasBg ? `· ДПС: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД` : ''}</div>
             </div>
             <div class="p-3 rounded-2xl theme-input space-y-1">
-              <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДЫ (на БЖЕ)</div>
+              <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДЫ (БЖЕ + Хвост)</div>
               <div class="text-2xl font-extrabold font-mono-num">${bolus.splitWaves?`${bolus.postUnits} ЕД`:'0 ЕД'}</div>
-              <div class="text-[11px] opacity-90">⏱ ${bolus.ins.postTiming}</div>
-              <div class="text-[10px] opacity-75">БЖЕ: ${bolus.bje} (${bolus.fpKcal} ккал Б+Ж)${bolus.waveHours?` · волна ~${bolus.waveHours}ч`:''}</div>
+              <div class="text-[11px] opacity-90">⏱ ${bolus.postTimingText}</div>
+              <div class="text-[10px] opacity-75">БЖЕ: ${bolus.bjeUnits} ЕД (${bolus.bje} БЖЕ)${bolus.delayedCarbUnits > 0 ? ` + ${bolus.delayedCarbUnits} ЕД угл.` : ''}${bolus.waveHours?` · волна ~${bolus.waveHours}ч`:''}</div>
             </div>
           </div>
+
+          <!-- BIOMEDICAL KINETIC EXPLANATION ("ПИЦЦА-ЭФФЕКТ" И БЕЛКОВЫЙ ДОСТРЕЛ) -->
+          ${bolus.kineticAlerts.length > 0 ? `
+            <div class="p-3 rounded-2xl theme-soft space-y-1.5 text-[11px] leading-relaxed border border-white/15">
+              ${bolus.kineticAlerts.map(a => `<div>${a}</div>`).join('')}
+            </div>
+          ` : ''}
 
           <button onclick="logInsulinInjection(${bolus.preUnits})" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs shadow flex items-center justify-center gap-1.5">
             ✨ Зафиксировать укол ${bolus.preUnits} ЕД (Таймер активного инсулина)
           </button>
 
-          <div class="text-[10px] opacity-75 leading-relaxed">ℹ️ <strong>Итого на прием: ${bolus.totalUnits} ЕД</strong> (ХЕ + Варшавский протокол БЖЕ ISPAD + ДПС). Справочный расчет.</div>
+          <div class="text-[10px] opacity-75 leading-relaxed">ℹ️ <strong>Итого на прием: ${bolus.totalUnits} ЕД</strong> (ХЕ + Варшавский протокол БЖЕ ISPAD + кинетика жиров и белков). Справочный расчет.</div>
         </div>
       </section>
     </main>
