@@ -8,7 +8,7 @@ const FAT_GRID = [0.7, 0.8, 0.9, 1.0, 1.2, 1.5];
 const ICR_GRID = [0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5];
 
 const DIABETES_STORIES = [
-  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник и ученый. Жил с диабетом, пересекал океаны на бальсовом плоту «Кон-Тики» и доказал, что диабет — это не преграда для великих открытий.' },
+  { name: '⚖️ Сэр Торстен Хайердал', desc: 'Великий норвежский путешественник и ученый. Жил с диабетом, пересекал океаны на бальсовом плоту «Кон-Тики» и доказал, что диабет — это лишь особенность, а не преграда для великих открытий.' },
   { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С детским диабетом дает стадионные концерты, побеждает в шоу и ведет активный яркий образ жизни.' },
   { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах с инсулиновой помпой, доказывая всю силу характера.' },
   { name: '📜 Дерек Пью', desc: 'Британский спринтер и олимпиец. Успешно выступал на международных соревнованиях высочайшего уровня с диабетом 1 типа.' },
@@ -23,7 +23,7 @@ const DIABETES_SUPPORT_PHRASES = [
   `❤️ Помните, что диабет — это не диагноз и не ограничение, а особый образ жизни, требующий внимания и чуткости к себе. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️`,
   `💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это не бремя, а проявление вашей осознанности и большой любви к себе. Диабет — это особый образ жизни, в котором вы — главный капитан своего корабля! ⛵️`,
   `☀️ Вы сильнее, чем думаете. Да, диабет — это особый образ жизни со своими правилами, но каждый раз, когда вы находите баланс и делаете выбор в пользу своего здоровья — побеждаете именно вы. Гордитесь собой! 🛡️`,
-  `✨ Никакие особенности обмена веществ не способны ограничить вашу мечту, вашу радость и ваши цели. Диабет — это лишь особый образ жизни, который делает вас еще более организованным и сильным человеком. 🧸`,
+  `✨ Никакие особенности обмена веществ не способны ограничить вашу мечту, вашу радость и ваши цели. Вы управляете своей жизнью, а не болезнью. Разрешите себе иногда расслабиться — вы заслуживаете самого теплого отдыха и заботы. 🧸`,
   `🌊 Бывают дни, когда сахара идут вверх и вниз без видимых причин, и это жутко выматывает. Это нормально — чувствовать усталость. Диабет — это особый образ жизни, где важен каждый момент отдыха. Позвольте себе передохнуть! 💙`,
   `🌱 Помните, что забота о себе — это гармоничный путь. Диабет — это не болезнь, а особый образ жизни, который со временем становится естественной и привычной частью вашей гармонии. Вы на верном пути! 🌺`,
   `🎯 Ваша внимательность к своему организму вызывает искреннее восхищение. Диабет — это особый образ жизни, требующий мастерства, и вы владеете им великолепно. Доверяйте своему опыту! 🧭`,
@@ -82,17 +82,17 @@ function renderApp() {
           <div class="grid grid-cols-2 gap-2"><button onclick="setParam('gender','female')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border ${p.gender==='female'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♀ Женщина</button><button onclick="setParam('gender','male')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border ${p.gender==='male'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♂ Мужчина</button></div>
 
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('age')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ВОЗРАСТ (ЛЕТ)</span><div class="flex items-center gap-1.5"><button onclick="event.stopPropagation();setParam('age',${p.age-1})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-12 text-center font-mono-num font-extrabold text-sm">${p.age}</span><button onclick="event.stopPropagation();setParam('age',${p.age+1})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
+            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ВОЗРАСТ (ЛЕТ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('age',${p.age-1})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><input type="text" inputmode="numeric" value="${p.age}" onchange="setParam('age',this.value)" class="w-14 text-center font-mono-num font-extrabold text-sm rounded-lg py-1 theme-soft"><button onclick="setParam('age',${p.age+1})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='age'?`<div class="grid grid-cols-5 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${AGE_GRID.map(a=>`<button onclick="setParam('age',${a});toggleDropdown('age');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.age===a?'theme-grad text-white':'theme-soft'}">${a}</button>`).join('')}</div>`:''}
           </div>
 
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('height')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">РОСТ (СМ)</span><div class="flex items-center gap-1.5"><button onclick="event.stopPropagation();setParam('height',${p.height-1})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-12 text-center font-mono-num font-extrabold text-sm">${p.height}</span><button onclick="event.stopPropagation();setParam('height',${p.height+1})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
+            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">РОСТ (СМ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('height',${p.height-1})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><input type="text" inputmode="numeric" value="${p.height}" onchange="setParam('height',this.value)" class="w-14 text-center font-mono-num font-extrabold text-sm rounded-lg py-1 theme-soft"><button onclick="setParam('height',${p.height+1})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='height'?`<div class="grid grid-cols-6 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${HEIGHT_GRID.map(h=>`<button onclick="setParam('height',${h});toggleDropdown('height');" class="py-1.5 rounded-lg text-xs font-mono-num font-bold ${p.height===h?'theme-grad text-white':'theme-soft'}">${h}</button>`).join('')}</div>`:''}
           </div>
 
           <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weight')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ТЕКУЩИЙ ВЕС (КГ)</span><div class="flex items-center gap-1.5"><button onclick="event.stopPropagation();setParam('weight',${+(p.weight-0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><span class="w-14 text-center font-mono-num font-extrabold text-sm">${p.weight}</span><button onclick="event.stopPropagation();setParam('weight',${+(p.weight+0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
+            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ТЕКУЩИЙ ВЕС (КГ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('weight',${+(p.weight-0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">-</button><input type="text" inputmode="decimal" value="${p.weight}" onchange="setParam('weight',this.value)" class="w-16 text-center font-mono-num font-extrabold text-sm rounded-lg py-1 theme-soft"><button onclick="setParam('weight',${+(p.weight+0.5).toFixed(1)})" class="w-8 h-7 rounded-lg theme-soft font-bold">+</button></div></div>
             ${activeOpenDropdown==='weight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('weight',${w});toggleDropdown('weight');" class="py-1.5 rounded-lg text-[11px] font-mono-num font-bold ${p.weight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
           </div>
 
@@ -262,37 +262,34 @@ function renderApp() {
           </div>
 
           <div class="space-y-2 text-xs">
-            <!-- COMPACT MANUAL INPUT FOR PROTEIN (NO PLUS) -->
+            <!-- ACTIVE MANUAL INPUT FOR PROTEIN (NO MINUS, NO PLUS) -->
             <div class="p-3 rounded-2xl theme-input space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold">Белки:</span>
                 <div class="flex items-center gap-1.5">
-                  <button onclick="setMealBolus('p',${Math.max(0, mealBolus.p - 5)})" class="px-2.5 py-1 rounded theme-soft font-bold">-5</button>
-                  <input type="number" value="${mealBolus.p}" min="0" max="300" inputmode="numeric" onchange="setMealBolus('p',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
+                  <input type="text" inputmode="numeric" value="${mealBolus.p}" onchange="setMealBolus('p',this.value)" class="w-20 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-sm">
                   <span class="font-bold">г</span>
                 </div>
               </div>
             </div>
 
-            <!-- COMPACT MANUAL INPUT FOR FAT (NO PLUS) -->
+            <!-- ACTIVE MANUAL INPUT FOR FAT (NO MINUS, NO PLUS) -->
             <div class="p-3 rounded-2xl theme-input space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold">Жиры:</span>
                 <div class="flex items-center gap-1.5">
-                  <button onclick="setMealBolus('f',${Math.max(0, mealBolus.f - 5)})" class="px-2.5 py-1 rounded theme-soft font-bold">-5</button>
-                  <input type="number" value="${mealBolus.f}" min="0" max="200" inputmode="numeric" onchange="setMealBolus('f',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
+                  <input type="text" inputmode="numeric" value="${mealBolus.f}" onchange="setMealBolus('f',this.value)" class="w-20 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-sm">
                   <span class="font-bold">г</span>
                 </div>
               </div>
             </div>
 
-            <!-- COMPACT MANUAL INPUT FOR CARBS (NO PLUS) -->
+            <!-- ACTIVE MANUAL INPUT FOR CARBS (NO MINUS, NO PLUS) -->
             <div class="p-3 rounded-2xl theme-input space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold">Углеводы (${bolus.xe} ХЕ):</span>
                 <div class="flex items-center gap-1.5">
-                  <button onclick="setMealBolus('c',${Math.max(0, mealBolus.c - 6)})" class="px-2.5 py-1 rounded theme-soft font-bold">-6</button>
-                  <input type="number" value="${mealBolus.c}" min="0" max="300" inputmode="numeric" onchange="setMealBolus('c',this.value)" class="w-16 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-xs">
+                  <input type="text" inputmode="numeric" value="${mealBolus.c}" onchange="setMealBolus('c',this.value)" class="w-20 text-center font-mono-num font-bold rounded-lg py-1 theme-soft text-sm">
                   <span class="font-bold">г</span>
                 </div>
               </div>
