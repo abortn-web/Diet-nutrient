@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>NutriCalc Pro — Калькулятор КБЖУ и AI</title>
+  <title>NUTRIingo — Умный калькулятор КБЖУ и AI</title>
   <meta name="theme-color" id="meta-theme-color" content="#3b0764" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="NUTRIingo" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -15,7 +16,6 @@
       --card-bg: rgba(30, 27, 75, 0.78);
       --card-border: rgba(167, 139, 250, 0.28);
       --text-main: #f8fafc;
-      --text-muted: #cbd5e1;
       --brand: #7c3aed;
       --brand-accent: #4f46e5;
       --brand-soft: rgba(124, 58, 237, 0.25);
@@ -27,21 +27,13 @@
       --card-bg: rgba(255, 255, 255, 0.90);
       --card-border: rgba(10, 186, 181, 0.32);
       --text-main: #0f172a;
-      --text-muted: #475569;
       --brand: #0ABAB5;
       --brand-accent: #0d9488;
       --brand-soft: rgba(10, 186, 181, 0.16);
       --brand-border: #0ABAB5;
       --input-bg: #ffffff;
     }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg-page);
-      color: var(--text-main);
-      min-height: 100vh;
-      transition: all 0.3s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-page); color: var(--text-main); min-height: 100vh; transition: all 0.3s ease; }
     .font-mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
     .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(12px); }
     .theme-grad { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-accent) 100%); }
@@ -49,15 +41,18 @@
     .theme-input { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-main); }
     input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
     input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: rgba(148,163,184,0.35); }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%;
-      background: var(--brand); border: 2px solid #fff; margin-top: -7px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); border: 2px solid #fff; margin-top: -7px; }
   </style>
 </head>
 <body class="pb-16">
-  <div id="app">Загрузка NutriCalc Pro...</div>
- <script src="data.js"></script>
-  <script src="app.js"></script>
+  <div id="app" class="p-4 text-sm">Загрузка NUTRIingo...</div>
+  <script>
+    window.onerror = function(msg, url, line) {
+      document.getElementById('app').innerHTML = '<div style="padding:16px;background:#7f1d1d;color:#fff;border-radius:16px;">⚠️ Ошибка в файле ' + (url||'').split('/').pop() + ' (строка ' + line + '): ' + msg + '</div>';
+    };
+  </script>
+  <script src="data.js?v=2"></script>
+  <script src="app.js?v=2"></script>
+  <script src="ui.js?v=2"></script>
 </body>
 </html>
