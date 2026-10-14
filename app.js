@@ -16,9 +16,9 @@ let mealBolus = {
 };
 
 const INSULIN_TYPES = [
-  { id: 'ultrafast', name: '⚡ Сверхбыстрый инсулин', brands: 'Фиасп, Люмжев', preMin: 'За 0–5 мин до еды (или в начале еды)', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин после еды', coversBJE: false },
-  { id: 'ultralong', name: '🚀 Ультракороткий инсулин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст', preMin: 'За 10–15 мин ПЕРЕД едой', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
-  { id: 'short', name: '⏱ Короткий инсулин', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р', preMin: 'За 25–30 мин ПЕРЕД едой', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
+  { id: 'ultrafast', name: '⚡ Сверхбыстрый', brands: 'Фиасп, Люмжев', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин после еды', coversBJE: false },
+  { id: 'ultralong', name: '🚀 Ультракороткий', brands: 'НовоРапид, Хумалог', preMin: 'За 10–15 мин ПЕРЕД едой', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'short', name: '⏱ Короткий', brands: 'Актрапид, Регуляр', preMin: 'За 25–30 мин ПЕРЕД едой', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол', coversBJE: true }
 ];
 
 function getProf() {
@@ -30,17 +30,20 @@ function getProf() {
   if (!p.insulinType) p.insulinType = 'ultralong';
   if (!p.targetBg || p.targetBg < 4.0) p.targetBg = 5.6;
   if (typeof p.customIsf === 'undefined') p.customIsf = 0;
+  if (!p.penStep) p.penStep = 0.5; // Шаг ручки: 0.5 или 1 ЕД
+  if (!p.basalUnits) p.basalUnits = 12; // Доза длинного инсулина (базы)
   if (!Array.isArray(p.iobLog)) p.iobLog = [];
+  if (!p.sectionsOpen) p.sectionsOpen = { p1: true, p2: true, p3: true, ins: true, day: true, meal: true };
   return p;
 }
 
 function saveStorage() {
-  try { localStorage.setItem('nutriingo_v11', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('diaingo_v12', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('nutriingo_v11') || localStorage.getItem('nutriingo_v10') || localStorage.getItem('nutriingo_v9');
+    const raw = localStorage.getItem('diaingo_v12') || localStorage.getItem('nutriingo_v11') || localStorage.getItem('nutriingo_v10');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.profiles) appData = parsed;
@@ -62,6 +65,14 @@ function calcTDEEForWeight(w, p) {
   const singleWk = (p.workoutMins / 60) * w * 4.25;
   const workoutKcal = p.workoutMode === 'today' ? Math.round(singleWk) : Math.round((singleWk * p.workoutDays) / 7);
   return { bmr, neat, distKm, stepsKcal, workoutKcal, tdee: bmr + neat + stepsKcal + workoutKcal };
+}
+
+// Научно логичное округление дозы с учетом шага ручки (0.5 или 1 ЕД)
+function roundDose(units, step) {
+  if (!units || units <= 0) return 0;
+  const s = step === 1 ? 1 : 0.5;
+  // Медицинское округление: при диабете дозы обычно округляются математически к ближайшему шагу ручки
+  return +(Math.round(units / s) * s).toFixed(1);
 }
 
 function computeActiveIOB(p) {
@@ -133,8 +144,8 @@ function computeDailyInsulinPlan(m, p) {
     const xe = +(cG / 12).toFixed(1);
     const bje = +((pG * 4 + fG * 9) / 100).toFixed(1);
     const effIcr = +(p.icr * s.icrMult).toFixed(2);
-    const preU = +(xe * effIcr).toFixed(1);
-    const postU = (!ins.coversBJE && bje >= 1.0) ? +(bje * effIcr * 0.5).toFixed(1) : 0;
+    const preU = roundDose(xe * effIcr, p.penStep);
+    const postU = (!ins.coversBJE && bje >= 1.0) ? roundDose(bje * effIcr * 0.5, p.penStep) : 0;
     const totU = +(preU + postU).toFixed(1);
     return { ...s, cG, pG, fG, xe, bje, effIcr, preU, postU, totU };
   });
@@ -142,8 +153,8 @@ function computeDailyInsulinPlan(m, p) {
   const dayCarbBolus = +(splits.reduce((acc, s) => acc + s.preU, 0)).toFixed(1);
   const dayBjeBolus = +(splits.reduce((acc, s) => acc + s.postU, 0)).toFixed(1);
   const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
-  const estBasal = +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
-  const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1);
+  const estBasal = p.basalUnits || +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
+  const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1); // TDD = Суточный болюс + База
 
   const autoIsf = +(ins.isfRule / Math.max(10, totalDailyDose)).toFixed(1);
   const effectiveIsf = (p.customIsf && p.customIsf > 0) ? +p.customIsf.toFixed(1) : autoIsf;
@@ -336,7 +347,7 @@ function setParam(key, val) {
   const cleanVal = String(val).replace(',', '.');
   if (['age', 'height', 'steps', 'workoutDays', 'workoutMins', 'targetWeeks'].includes(key)) {
     p[key] = Math.max(0, parseInt(cleanVal, 10) || 0);
-  } else if (['weight', 'bodyFat', 'neatLevel', 'targetWeight', 'presetDelta', 'protGkg', 'fatGkg', 'icr', 'targetBg', 'customIsf'].includes(key)) {
+  } else if (['weight', 'bodyFat', 'neatLevel', 'targetWeight', 'presetDelta', 'protGkg', 'fatGkg', 'icr', 'targetBg', 'customIsf', 'basalUnits', 'penStep'].includes(key)) {
     p[key] = Math.max(0, parseFloat(cleanVal) || 0);
   } else {
     p[key] = val;
@@ -368,7 +379,6 @@ function setMealBolus(k, v) {
   renderApp();
 }
 
-// Быстрый парсер чистых цифр БЖУ из стороннего трекера
 function parseSmartFoodText(rawText) {
   if (!rawText || !rawText.trim()) return false;
   const txt = rawText.toLowerCase().replace(/,/g, '.');
