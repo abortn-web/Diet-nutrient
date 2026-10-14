@@ -1,24 +1,15 @@
 let appData = {
   activeProfile: 'p1',
-  profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES)),
-  customFoods: [],
-  templates: [
-    { name: 'Белковый завтрак', items: [{ foodId: 'f7', grams: 110, isCooked: false }, { foodId: 'f8', grams: 150, isCooked: false }, { foodId: 'f18', grams: 8, isCooked: false }] },
-    { name: 'Ужин Ширатаки 0 ккал', items: [{ foodId: 'f1', grams: 220, isCooked: false }, { foodId: 'f17', grams: 200, isCooked: false }, { foodId: 'f19', grams: 30, isCooked: false }] }
-  ]
+  profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES))
 };
 
 let activeTab = 'calc';
-let activeMeal = 'breakfast';
-let activeCategory = 'Все';
-let searchQuery = '';
-let lastLocalPresets = [];
-let customBolusMeal = { useCustom: false, p: 30, f: 15, c: 36 };
+let mealBolus = { p: 35, f: 15, c: 48 };
 
 const INSULIN_TYPES = [
-  { id: 'ultrafast', name: '⚡ Сверхбыстрый', brands: 'Фиасп, Люмжев', preMin: '0–5 мин до еды (или в начале еды)', postTiming: 'через 60–90 мин после еды', coversBJE: false },
-  { id: 'ultralong', name: '🚀 Ультракороткий', brands: 'НовоРапид, Хумалог, Апидра, РинФаст', preMin: 'за 10–15 мин ПЕРЕД едой', postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
-  { id: 'short', name: '⏱ Короткий', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р', preMin: 'за 25–30 мин ПЕРЕД едой', postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
+  { id: 'ultrafast', name: '⚡ Сверхбыстрый инсулин', brands: 'Фиасп, Люмжев', preMin: 'За 0–5 мин до еды (или в начале еды)', postTiming: 'через 60–90 мин после еды', coversBJE: false },
+  { id: 'ultralong', name: '🚀 Ультракороткий инсулин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст', preMin: 'За 10–15 мин ПЕРЕД едой', postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'short', name: '⏱ Короткий инсулин', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р', preMin: 'За 25–30 мин ПЕРЕД едой', postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
 
 function getProf() {
@@ -30,11 +21,11 @@ function getProf() {
   if (!p.insulinType) p.insulinType = 'ultralong';
   return p;
 }
-function getAllFoods() { return [...appData.customFoods, ...DEFAULT_FOODS]; }
-function saveStorage() { try { localStorage.setItem('nutriingo_v4', JSON.stringify(appData)); } catch (e) {} }
+
+function saveStorage() { try { localStorage.setItem('nutriingo_v5', JSON.stringify(appData)); } catch (e) {} }
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('nutriingo_v4') || localStorage.getItem('nutriingo_v3');
+    const raw = localStorage.getItem('nutriingo_v5') || localStorage.getItem('nutriingo_v4');
     if (raw) { const parsed = JSON.parse(raw); if (parsed && parsed.profiles) appData = parsed; }
   } catch (e) {}
 }
@@ -61,15 +52,49 @@ function computeBolusForMeal(pGrams, fGrams, cGrams, p) {
   const fpKcal = Math.round(pGrams * 4 + fGrams * 9);
   const bje = +(fpKcal / 100).toFixed(1);
   const carbUnits = +(xe * p.icr).toFixed(1);
-  // По Варшавскому методу (ISPAD): если БЖЕ >= 1.0 (от 100 ккал из Б+Ж), учитываем с коэфф. 0.5 от УК
   const bjeUnits = bje >= 1.0 ? +(bje * p.icr * 0.5).toFixed(1) : 0;
   const totalUnits = +(carbUnits + bjeUnits).toFixed(1);
   const splitWaves = bjeUnits >= 0.4 && !ins.coversBJE;
   const preUnits = splitWaves ? carbUnits : totalUnits;
   const postUnits = splitWaves ? bjeUnits : 0;
-  // Продолжительность медленной волны по числу БЖЕ: 1 БЖЕ = 3ч, 2 БЖЕ = 4ч, >=3 БЖЕ = 5-6ч
   const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : 5));
   return { ins, xe, fpKcal, bje, carbUnits, bjeUnits, totalUnits, preUnits, postUnits, splitWaves, waveHours };
+}
+
+function computeDailyInsulinPlan(m, p) {
+  const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
+  const dayXE = +(m.normC / 12).toFixed(1);
+  const dayFpKcal = Math.round(m.normP * 4 + m.normF * 9);
+  const dayBJE = +(dayFpKcal / 100).toFixed(1);
+
+  const dayCarbBolus = +(dayXE * p.icr).toFixed(1);
+  const dayBjeBolus = +(dayBJE * p.icr * 0.45).toFixed(1);
+  const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
+
+  // Базальный (продленный) инсулин обычно составляет ~45% от общей суточной потребности (или ~0.22-0.28 ЕД/кг)
+  const estBasal = +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
+  const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1);
+
+  // Распределение по приемам пищи с учетом циркадной чувствительности к инсулину (утром УК выше на 15%, вечером ниже на 10%)
+  const splits = [
+    { name: '🌅 Завтрак (30%)', share: 0.30, icrMult: 1.15 },
+    { name: '☀️ Обед (35%)', share: 0.35, icrMult: 1.00 },
+    { name: '🌙 Ужин (25%)', share: 0.25, icrMult: 0.90 },
+    { name: '🍏 Перекус (10%)', share: 0.10, icrMult: 1.00 }
+  ].map(s => {
+    const cG = Math.round(m.normC * s.share);
+    const pG = Math.round(m.normP * s.share);
+    const fG = Math.round(m.normF * s.share);
+    const xe = +(cG / 12).toFixed(1);
+    const bje = +((pG * 4 + fG * 9) / 100).toFixed(1);
+    const effIcr = +(p.icr * s.icrMult).toFixed(2);
+    const preU = +(xe * effIcr).toFixed(1);
+    const postU = (!ins.coversBJE && bje >= 1.0) ? +(bje * effIcr * 0.45).toFixed(1) : 0;
+    const totU = +(preU + postU).toFixed(1);
+    return { ...s, cG, pG, fG, xe, bje, effIcr, preU, postU, totU };
+  });
+
+  return { ins, dayXE, dayBJE, dayCarbBolus, dayBjeBolus, totalBolusDay, estBasal, totalDailyDose, splits };
 }
 
 function computeMetrics() {
@@ -80,16 +105,10 @@ function computeMetrics() {
   const targetBmi = +(p.targetWeight / (hm * hm)).toFixed(1);
 
   let targetKcal = curr.tdee, dailyDelta = 0, weeklyKg = 0;
-  if (p.goalMode === 'custom') {
-    const diffKg = p.targetWeight - p.weight;
-    dailyDelta = Math.round((diffKg * 7700) / Math.max(7, p.targetWeeks * 7));
-    weeklyKg = +(diffKg / p.targetWeeks).toFixed(2);
-    targetKcal = curr.tdee + dailyDelta;
-  } else {
-    dailyDelta = Math.round(curr.tdee * p.presetDelta);
-    targetKcal = curr.tdee + dailyDelta;
-    weeklyKg = +((dailyDelta * 7) / 7700).toFixed(2);
-  }
+  const diffKg = p.targetWeight - p.weight;
+  dailyDelta = Math.round((diffKg * 7700) / Math.max(7, p.targetWeeks * 7));
+  weeklyKg = +(diffKg / p.targetWeeks).toFixed(2);
+  targetKcal = curr.tdee + dailyDelta;
 
   let minSafe = p.gender === 'female' ? Math.max(1150, Math.round(curr.bmr * 0.88)) : Math.max(1400, Math.round(curr.bmr * 0.90));
   if (p.diabetesType !== 'none') minSafe = Math.max(minSafe, Math.round(curr.tdee * 0.78));
@@ -178,14 +197,6 @@ function setParam(key, val) {
   saveStorage(); renderApp();
 }
 
-function setCustomBolusMacro(k, v) { customBolusMeal[k] = k === 'useCustom' ? !!v : Math.max(0, parseFloat(v) || 0); renderApp(); }
+function setMealBolus(k, v) { mealBolus[k] = Math.max(0, Math.round(parseFloat(v) || 0)); renderApp(); }
 function switchProfile(pk) { appData.activeProfile = pk; saveStorage(); renderApp(); }
 function applySmartMacros(protG, fatG) { const p = getProf(); p.protGkg = protG; p.fatGkg = fatG; saveStorage(); renderApp(); }
-function getItemEffectiveGrams(item, food) { return (!item.isCooked || !food.cookRatio) ? item.grams : Math.round(item.grams / food.cookRatio); }
-
-function addFoodToMeal(foodId, grams = 100) {
-  const list = getProf().diary[activeMeal];
-  const ex = list.find(i => i.foodId === foodId && !i.isCooked);
-  if (ex) ex.grams += grams; else list.push({ foodId, grams, isCooked: false });
-  saveStorage(); renderApp();
-}
