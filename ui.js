@@ -57,6 +57,7 @@ let aiModeEnabled = localStorage.getItem('nutricalc_ai_mode') === 'true';
 let isAiLoading = false;
 let newsBoxOpen = false;
 let aiTurnCounter = 0;
+let showDiabetesToast = false;
 
 function toggleDropdown(id) {
   activeOpenDropdown = activeOpenDropdown === id ? null : id;
@@ -116,7 +117,6 @@ function setMealTime(slot) {
   renderApp();
 }
 
-// УМНЫЙ КЛИНИЧЕСКИЙ РАСЧЕТ: Учет торможения углеводов жирами («Эффект пиццы») + белковый глюконеогенез (БЖЕ)
 function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const xe = +(cGrams / 12).toFixed(1);
@@ -131,12 +131,9 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
 
   const effIcr = +(p.icr * timeMult).toFixed(2);
   const carbUnits = +(xe * effIcr).toFixed(1);
-  
-  // При высокой доле жиров (>30г) + углеводов возникает временная жировая инсулинорезистентность (коэф. БЖЕ 0.55 вместо 0.5)
   const bjeFactor = (fGrams >= 30 && cGrams >= 25) ? 0.55 : 0.50;
   const bjeUnits = bje >= 1.0 ? +(bje * effIcr * bjeFactor).toFixed(1) : 0;
 
-  // Расчет ДПС (коррекции по текущему сахару) с вычетом активного инсулина (IOB)
   const isf = dayPlan ? dayPlan.effectiveIsf : 2.5;
   let rawDps = 0;
   let safeDps = 0;
@@ -155,8 +152,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     }
   }
 
-  // ЭФФЕКТ ПИЦЦЫ / БУРГЕРА: Если много жиров (>=25г) и есть углеводы (>=24г), жир физически тормозит всасывание углеводов.
-  // Чтобы избежать гипы на пике ультракороткого инсулина, часть углеводного болюса (25-30%) переносится во второй укол!
   const isPizzaEffect = !ins.coversBJE && fGrams >= 25 && cGrams >= 24;
   const delayedCarbShare = isPizzaEffect ? (fGrams >= 40 ? 0.30 : 0.25) : 0;
   const delayedCarbUnits = +(carbUnits * delayedCarbShare).toFixed(1);
@@ -169,7 +164,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const totalUnits = Math.max(0, +(preUnits + postUnits).toFixed(1));
   const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
 
-  // ДИНАМИЧЕСКАЯ ПАУЗА С УЧЕТОМ ТОРМОЖЕНИЯ ЖИРАМИ И БЕЛКАМИ
   let waitMin = ins.baseWait;
   if (mealBolus.gi === 'low') waitMin -= 7;
   else if (mealBolus.gi === 'high') waitMin += 7;
@@ -177,30 +171,24 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   if (mealTimeSlot === 'evening' || mealTimeSlot === 'night') waitMin -= 4;
   if (hasBg && bgVal > 8.5) waitMin += 5;
 
-  // Жиры обволакивают желудок и гасят скорость даже быстрых углеводов:
   if (fGrams >= 35) {
-    waitMin -= 10; // Сильное жировое торможение
+    waitMin -= 10;
   } else if (fGrams >= 20) {
-    waitMin -= 6;  // Умеренное жировое торможение
+    waitMin -= 6;
   }
   if (pGrams >= 45 && cGrams > 0) {
-    waitMin -= 3;  // Большая порция белка также замедляет опорожнение желудка
+    waitMin -= 3;
   }
 
   let dynamicWaitText = ins.preMin;
   if (hasBg && bgVal < 4.4) {
     dynamicWaitText = '⚠️ СНАЧАЛА купируйте низкий сахар, укол ПОСЛЕ начала еды!';
-  } else if (fGrams >= 28 && mealBolus.gi === 'high') {
-    dynamicWaitText = waitMin <= 2
-      ? '⚡ Жир затормозит быстрые углеводы! Колите прямо перед едой (без длинной паузы)'
-      : `⚡ Пауза сокращена до ~${waitMin} мин (жиры ${fGrams}г замедлят высокий ГИ)`;
   } else if (waitMin <= 0) {
     dynamicWaitText = 'Укол во время еды или сразу после (еда усваивается медленно)';
   } else {
     dynamicWaitText = `Пауза ~${waitMin}–${waitMin + 4} мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'}${fGrams >= 20 ? `, учтены жиры ${fGrams}г` : ''})`;
   }
 
-  // Точный тайминг второго укола (зависит от того, что доминирует — жировое замедление или белковый глюконеогенез)
   let postTimingText = ins.postTiming;
   if (splitWaves) {
     if (isPizzaEffect) {
@@ -212,7 +200,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     }
   }
 
-  // Клиническая подсказка по кинетике конкретного приема пищи
   const kineticAlerts = [];
   if (isPizzaEffect) {
     kineticAlerts.push(`🍕 <strong>Эффект жирной пищи (${fGrams}г жиров):</strong> жиры тормозят всасывание даже быстрых углеводов. Чтобы избежать гипогликемии в первый час, <strong>${delayedCarbUnits} ЕД</strong> из углеводной дозы перенесено во 2-й укол.`);
@@ -314,10 +301,12 @@ function renderApp() {
       </div>
     </header>
 
-    <div class="max-w-7xl mx-auto px-3 pt-2 lg:hidden"><div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl glass-card">
-      <button onclick="activeTab='calc';renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold transition ${activeTab==='calc'?'theme-grad text-white shadow':'opacity-75'}">✨ КБЖУ и План</button>
-      <button onclick="activeTab='diabetes';renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold transition ${activeTab==='diabetes'?'theme-grad text-white shadow':'opacity-75'}">💧 Калькулятор Диабета</button>
-    </div></div>
+    <div class="max-w-7xl mx-auto px-3 pt-2 lg:hidden">
+      <div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl glass-card">
+        <button onclick="activeTab='calc';showDiabetesToast=false;renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold transition ${activeTab==='calc'?'theme-grad text-white shadow':'opacity-75'}">✨ КБЖУ и План</button>
+        <button onclick="activeTab='diabetes';showDiabetesToast=true;renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold transition ${activeTab==='diabetes'?'theme-grad text-white shadow':'opacity-75'}">💧 Калькулятор Диабета</button>
+      </div>
+    </div>
 
     <main class="max-w-7xl mx-auto px-3 pt-3.5 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <section class="lg:col-span-6 space-y-4 ${activeTab==='diabetes'?'hidden lg:block':''}">
@@ -437,10 +426,26 @@ function renderApp() {
 
           <div class="grid grid-cols-4 gap-2"><div class="p-2.5 rounded-2xl theme-grad text-white text-center"><div class="text-[10px]">НОРМА</div><div class="font-mono-num font-extrabold text-sm">${m.effectiveKcal}</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Белки</div><div class="font-mono-num font-extrabold text-sm">${m.normP}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Жиры</div><div class="font-mono-num font-extrabold text-sm">${m.normF}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Угл (${m.totalXE}ХЕ)</div><div class="font-mono-num font-extrabold text-sm">${m.normC}г</div></div></div>
         </div>
+
+        <!-- MEDICAL DISCLAIMER NOTICE IN THE DESIRED AREA -->
+        <div class="px-2 text-center pb-2">
+          <p class="text-[10px] opacity-60 leading-relaxed font-sans">
+            ℹ️ Все расчеты и рекомендации являются справочными, носят ознакомительный характер и не заменяют очную консультацию врача-эндокринолога.
+          </p>
+        </div>
       </section>
 
       <!-- RIGHT COLUMN: DIABETES & DAILY INSULIN CALCULATOR -->
       <section class="lg:col-span-6 space-y-4 ${activeTab==='calc'?'hidden lg:block':''}">
+        ${showDiabetesToast ? `
+          <div onclick="showDiabetesToast=false;renderApp();" class="p-3.5 rounded-3xl theme-soft border border-white/30 shadow-lg flex items-center justify-between gap-2 cursor-pointer animate-fade-in">
+            <div class="text-xs leading-relaxed">
+              💡 <strong>Важно:</strong> Расчеты доз инсулина и коэффициентов носят рекомендательный характер. Всегда согласовывайте коррекцию терапии с лечащим врачом. <em>(Нажмите, чтобы скрыть)</em>
+            </div>
+            <span class="text-xs opacity-70 shrink-0 font-bold px-2 py-1 rounded theme-input">✕</span>
+          </div>
+        ` : ''}
+
         ${iobData.totalIob > 0 ? `
           <div class="p-3.5 rounded-3xl border-2 flex items-center justify-between gap-2 shadow-lg" style="border-color:var(--brand);background:var(--brand-soft);">
             <div>
@@ -637,14 +642,13 @@ function renderApp() {
               <div class="text-[10px] opacity-75">На угл. сейчас: ${bolus.upfrontCarbUnits} ЕД ${bolus.hasBg ? `· ДПС: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД` : ''}</div>
             </div>
             <div class="p-3 rounded-2xl theme-input space-y-1">
-              <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДЫ (БЖЕ + Хвост)</div>
+              <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДОЙ (БЖЕ + Хвост)</div>
               <div class="text-2xl font-extrabold font-mono-num">${bolus.splitWaves?`${bolus.postUnits} ЕД`:'0 ЕД'}</div>
               <div class="text-[11px] opacity-90">⏱ ${bolus.postTimingText}</div>
               <div class="text-[10px] opacity-75">БЖЕ: ${bolus.bjeUnits} ЕД (${bolus.bje} БЖЕ)${bolus.delayedCarbUnits > 0 ? ` + ${bolus.delayedCarbUnits} ЕД угл.` : ''}${bolus.waveHours?` · волна ~${bolus.waveHours}ч`:''}</div>
             </div>
           </div>
 
-          <!-- BIOMEDICAL KINETIC EXPLANATION ("ПИЦЦА-ЭФФЕКТ" И БЕЛКОВЫЙ ДОСТРЕЛ) -->
           ${bolus.kineticAlerts.length > 0 ? `
             <div class="p-3 rounded-2xl theme-soft space-y-1.5 text-[11px] leading-relaxed border border-white/15">
               ${bolus.kineticAlerts.map(a => `<div>${a}</div>`).join('')}
@@ -689,7 +693,7 @@ function renderApp() {
           </ul>
         </div>
         <div class="text-[11px] opacity-85 leading-relaxed">
-          ⏱ <strong>Правило 15 минут:</strong> После приема быстрых углеводов подождите ровно 15 минут и перемерьте сахар. Не ешьте шоколад, бананы или бутерброды — жиры замедлят всасывание глюкозы!
+          ⏱ <strong>Правило 15 минут:</strong> После приема быстрых углеводов подождите ровно 15 минут и перемерьте сахар. Не ешьте шоколад, бананы или бутерброды — жиры замедляют всасывание глюкозы!
         </div>
       </div>
     </div>
