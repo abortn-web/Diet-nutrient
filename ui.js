@@ -58,6 +58,39 @@ let isAiLoading = false;
 let newsBoxOpen = false;
 let aiTurnCounter = 0;
 let showDiabetesToast = false;
+let activePopupTerm = null; // Для всплывающих подсказок по сложным понятиям
+
+const POPUP_EXPLANATIONS = {
+  xe: {
+    title: '🍞 Что такое 1 ХЕ (Хлебная единица)?',
+    text: '1 ХЕ — это условная мера, равная количеству продукта, содержащему ровно <strong>12 граммов усваиваемых углеводов</strong>. На 1 ХЕ у вас уходит строго определенное количество инсулина (ваш углеводный коэффициент УК). ХЕ помогает быстро пересчитывать порции.'
+  },
+  targetBg: {
+    title: '🎯 Целевой диапазон гликемии',
+    text: 'Для взрослых без тяжелых осложнений мягкий безопасный целевой диапазон натощак и перед едой составляет <strong>4.0 – 7.0 ммоль/л</strong>, а через 2 часа после еды — <strong>до 8.5–10.0 ммоль/л</strong>. Не стремитесь к идеальным 5.0 любой ценой, чтобы избежать опасных гипогликемий.'
+  },
+  isf: {
+    title: '📉 ФЧИ (Фактор чувствительности к инсулину / ISF)',
+    text: 'ФЧИ показывает, на сколько ммоль/л снижает уровень сахара в крови ровно <strong>1 ЕД ультракороткого инсулина</strong>. Рассчитывается по клиническому правилу: <em>100 / Суточная доза инсулина (TDD)</em>. Например, если суточная доза 40 ЕД, ваш ФЧИ ≈ 2.5 ммоль/л (1 ЕД снизит сахар на 2.5 ммоль/л).'
+  },
+  basal: {
+    title: '🌙 База (Длинный / фоновый инсулин)',
+    text: 'Фоновый инсулин (Лантус, Туджео, Левемир, Тресиба) удерживает стабильный сахар в промежутках между едой и ночью, нейтрализуя естественный выброс глюкозы печенью. Правильно подобранная база не должна заставлять сахар расти или падать более чем на 1.0–1.5 ммоль/л за ночь.'
+  },
+  penStep: {
+    title: '🖊️ Шаг шприц-ручки',
+    text: 'Шаг дозирования вашей инсулиновой ручки (обычно 0.5 ЕД или 1.0 ЕД). Приложение округляет рассчитанные дозы с учетом этого шага, чтобы вы могли безопасно набрать точное количество единиц.'
+  },
+  carbsExamples: {
+    title: '🍎 Примеры углеводов по скорости усвоения',
+    text: '<strong>⚡ Быстрые углеводы (высокий ГИ — для купирования гипо):</strong> сахар, мед, фруктовый сок, кола, декстроза, белый хлеб.<br><br><strong>🟢 Медленные углеводы (низкий ГИ — основа рациона):</strong> гречка, перловка, бурый рис, чечевица, макароны из твердых сортов, овощи, зелень.'
+  }
+};
+
+function togglePopup(termKey) {
+  activePopupTerm = activePopupTerm === termKey ? null : termKey;
+  renderApp();
+}
 
 function toggleDropdown(id) {
   activeOpenDropdown = activeOpenDropdown === id ? null : id;
@@ -132,7 +165,7 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const effIcr = +(p.icr * timeMult).toFixed(2);
   const carbUnits = +(xe * effIcr).toFixed(1);
   const bjeFactor = (fGrams >= 30 && cGrams >= 25) ? 0.55 : 0.50;
-  const bjeUnits = bje >= 1.0 ? +(bje * effIcr * bjeFactor).toFixed(1) : 0;
+  const bjeUnits = bje >= 1.0 ? roundDose(bje * effIcr * bjeFactor, p.penStep) : 0;
 
   const isf = dayPlan ? dayPlan.effectiveIsf : 2.5;
   let rawDps = 0;
@@ -154,14 +187,14 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
 
   const isPizzaEffect = !ins.coversBJE && fGrams >= 25 && cGrams >= 24;
   const delayedCarbShare = isPizzaEffect ? (fGrams >= 40 ? 0.30 : 0.25) : 0;
-  const delayedCarbUnits = +(carbUnits * delayedCarbShare).toFixed(1);
-  const upfrontCarbUnits = +(carbUnits - delayedCarbUnits).toFixed(1);
+  const delayedCarbUnits = roundDose(carbUnits * delayedCarbShare, p.penStep);
+  const upfrontCarbUnits = Math.max(0, +(carbUnits - delayedCarbUnits).toFixed(1));
 
   const splitWaves = (bjeUnits >= 0.4 || delayedCarbUnits >= 0.4) && !ins.coversBJE;
   const basePre = splitWaves ? upfrontCarbUnits : +(carbUnits + bjeUnits).toFixed(1);
-  const preUnits = Math.max(0, +(basePre + safeDps).toFixed(1));
-  const postUnits = splitWaves ? +(bjeUnits + delayedCarbUnits).toFixed(1) : 0;
-  const totalUnits = Math.max(0, +(preUnits + postUnits).toFixed(1));
+  const preUnits = roundDose(Math.max(0, basePre + safeDps), p.penStep);
+  const postUnits = splitWaves ? roundDose(bjeUnits + delayedCarbUnits, p.penStep) : 0;
+  const totalUnits = +(preUnits + postUnits).toFixed(1);
   const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
 
   let waitMin = ins.baseWait;
@@ -279,15 +312,15 @@ function renderApp() {
   const isAiActive = aiModeEnabled && hasSavedKey;
 
   document.getElementById('app').innerHTML = `
-    <!-- STRICT SINGLE-LINE ROUNDED HEADER -->
+    <!-- STRICT SINGLE-LINE ROUNDED HEADER WITH DIAINGO LOGO -->
     <header class="sticky top-0 z-30 px-3 pt-2.5 pb-1.5">
       <div class="max-w-7xl mx-auto glass-card rounded-2xl px-2.5 py-2 flex items-center justify-between gap-1 shadow-lg border border-white/10">
         <div class="flex items-center gap-2 min-w-0">
           <div class="w-8 h-8 rounded-xl theme-grad flex items-center justify-center text-white text-sm shadow shrink-0">🌿</div>
-          <span class="font-extrabold text-sm sm:text-base tracking-tight truncate">NUTRIlingo</span>
+          <span class="font-extrabold text-sm sm:text-base tracking-tight truncate">DIA<span style="color:var(--brand);">ingo</span></span>
         </div>
         <div class="flex items-center gap-1 shrink-0">
-          <button onclick="openHypoModal()" class="h-8 px-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-extrabold inline-flex flex-row items-center gap-1 whitespace-nowrap shadow-sm">
+          <button onclick="openHypoModal()" class="h-8 px-2.5 rounded-xl bg-rose-500/25 border border-rose-500/50 text-rose-200 text-[11px] font-extrabold inline-flex flex-row items-center gap-1 whitespace-nowrap shadow-md">
             <span>⚡</span><span>Гипо</span>
           </button>
           <button onclick="openDoctorReportModal()" class="h-8 px-2.5 rounded-xl theme-soft text-[11px] font-bold inline-flex flex-row items-center gap-1 whitespace-nowrap" title="Отчет для врача">
@@ -310,125 +343,148 @@ function renderApp() {
 
     <main class="max-w-7xl mx-auto px-3 pt-3.5 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <section class="lg:col-span-6 space-y-4 ${activeTab==='diabetes'?'hidden lg:block':''}">
+        <!-- 1. ПАРАМЕТРЫ (СВОРАЧИВАЕМЫЙ БЛОК) -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <div class="flex justify-between items-center"><h2 class="font-extrabold text-base">1. Ваши параметры</h2><span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-bold">${p.useBodyFat?'Кетч-МакАрдл':'Миффлин-Сан Жеор'}</span></div>
-          <div class="grid grid-cols-2 gap-2"><button onclick="setParam('gender','female')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border transition ${p.gender==='female'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♀ Женщина</button><button onclick="setParam('gender','male')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border transition ${p.gender==='male'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♂ Мужчина</button></div>
-
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('age')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ВОЗРАСТ (ЛЕТ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('age',${p.age-1})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.age}" onchange="setParam('age',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('age',${p.age+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
-            ${activeOpenDropdown==='age'?`<div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${AGE_GRID.map(a=>`<button onclick="setParam('age',${a});toggleDropdown('age');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.age===a?'theme-grad text-white':'theme-soft'}">${a}</button>`).join('')}</div>`:''}
+          <div class="flex justify-between items-center cursor-pointer select-none" onclick="p.sectionsOpen.p1=!p.sectionsOpen.p1;saveStorage();renderApp();">
+            <h2 class="font-extrabold text-base flex items-center gap-2"><span>1. Ваши параметры</span> <span class="text-xs opacity-60">${p.sectionsOpen.p1 ? '▲' : '▼'}</span></h2>
+            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-bold">${p.useBodyFat?'Кетч-МакАрдл':'Миффлин-Сан Жеор'}</span>
           </div>
+          ${p.sectionsOpen.p1 ? `
+            <div class="space-y-3.5 pt-2 border-t border-white/10">
+              <div class="grid grid-cols-2 gap-2"><button onclick="setParam('gender','female')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border transition ${p.gender==='female'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♀ Женщина</button><button onclick="setParam('gender','male')" class="py-2.5 px-3 rounded-2xl text-xs font-bold border transition ${p.gender==='male'?'theme-grad text-white border-transparent shadow-md':'theme-input opacity-80'}">♂ Мужчина</button></div>
 
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('height')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">РОСТ (СМ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('height',${p.height-1})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.height}" onchange="setParam('height',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('height',${p.height+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
-            ${activeOpenDropdown==='height'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${HEIGHT_GRID.map(h=>`<button onclick="setParam('height',${h});toggleDropdown('height');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.height===h?'theme-grad text-white':'theme-soft'}">${h}</button>`).join('')}</div>`:''}
-          </div>
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('age')">
+                <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ВОЗРАСТ (ЛЕТ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('age',${p.age-1})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.age}" onchange="setParam('age',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('age',${p.age+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
+                ${activeOpenDropdown==='age'?`<div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${AGE_GRID.map(a=>`<button onclick="setParam('age',${a});toggleDropdown('age');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.age===a?'theme-grad text-white':'theme-soft'}">${a}</button>`).join('')}</div>`:''}
+              </div>
 
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weight')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ТЕКУЩИЙ ВЕС (КГ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('weight',${+(p.weight-0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.weight}" onchange="setParam('weight',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('weight',${+(p.weight+0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
-            ${activeOpenDropdown==='weight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('weight',${w});toggleDropdown('weight');" class="py-1.5 rounded-xl text-[11px] font-mono-num font-bold ${p.weight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
-          </div>
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('height')">
+                <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">РОСТ (СМ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('height',${p.height-1})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.height}" onchange="setParam('height',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('height',${p.height+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
+                ${activeOpenDropdown==='height'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${HEIGHT_GRID.map(h=>`<button onclick="setParam('height',${h});toggleDropdown('height');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.height===h?'theme-grad text-white':'theme-soft'}">${h}</button>`).join('')}</div>`:''}
+              </div>
 
-          <div class="p-3 rounded-2xl theme-input space-y-2">
-            <div class="flex items-center justify-between">
-              <div onclick="setParam('useBodyFat',${!p.useBodyFat})" class="flex items-center gap-2.5 cursor-pointer select-none">
-                <div class="w-10 h-6 rounded-full p-0.5 transition flex items-center ${p.useBodyFat?'theme-grad justify-end':'theme-soft justify-start'}">
-                  <div class="w-5 h-5 rounded-full bg-white shadow"></div>
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weight')">
+                <div class="flex justify-between items-center"><span class="text-xs font-bold opacity-80">ТЕКУЩИЙ ВЕС (КГ)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('weight',${+(p.weight-0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.weight}" onchange="setParam('weight',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('weight',${+(p.weight+0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
+                ${activeOpenDropdown==='weight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('weight',${w});toggleDropdown('weight');" class="py-1.5 rounded-xl text-[11px] font-mono-num font-bold ${p.weight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
+              </div>
+
+              <div class="p-3 rounded-2xl theme-input space-y-2">
+                <div class="flex items-center justify-between">
+                  <div onclick="setParam('useBodyFat',${!p.useBodyFat})" class="flex items-center gap-2.5 cursor-pointer select-none">
+                    <div class="w-10 h-6 rounded-full p-0.5 transition flex items-center ${p.useBodyFat?'theme-grad justify-end':'theme-soft justify-start'}">
+                      <div class="w-5 h-5 rounded-full bg-white shadow"></div>
+                    </div>
+                    <span class="text-xs font-bold">Учитывать % жира</span>
+                  </div>
+                  ${p.useBodyFat?`<div class="flex items-center gap-1 cursor-pointer" onclick="toggleDropdown('bf')"><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat-0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.bodyFat}" onclick="event.stopPropagation()" onchange="setParam('bodyFat',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-bold text-xs rounded-xl theme-soft"><span class="text-xs font-bold">%</span><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat+0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button></div>`:''}
                 </div>
-                <span class="text-xs font-bold">Учитывать % жира</span>
+                ${p.useBodyFat && activeOpenDropdown==='bf'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[10,12,15,18,20,22,25,28,30,32,35,40].map(bf=>`<button onclick="setParam('bodyFat',${bf});toggleDropdown('bf');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.bodyFat===bf?'theme-grad text-white':'theme-soft'}">${bf}%</button>`).join('')}</div>`:''}
               </div>
-              ${p.useBodyFat?`<div class="flex items-center gap-1 cursor-pointer" onclick="toggleDropdown('bf')"><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat-0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.bodyFat}" onclick="event.stopPropagation()" onchange="setParam('bodyFat',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-bold text-xs rounded-xl theme-soft"><span class="text-xs font-bold">%</span><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat+0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button></div>`:''}
-            </div>
-            ${p.useBodyFat && activeOpenDropdown==='bf'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[10,12,15,18,20,22,25,28,30,32,35,40].map(bf=>`<button onclick="setParam('bodyFat',${bf});toggleDropdown('bf');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.bodyFat===bf?'theme-grad text-white':'theme-soft'}">${bf}%</button>`).join('')}</div>`:''}
-          </div>
 
-          <div class="p-3 rounded-2xl theme-input space-y-2">
-            <div class="text-xs font-bold">💎 Особенности углеводного обмена (КБЖУ):</div>
-            <div class="grid grid-cols-3 gap-1.5">
-              <button onclick="setDiabetesType('none')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${p.diabetesType==='none'?'theme-grad text-white shadow':'theme-soft'}">Нет (Стандарт)</button>
-              <button onclick="setDiabetesType('dm1')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${p.diabetesType==='dm1'?'theme-grad text-white shadow':'theme-soft'}">СД 1 типа</button>
-              <button onclick="setDiabetesType('dm2')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${p.diabetesType==='dm2'?'theme-grad text-white shadow':'theme-soft'}">СД 2 типа</button>
-            </div>
-          </div>
+              <div class="p-3 rounded-2xl theme-input space-y-2">
+                <div class="text-xs font-bold">💎 Особенности углеводного обмена (КБЖУ):</div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button onclick="setDiabetesType('none')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${p.diabetesType==='none'?'theme-grad text-white shadow':'theme-soft'}">Нет (Стандарт)</button>
+                  <button onclick="setDiabetesType('dm1')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${p.diabetesType==='dm1'?'theme-grad text-white shadow':'theme-soft'}">СД 1 типа</button>
+                  <button onclick="setDiabetesType('dm2')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${p.diabetesType==='dm2'?'theme-grad text-white shadow':'theme-soft'}">СД 2 типа</button>
+                </div>
+              </div>
 
-          <div class="grid grid-cols-2 gap-2.5"><div class="p-3 rounded-2xl theme-soft"><div class="text-[11px] opacity-80">ИМТ (${m.bmi<25?'Норма':'Выше нормы'})</div><div class="text-xl font-extrabold font-mono-num">${m.bmi}</div></div><div class="p-3 rounded-2xl theme-soft"><div class="text-[11px] opacity-80">Базовый обмен (BMR) 🔥</div><div class="text-xl font-extrabold font-mono-num">${m.bmr} ккал</div></div></div>
+              <div class="grid grid-cols-2 gap-2.5"><div class="p-3 rounded-2xl theme-soft"><div class="text-[11px] opacity-80">ИМТ (${m.bmi<25?'Норма':'Выше нормы'})</div><div class="text-xl font-extrabold font-mono-num">${m.bmi}</div></div><div class="p-3 rounded-2xl theme-soft"><div class="text-[11px] opacity-80">Базовый обмен (BMR) 🔥</div><div class="text-xl font-extrabold font-mono-num">${m.bmr} ккал</div></div></div>
+            </div>
+          ` : ''}
         </div>
 
+        <!-- 2. АКТИВНОСТЬ (СВОРАЧИВАЕМЫЙ БЛОК) -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <div class="flex justify-between items-center"><h2 class="font-extrabold text-base">2. Активность: Шаги + Тренировки</h2><span class="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-xl theme-soft">TDEE: ${m.tdee} ккал</span></div>
-          <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('neatLevel',0.12)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.12?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Сидячий</div><div class="text-[10px] opacity-75">+12%</div></button><button onclick="setParam('neatLevel',0.18)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.18?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Умеренный</div><div class="text-[10px] opacity-75">+18%</div></button><button onclick="setParam('neatLevel',0.25)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.25?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Активный</div><div class="text-[10px] opacity-75">+25%</div></button></div>
-          
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('steps')">
-            <div class="flex justify-between items-center"><div><div class="text-xs font-bold">👟 Шагов в день:</div><div class="text-[11px] opacity-75">~${m.distKm.toFixed(1)} км · +${m.stepsKcal} ккал</div></div><div class="flex items-center gap-1" onclick="event.stopPropagation()"><button onclick="setParam('steps',${Math.max(0,p.steps-1000)})" class="px-2.5 h-8 rounded-xl theme-soft font-bold text-xs">-1к</button><input type="text" value="${p.steps}" onchange="setParam('steps',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft"><button onclick="setParam('steps',${p.steps+1000})" class="px-2.5 h-8 rounded-xl theme-soft font-bold text-xs">+1к</button></div></div>
-            ${activeOpenDropdown==='steps'?`<div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${STEPS_GRID.map(st=>`<button onclick="setParam('steps',${st});toggleDropdown('steps');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.steps===st?'theme-grad text-white':'theme-soft'}">${st}</button>`).join('')}</div>`:''}
+          <div class="flex justify-between items-center cursor-pointer select-none" onclick="p.sectionsOpen.p2=!p.sectionsOpen.p2;saveStorage();renderApp();">
+            <h2 class="font-extrabold text-base flex items-center gap-2"><span>2. Активность: Шаги + Тренировки</span> <span class="text-xs opacity-60">${p.sectionsOpen.p2 ? '▲' : '▼'}</span></h2>
+            <span class="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-xl theme-soft">TDEE: ${m.tdee} ккал</span>
           </div>
+          ${p.sectionsOpen.p2 ? `
+            <div class="space-y-3.5 pt-2 border-t border-white/10">
+              <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('neatLevel',0.12)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.12?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Сидячий</div><div class="text-[10px] opacity-75">+12%</div></button><button onclick="setParam('neatLevel',0.18)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.18?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Умеренный</div><div class="text-[10px] opacity-75">+18%</div></button><button onclick="setParam('neatLevel',0.25)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.25?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Активный</div><div class="text-[10px] opacity-75">+25%</div></button></div>
+              
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('steps')">
+                <div class="flex justify-between items-center"><div><div class="text-xs font-bold">👟 Шагов в день:</div><div class="text-[11px] opacity-75">~${m.distKm.toFixed(1)} км · +${m.stepsKcal} ккал</div></div><div class="flex items-center gap-1" onclick="event.stopPropagation()"><button onclick="setParam('steps',${Math.max(0,p.steps-1000)})" class="px-2.5 h-8 rounded-xl theme-soft font-bold text-xs">-1к</button><input type="text" value="${p.steps}" onchange="setParam('steps',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft"><button onclick="setParam('steps',${p.steps+1000})" class="px-2.5 h-8 rounded-xl theme-soft font-bold text-xs">+1к</button></div></div>
+                ${activeOpenDropdown==='steps'?`<div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${STEPS_GRID.map(st=>`<button onclick="setParam('steps',${st});toggleDropdown('steps');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.steps===st?'theme-grad text-white':'theme-soft'}">${st}</button>`).join('')}</div>`:''}
+              </div>
 
-          <div class="p-3 rounded-2xl theme-input space-y-2.5">
-            <div class="flex justify-between items-center text-xs font-bold"><span>⚡ Тренировки</span><span class="font-mono-num">+${m.workoutKcal} ккал/дн</span></div>
-            <div><div class="text-[10px] opacity-75 mb-1">Тренировок в неделю:</div><div class="grid grid-cols-8 gap-1">${[0,1,2,3,4,5,6,7].map(d=>`<button onclick="setParam('workoutDays',${d})" class="py-1.5 rounded-xl text-xs font-mono-num font-bold transition ${p.workoutDays===d?'theme-grad text-white shadow':'theme-soft'}">${d}</button>`).join('')}</div></div>
-            <div><div class="text-[10px] opacity-75 mb-1">Длительность (минут):</div><div class="grid grid-cols-6 gap-1">${[30,45,60,75,90,120].map(mn=>`<button onclick="setParam('workoutMins',${mn})" class="py-1.5 rounded-xl text-xs font-mono-num font-bold transition ${p.workoutMins===mn?'theme-grad text-white shadow':'theme-soft'}">${mn}</button>`).join('')}</div></div>
-            <div class="grid grid-cols-2 gap-1.5 pt-1"><button onclick="setParam('workoutMode','avg')" class="py-2 rounded-xl text-[11px] font-bold transition ${p.workoutMode==='avg'?'theme-grad text-white shadow':'theme-soft'}">Среднее в неделю</button><button onclick="setParam('workoutMode','today')" class="py-2 rounded-xl text-[11px] font-bold transition ${p.workoutMode==='today'?'theme-grad text-white shadow':'theme-soft'}">Тренировка сегодня</button></div>
-          </div>
+              <div class="p-3 rounded-2xl theme-input space-y-2.5">
+                <div class="flex justify-between items-center text-xs font-bold"><span>⚡ Тренировки</span><span class="font-mono-num">+${m.workoutKcal} ккал/дн</span></div>
+                <div><div class="text-[10px] opacity-75 mb-1">Тренировок в неделю:</div><div class="grid grid-cols-8 gap-1">${[0,1,2,3,4,5,6,7].map(d=>`<button onclick="setParam('workoutDays',${d})" class="py-1.5 rounded-xl text-xs font-mono-num font-bold transition ${p.workoutDays===d?'theme-grad text-white shadow':'theme-soft'}">${d}</button>`).join('')}</div></div>
+                <div><div class="text-[10px] opacity-75 mb-1">Длительность (минут):</div><div class="grid grid-cols-6 gap-1">${[30,45,60,75,90,120].map(mn=>`<button onclick="setParam('workoutMins',${mn})" class="py-1.5 rounded-xl text-xs font-mono-num font-bold transition ${p.workoutMins===mn?'theme-grad text-white shadow':'theme-soft'}">${mn}</button>`).join('')}</div></div>
+                <div class="grid grid-cols-2 gap-1.5 pt-1"><button onclick="setParam('workoutMode','avg')" class="py-2 rounded-xl text-[11px] font-bold transition ${p.workoutMode==='avg'?'theme-grad text-white shadow':'theme-soft'}">Среднее в неделю</button><button onclick="setParam('workoutMode','today')" class="py-2 rounded-xl text-[11px] font-bold transition ${p.workoutMode==='today'?'theme-grad text-white shadow':'theme-soft'}">Тренировка сегодня</button></div>
+              </div>
+            </div>
+          ` : ''}
         </div>
 
+        <!-- 3. ЦЕЛЬ И НОРМА КБЖУ (СВОРАЧИВАЕМЫЙ БЛОК) -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <h2 class="font-extrabold text-base">3. Цель, Контрольные точки и Норма КБЖУ</h2>
-          
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('tweight')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold">🎯 Желаемый вес (кг)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('targetWeight',${+(p.targetWeight-0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.targetWeight}" onchange="setParam('targetWeight',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('targetWeight',${+(p.targetWeight+0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
-            ${activeOpenDropdown==='tweight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('targetWeight',${w});toggleDropdown('tweight');" class="py-1.5 rounded-xl text-[11px] font-mono-num font-bold ${p.targetWeight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
+          <div class="flex justify-between items-center cursor-pointer select-none" onclick="p.sectionsOpen.p3=!p.sectionsOpen.p3;saveStorage();renderApp();">
+            <h2 class="font-extrabold text-base flex items-center gap-2"><span>3. Цель и Норма КБЖУ</span> <span class="text-xs opacity-60">${p.sectionsOpen.p3 ? '▲' : '▼'}</span></h2>
+            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-bold">${m.effectiveKcal} ккал</span>
           </div>
-
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weeks')">
-            <div class="flex justify-between items-center text-xs font-bold"><div><div>📅 Срок (недель):</div><div class="text-[10px] opacity-75">Финиш: ${finishDate} (${m.dailyDelta>0?'+':''}${m.dailyDelta} ккал/дн)</div></div><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('targetWeeks',${Math.max(1,p.targetWeeks-1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.targetWeeks}" onchange="setParam('targetWeeks',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('targetWeeks',${p.targetWeeks+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
-            ${activeOpenDropdown==='weeks'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEEKS_GRID.map(wk=>`<button onclick="setParam('targetWeeks',${wk});toggleDropdown('weeks');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.targetWeeks===wk?'theme-grad text-white':'theme-soft'}">${wk}н</button>`).join('')}</div>`:''}
-          </div>
-
-          <div class="p-3 rounded-2xl theme-input space-y-1">
-            <div class="flex justify-between items-center text-[11px] font-bold opacity-85">
-              <span>📈 Траектория веса и адаптация TDEE</span>
-              <span class="font-mono-num">${p.weight} → ${p.targetWeight} кг</span>
-            </div>
-            ${buildWeightSvgChart(checkpoints)}
-          </div>
-
-          ${p.diabetesType!=='none'?`
-            <div class="p-3.5 rounded-2xl border-2 space-y-2 text-xs" style="border-color:var(--brand);background:var(--brand-soft);">
-              <div class="font-extrabold flex items-center justify-between">
-                <span>💎 Протокол ${p.diabetesType==='dm1'?'СД 1 типа (ХЕ + БЖЕ)':'СД 2 типа (Контроль ГИ)'}</span>
-                <span class="px-2.5 py-0.5 rounded-xl theme-grad text-white font-mono-num">${m.totalXE} ХЕ/сут</span>
+          ${p.sectionsOpen.p3 ? `
+            <div class="space-y-3.5 pt-2 border-t border-white/10">
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('tweight')">
+                <div class="flex justify-between items-center"><span class="text-xs font-bold">🎯 Желаемый вес (кг)</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('targetWeight',${+(p.targetWeight-0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.targetWeight}" onchange="setParam('targetWeight',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('targetWeight',${+(p.targetWeight+0.5).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
+                ${activeOpenDropdown==='tweight'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEIGHT_GRID.map(w=>`<button onclick="setParam('targetWeight',${w});toggleDropdown('tweight');" class="py-1.5 rounded-xl text-[11px] font-mono-num font-bold ${p.targetWeight===w?'theme-grad text-white':'theme-soft'}">${w}</button>`).join('')}</div>`:''}
               </div>
-              <div class="text-[11px] opacity-90 leading-relaxed">
-                ${p.diabetesType==='dm1'
-                  ? `• Углеводы адаптированы под выбранный тип питания: <strong>${m.normC} г (${m.totalXE} ХЕ)</strong> для стабильного гликемического профиля.`
-                  : `• Углеводы ограничены до <strong>${m.normC} г/сут (${m.totalXE} ХЕ)</strong> с низким ГИ. На основной прием: до <strong>${m.maxMealCarbs} г (${m.maxMealXE} ХЕ)</strong>. Клетчатка: <strong>${m.fiberNorm} г/сут</strong>.`}
+
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('weeks')">
+                <div class="flex justify-between items-center text-xs font-bold"><div><div>📅 Срок (недель):</div><div class="text-[10px] opacity-75">Финиш: ${finishDate} (${m.dailyDelta>0?'+':''}${m.dailyDelta} ккал/дн)</div></div><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('targetWeeks',${Math.max(1,p.targetWeeks-1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.targetWeeks}" onchange="setParam('targetWeeks',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('targetWeeks',${p.targetWeeks+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
+                ${activeOpenDropdown==='weeks'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${WEEKS_GRID.map(wk=>`<button onclick="setParam('targetWeeks',${wk});toggleDropdown('weeks');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.targetWeeks===wk?'theme-grad text-white':'theme-soft'}">${wk}н</button>`).join('')}</div>`:''}
               </div>
+
+              <div class="p-3 rounded-2xl theme-input space-y-1">
+                <div class="flex justify-between items-center text-[11px] font-bold opacity-85">
+                  <span>📈 Траектория веса и адаптация TDEE</span>
+                  <span class="font-mono-num">${p.weight} → ${p.targetWeight} кг</span>
+                </div>
+                ${buildWeightSvgChart(checkpoints)}
+              </div>
+
+              ${p.diabetesType!=='none'?`
+                <div class="p-3.5 rounded-2xl border-2 space-y-2 text-xs" style="border-color:var(--brand);background:var(--brand-soft);">
+                  <div class="font-extrabold flex items-center justify-between">
+                    <span>💎 Протокол ${p.diabetesType==='dm1'?'СД 1 типа (ХЕ + БЖЕ)':'СД 2 типа (Контроль ГИ)'}</span>
+                    <span class="px-2.5 py-0.5 rounded-xl theme-grad text-white font-mono-num">${m.totalXE} ХЕ/сут</span>
+                  </div>
+                  <div class="text-[11px] opacity-90 leading-relaxed">
+                    ${p.diabetesType==='dm1'
+                      ? `• Углеводы адаптированы под выбранный тип питания: <strong>${m.normC} г (${m.totalXE} ХЕ)</strong> для стабильного гликемического профиля.`
+                      : `• Углеводы ограничены до <strong>${m.normC} г/сут (${m.totalXE} ХЕ)</strong> с низким ГИ. На основной прием: до <strong>${m.maxMealCarbs} г (${m.maxMealXE} ХЕ)</strong>. Клетчатка: <strong>${m.fiberNorm} г/сут</strong>.`}
+                  </div>
+                </div>
+              `:''}
+
+              <div class="p-3 rounded-2xl theme-soft space-y-2 text-xs">
+                ${isTooStrict?`<div class="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400 text-[11px]">⚠️ Жесткий темп! Порог безопасности для вашего веса (${p.weight} кг): <strong>${m.minSafe} ккал</strong>. <button onclick="setParam('targetWeeks',${safeWeeks})" class="underline font-bold">Поставить ${safeWeeks} нед.</button></div>`:`<div class="text-[11px]">✅ Безопасный темп: ${m.weeklyKg} кг/нед. Порог безопасности: ${m.minSafe} ккал. Клетчатка: от ${m.fiberNorm} г/сут.</div>`}
+                <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${extra3kKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
+              </div>
+
+              <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-3 rounded-2xl text-left flex justify-between items-center transition ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2.5 py-1 rounded-xl bg-black/20 text-white">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
+
+              <div class="p-3 rounded-2xl theme-input space-y-2.5 text-xs">
+                <div class="text-[10px] opacity-80 font-bold">База расчета белка и жиров (г/кг):</div>
+                <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('macroBase','target')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold ${p.macroBase==='target'?'theme-grad text-white':'theme-soft'}">Желаемый (${p.targetWeight}кг)</button><button onclick="setParam('macroBase','current')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold ${p.macroBase==='current'?'theme-grad text-white':'theme-soft'}">Текущий (${p.weight}кг)</button><button onclick="setParam('macroBase','lbm')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold ${p.macroBase==='lbm'?'theme-grad text-white':'theme-soft'}">Сухая (${m.lbmWeight}кг)</button></div>
+                <div class="space-y-1 cursor-pointer" onclick="toggleDropdown('prot')"><div class="flex justify-between"><span>Белки (${m.effProtGkg} г/кг от ${m.refLabel})</span><strong>${m.normP} г</strong></div>
+                  ${activeOpenDropdown==='prot'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${PROT_GRID.map(v=>`<button onclick="setParam('protGkg',${v});toggleDropdown('prot');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.protGkg===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
+                </div>
+                <div class="space-y-1 cursor-pointer" onclick="toggleDropdown('fat')"><div class="flex justify-between"><span>Жиры (${m.effFatGkg} г/кг от ${m.refLabel})</span><strong>${m.normF} г</strong></div>
+                  ${activeOpenDropdown==='fat'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${FAT_GRID.map(v=>`<button onclick="setParam('fatGkg',${v});toggleDropdown('fat');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.fatGkg===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
+                </div>
+              </div>
+
+              <div class="grid grid-cols-4 gap-2"><div class="p-2.5 rounded-2xl theme-grad text-white text-center"><div class="text-[10px]">НОРМА</div><div class="font-mono-num font-extrabold text-sm">${m.effectiveKcal}</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Белки</div><div class="font-mono-num font-extrabold text-sm">${m.normP}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Жиры</div><div class="font-mono-num font-extrabold text-sm">${m.normF}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Угл (${m.totalXE}ХЕ)</div><div class="font-mono-num font-extrabold text-sm">${m.normC}г</div></div></div>
             </div>
-          `:''}
-
-          <div class="p-3 rounded-2xl theme-soft space-y-2 text-xs">
-            ${isTooStrict?`<div class="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400 text-[11px]">⚠️ Жесткий темп! Порог безопасности для вашего веса (${p.weight} кг): <strong>${m.minSafe} ккал</strong>. <button onclick="setParam('targetWeeks',${safeWeeks})" class="underline font-bold">Поставить ${safeWeeks} нед.</button></div>`:`<div class="text-[11px]">✅ Безопасный темп: ${m.weeklyKg} кг/нед. Порог безопасности: ${m.minSafe} ккал. Клетчатка: от ${m.fiberNorm} г/сут.</div>`}
-            <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${extra3kKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
-          </div>
-
-          <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-3 rounded-2xl text-left flex justify-between items-center transition ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2.5 py-1 rounded-xl bg-black/20 text-white">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
-
-          <div class="p-3 rounded-2xl theme-input space-y-2.5 text-xs">
-            <div class="text-[10px] opacity-80 font-bold">База расчета белка и жиров (г/кг):</div>
-            <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('macroBase','target')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold ${p.macroBase==='target'?'theme-grad text-white':'theme-soft'}">Желаемый (${p.targetWeight}кг)</button><button onclick="setParam('macroBase','current')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold ${p.macroBase==='current'?'theme-grad text-white':'theme-soft'}">Текущий (${p.weight}кг)</button><button onclick="setParam('macroBase','lbm')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold ${p.macroBase==='lbm'?'theme-grad text-white':'theme-soft'}">Сухая (${m.lbmWeight}кг)</button></div>
-            <div class="space-y-1 cursor-pointer" onclick="toggleDropdown('prot')"><div class="flex justify-between"><span>Белки (${m.effProtGkg} г/кг от ${m.refLabel})</span><strong>${m.normP} г</strong></div>
-              ${activeOpenDropdown==='prot'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${PROT_GRID.map(v=>`<button onclick="setParam('protGkg',${v});toggleDropdown('prot');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.protGkg===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
-            </div>
-            <div class="space-y-1 cursor-pointer" onclick="toggleDropdown('fat')"><div class="flex justify-between"><span>Жиры (${m.effFatGkg} г/кг от ${m.refLabel})</span><strong>${m.normF} г</strong></div>
-              ${activeOpenDropdown==='fat'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${FAT_GRID.map(v=>`<button onclick="setParam('fatGkg',${v});toggleDropdown('fat');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.fatGkg===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
-            </div>
-          </div>
-
-          <div class="grid grid-cols-4 gap-2"><div class="p-2.5 rounded-2xl theme-grad text-white text-center"><div class="text-[10px]">НОРМА</div><div class="font-mono-num font-extrabold text-sm">${m.effectiveKcal}</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Белки</div><div class="font-mono-num font-extrabold text-sm">${m.normP}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Жиры</div><div class="font-mono-num font-extrabold text-sm">${m.normF}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Угл (${m.totalXE}ХЕ)</div><div class="font-mono-num font-extrabold text-sm">${m.normC}г</div></div></div>
+          ` : ''}
         </div>
 
         <!-- MEDICAL DISCLAIMER NOTICE IN THE DESIRED AREA -->
-        <div class="px-2 text-center pb-2">
+        <div class="px-3 text-center pb-2">
           <p class="text-[10px] opacity-60 leading-relaxed font-sans">
             ℹ️ Все расчеты и рекомендации являются справочными, носят ознакомительный характер и не заменяют очную консультацию врача-эндокринолога.
           </p>
@@ -456,210 +512,258 @@ function renderApp() {
           </div>
         ` : ''}
 
+        <!-- 1. НАСТРОЙКА ИНСУЛИНА И ПОНЯТИЯ (СВОРАЧИВАЕМЫЙ БЛОК) -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-4 shadow-lg">
-          <div class="flex items-center justify-between">
-            <h2 class="font-extrabold text-base">💧 1. Настройка инсулина, УК и ФЧИ</h2>
-            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-mono-num font-bold">1 ХЕ = 12 г угл.</span>
+          <div class="flex items-center justify-between cursor-pointer select-none" onclick="p.sectionsOpen.ins=!p.sectionsOpen.ins;saveStorage();renderApp();">
+            <h2 class="font-extrabold text-base flex items-center gap-2"><span>💧 1. Настройка инсулина, УК и ФЧИ</span> <span class="text-xs opacity-60">${p.sectionsOpen.ins ? '▲' : '▼'}</span></h2>
+            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-mono-num font-bold cursor-pointer hover:underline" onclick="event.stopPropagation();togglePopup('xe')">1 ХЕ = 12г ℹ️</span>
           </div>
+          ${p.sectionsOpen.ins ? `
+            <div class="space-y-4 pt-2 border-t border-white/10">
+              <div class="space-y-1.5">
+                <div class="text-xs font-bold opacity-85">Выберите тип вашего болюсного инсулина:</div>
+                <div class="space-y-2">
+                  ${INSULIN_TYPES.map(ins=>`
+                    <button onclick="setParam('insulinType','${ins.id}')" class="w-full p-3 rounded-2xl text-left flex items-start justify-between gap-2 transition ${p.insulinType===ins.id?'theme-grad text-white shadow-md':'theme-input'}">
+                      <div>
+                        <div class="text-xs font-extrabold">${ins.name}</div>
+                        <div class="text-[11px] opacity-90 mt-0.5">${ins.brands}</div>
+                      </div>
+                      <span class="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-black/25 text-white shrink-0">Активен ~${ins.diaHours}ч</span>
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
 
-          <div class="space-y-1.5">
-            <div class="text-xs font-bold opacity-85">Выберите тип вашего болюсного инсулина:</div>
-            <div class="space-y-2">
-              ${INSULIN_TYPES.map(ins=>`
-                <button onclick="setParam('insulinType','${ins.id}')" class="w-full p-3 rounded-2xl text-left flex items-start justify-between gap-2 transition ${p.insulinType===ins.id?'theme-grad text-white shadow-md':'theme-input'}">
-                  <div>
-                    <div class="text-xs font-extrabold">${ins.name}</div>
-                    <div class="text-[11px] opacity-90 mt-0.5">${ins.brands}</div>
+              <!-- БАЗА И ШАГ РУЧКИ -->
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
+                  <span class="text-[10px] opacity-80 font-bold cursor-pointer hover:underline" onclick="togglePopup('basal')">🌙 База (длинный, ЕД) ℹ️</span>
+                  <div class="flex items-center justify-between mt-1.5">
+                    <button onclick="setParam('basalUnits',${+(Math.max(0, p.basalUnits-1)).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
+                    <input type="text" value="${p.basalUnits}" onchange="setParam('basalUnits',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft">
+                    <button onclick="setParam('basalUnits',${+(p.basalUnits+1).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button>
                   </div>
-                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-black/25 text-white shrink-0">Активен ~${ins.diaHours}ч</span>
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('icr')">
-            <div class="flex justify-between items-center"><span class="text-xs font-bold">Базовый индекс УК (ЕД на 1 ХЕ):</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('icr',${+(Math.max(0.1,p.icr-0.1)).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.icr}" onchange="setParam('icr',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('icr',${+(p.icr+0.1).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
-            ${activeOpenDropdown==='icr'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${ICR_GRID.map(v=>`<button onclick="setParam('icr',${v});toggleDropdown('icr');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.icr===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
-              <span class="text-[10px] opacity-80 font-bold">🎯 Целевой сахар (ммоль/л):</span>
-              <div class="flex items-center justify-between mt-1.5">
-                <button onclick="setParam('targetBg',${+(p.targetBg-0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
-                <input type="text" value="${p.targetBg}" onchange="setParam('targetBg',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft">
-                <button onclick="setParam('targetBg',${+(p.targetBg+0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button>
-              </div>
-            </div>
-            <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
-              <div class="flex justify-between items-center">
-                <span class="text-[10px] opacity-80 font-bold">📉 ФЧИ (1 ЕД снижает на):</span>
-                ${p.customIsf > 0 ? `<button onclick="setParam('customIsf',0)" class="text-[9px] underline opacity-75">Авто</button>` : `<span class="text-[9px] opacity-70">Авто</span>`}
-              </div>
-              <div class="flex items-center justify-between mt-1.5">
-                <button onclick="setParam('customIsf',${+(Math.max(0.5, dayPlan.effectiveIsf-0.2)).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
-                <input type="text" value="${dayPlan.effectiveIsf}" onchange="setParam('customIsf',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft">
-                <button onclick="setParam('customIsf',${+(dayPlan.effectiveIsf+0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg border-2" style="border-color:var(--brand);">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-[10px] font-bold uppercase opacity-75">Исходя из дневной нормы (${m.effectiveKcal} ккал)</div>
-              <h2 class="font-extrabold text-base">📊 2. Расчет инсулина на весь день</h2>
-            </div>
-            <span class="px-2.5 py-1 rounded-xl theme-grad text-white font-mono-num font-extrabold text-xs">${dayPlan.dayXE} ХЕ / сут</span>
-          </div>
-
-          <div class="grid grid-cols-3 gap-2 text-center font-mono-num">
-            <div class="p-2.5 rounded-2xl theme-input">
-              <div class="text-[10px] font-sans opacity-75">Болюс на Угл</div>
-              <div class="text-lg font-extrabold">${dayPlan.dayCarbBolus} ЕД</div>
-              <div class="text-[10px] opacity-70">${m.normC}г (${dayPlan.dayXE} ХЕ)</div>
-            </div>
-            <div class="p-2.5 rounded-2xl theme-input">
-              <div class="text-[10px] font-sans opacity-75">Болюс на БЖЕ</div>
-              <div class="text-lg font-extrabold">${dayPlan.dayBjeBolus} ЕД</div>
-              <div class="text-[10px] opacity-70">${dayPlan.dayBJE} БЖЕ за день</div>
-            </div>
-            <div class="p-2.5 rounded-2xl theme-soft">
-              <div class="text-[10px] font-sans font-bold">Всего Болюс/дн</div>
-              <div class="text-lg font-extrabold">${dayPlan.totalBolusDay} ЕД</div>
-              <div class="text-[10px] opacity-80">База ~${dayPlan.estBasal} ЕД</div>
-            </div>
-          </div>
-
-          <div class="space-y-1.5 text-xs">
-            <div class="font-bold text-[11px] opacity-85">Нажмите на прием пищи, чтобы подставить его КБЖУ в разовый расчет:</div>
-            ${dayPlan.splits.map(s=>`
-              <div onclick="setMealTime('${s.slot}')" class="p-2.5 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 ${mealTimeSlot===s.slot && !mealBolus.customEdited ? 'theme-soft border border-white/30 shadow-sm' : 'theme-input'}">
-                <div>
-                  <div class="font-bold">${s.name} <span class="text-[10px] font-mono-num opacity-75">(УК ~${s.effIcr})</span></div>
-                  <div class="text-[10px] opacity-75 font-mono-num">Б:${s.pG}г · Ж:${s.fG}г · У:${s.cG}г (${s.xe} ХЕ · ${s.bje} БЖЕ)</div>
                 </div>
-                <div class="text-right font-mono-num shrink-0">
-                  <div class="font-extrabold text-sm">${s.totU} ЕД</div>
-                  <div class="text-[9px] opacity-80">До: ${s.preU}${s.postU>0?`| После: ${s.postU}`:''}</div>
+                <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
+                  <span class="text-[10px] opacity-80 font-bold cursor-pointer hover:underline" onclick="togglePopup('penStep')">🖊️ Шаг ручки (ЕД) ℹ️</span>
+                  <div class="flex items-center gap-1.5 mt-1.5">
+                    <button onclick="setParam('penStep', 0.5)" class="flex-1 py-1 rounded-xl font-bold text-xs ${p.penStep===0.5?'theme-grad text-white':'theme-soft'}">0.5 ЕД</button>
+                    <button onclick="setParam('penStep', 1.0)" class="flex-1 py-1 rounded-xl font-bold text-xs ${p.penStep===1.0?'theme-grad text-white':'theme-soft'}">1.0 ЕД</button>
+                  </div>
                 </div>
               </div>
-            `).join('')}
-          </div>
-        </div>
 
-        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
-          <div class="flex items-center justify-between">
-            <h2 class="font-extrabold text-base">🍽 3. Разовый расчет по КБЖУ</h2>
-            <span class="text-xs font-mono-num font-bold px-2.5 py-1 rounded-xl theme-soft">${mealKcal} ккал</span>
-          </div>
+              <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('icr')">
+                <div class="flex justify-between items-center"><span class="text-xs font-bold">Базовый индекс УК (ЕД на 1 ХЕ):</span><div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('icr',${+(Math.max(0.1,p.icr-0.1)).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.icr}" onchange="setParam('icr',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('icr',${+(p.icr+0.1).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div></div>
+                ${activeOpenDropdown==='icr'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${ICR_GRID.map(v=>`<button onclick="setParam('icr',${v});toggleDropdown('icr');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.icr===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
+              </div>
 
-          <details class="p-2.5 rounded-2xl theme-input text-xs">
-            <summary class="cursor-pointer font-bold text-[11px] opacity-85">📋 Быстрая вставка цифр БЖУ из другого приложения</summary>
-            <div class="pt-2 flex gap-1.5">
-              <input type="text" id="inp-smart-parse" onkeydown="blurOnEnter(event)" placeholder="Напр: Б 35 Ж 15 У 48 (или 35 15 48)" class="flex-1 px-2.5 py-1.5 rounded-xl theme-soft text-xs">
-              <button onclick="if(!parseSmartFoodText(document.getElementById('inp-smart-parse').value)) alert('Введите 3 числа (Белки Жиры Углеводы), например: 35 15 48');" class="px-3 py-1.5 rounded-xl theme-grad text-white font-bold text-xs">ОК</button>
-            </div>
-          </details>
-
-          <div class="space-y-1.5">
-            <div class="text-[11px] font-bold opacity-80">⏰ Время суток (автоматически корректирует УК):</div>
-            <div class="grid grid-cols-4 gap-1.5">
-              <button onclick="setMealTime('morning')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='morning'?'theme-grad text-white shadow':'theme-input'}">🌅 Утро<div class="text-[9px] opacity-80">УК ×1.15</div></button>
-              <button onclick="setMealTime('lunch')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='lunch'?'theme-grad text-white shadow':'theme-input'}">☀️ День<div class="text-[9px] opacity-80">УК ×1.0</div></button>
-              <button onclick="setMealTime('evening')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='evening'?'theme-grad text-white shadow':'theme-input'}">🌙 Вечер<div class="text-[9px] opacity-80">УК ×0.90</div></button>
-              <button onclick="setMealTime('night')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='night'?'theme-grad text-white shadow':'theme-input'}">🌌 Ночь<div class="text-[9px] opacity-80">УК ×0.95</div></button>
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <div class="text-[11px] font-bold opacity-80">🥗 Гликемический индекс (ГИ) приема (влияет на паузу):</div>
-            <div class="grid grid-cols-3 gap-1.5 text-[11px]">
-              <button onclick="setMealBolus('gi','low')" class="py-1.5 px-2 rounded-xl font-bold transition ${mealBolus.gi==='low'?'theme-grad text-white shadow':'theme-input'}">🟢 Низкий ГИ</button>
-              <button onclick="setMealBolus('gi','mid')" class="py-1.5 px-2 rounded-xl font-bold transition ${mealBolus.gi==='mid'?'theme-grad text-white shadow':'theme-input'}">🟡 Средний ГИ</button>
-              <button onclick="setMealBolus('gi','high')" class="py-1.5 px-2 rounded-xl font-bold transition ${mealBolus.gi==='high'?'theme-grad text-white shadow':'theme-input'}">🔴 Высокий ГИ</button>
-            </div>
-          </div>
-
-          <div class="space-y-2 text-xs">
-            <div class="p-3 rounded-2xl theme-soft border border-white/15">
-              <div class="flex justify-between items-center">
-                <div>
-                  <div class="font-extrabold">💧 Текущий сахар (необязательно):</div>
-                  <div class="text-[10px] opacity-80">Цель: ${p.targetBg} · ФЧИ: ${bolus.isf} ммоль/ЕД</div>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
+                  <span class="text-[10px] opacity-80 font-bold cursor-pointer hover:underline" onclick="togglePopup('targetBg')">🎯 Целевой сахар ℹ️</span>
+                  <div class="flex items-center justify-between mt-1.5">
+                    <button onclick="setParam('targetBg',${+(p.targetBg-0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
+                    <input type="text" value="${p.targetBg}" onchange="setParam('targetBg',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft">
+                    <button onclick="setParam('targetBg',${+(p.targetBg+0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1.5">
-                  <input type="text" placeholder="—" value="${mealBolus.currBg}" onchange="setMealBolus('currBg',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold rounded-xl theme-input text-sm">
-                  <span class="font-bold text-[11px]">ммоль</span>
-                  ${mealBolus.currBg !== '' ? `<button onclick="setMealBolus('currBg','')" class="text-xs opacity-70 px-1">✕</button>` : ''}
+                <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
+                  <div class="flex justify-between items-center">
+                    <span class="text-[10px] opacity-80 font-bold cursor-pointer hover:underline" onclick="togglePopup('isf')">📉 ФЧИ ℹ️</span>
+                    ${p.customIsf > 0 ? `<button onclick="setParam('customIsf',0)" class="text-[9px] underline opacity-75">Авто</button>` : `<span class="text-[9px] opacity-70">Авто</span>`}
+                  </div>
+                  <div class="flex items-center justify-between mt-1.5">
+                    <button onclick="setParam('customIsf',${+(Math.max(0.5, dayPlan.effectiveIsf-0.2)).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
+                    <input type="text" value="${dayPlan.effectiveIsf}" onchange="setParam('customIsf',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft">
+                    <button onclick="setParam('customIsf',${+(dayPlan.effectiveIsf+0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button>
+                  </div>
                 </div>
               </div>
-              ${bolus.hasBg ? `
-                <div class="mt-2 pt-2 border-t border-white/10 text-[11px] flex justify-between items-center">
-                  <span>Расчетная ДПС (коррекция):</span>
-                  <span class="font-mono-num font-extrabold">${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД ${bolus.iobSubtracted > 0 ? `(вычтен IOB ${bolus.iobSubtracted} ЕД)` : ''}</span>
-                </div>
-              ` : ''}
-            </div>
-
-            <div class="p-3 rounded-2xl theme-input">
-              <div class="flex justify-between items-center">
-                <span class="font-bold">Белки:</span>
-                <div class="flex items-center gap-1.5">
-                  <input type="text" value="${mealBolus.p}" onchange="setMealBolus('p',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
-                  <span class="font-bold">г</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="p-3 rounded-2xl theme-input">
-              <div class="flex justify-between items-center">
-                <span class="font-bold">Жиры:</span>
-                <div class="flex items-center gap-1.5">
-                  <input type="text" value="${mealBolus.f}" onchange="setMealBolus('f',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
-                  <span class="font-bold">г</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="p-3 rounded-2xl theme-input">
-              <div class="flex justify-between items-center">
-                <span class="font-bold">Углеводы (${bolus.xe} ХЕ):</span>
-                <div class="flex items-center gap-1.5">
-                  <input type="text" value="${mealBolus.c}" onchange="setMealBolus('c',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
-                  <span class="font-bold">г</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            <div class="p-3 rounded-2xl theme-input space-y-1">
-              <div class="text-[11px] font-bold opacity-80">1️⃣ ПЕРЕД ЕДОЙ (УК ~${bolus.effIcr})</div>
-              <div class="text-2xl font-extrabold font-mono-num">${bolus.preUnits} ЕД</div>
-              <div class="text-[11px] opacity-95 font-semibold">⏱ ${bolus.dynamicWaitText}</div>
-              <div class="text-[10px] opacity-75">На угл. сейчас: ${bolus.upfrontCarbUnits} ЕД ${bolus.hasBg ? `· ДПС: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД` : ''}</div>
-            </div>
-            <div class="p-3 rounded-2xl theme-input space-y-1">
-              <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДОЙ (БЖЕ + Хвост)</div>
-              <div class="text-2xl font-extrabold font-mono-num">${bolus.splitWaves?`${bolus.postUnits} ЕД`:'0 ЕД'}</div>
-              <div class="text-[11px] opacity-90">⏱ ${bolus.postTimingText}</div>
-              <div class="text-[10px] opacity-75">БЖЕ: ${bolus.bjeUnits} ЕД (${bolus.bje} БЖЕ)${bolus.delayedCarbUnits > 0 ? ` + ${bolus.delayedCarbUnits} ЕД угл.` : ''}${bolus.waveHours?` · волна ~${bolus.waveHours}ч`:''}</div>
-            </div>
-          </div>
-
-          ${bolus.kineticAlerts.length > 0 ? `
-            <div class="p-3 rounded-2xl theme-soft space-y-1.5 text-[11px] leading-relaxed border border-white/15">
-              ${bolus.kineticAlerts.map(a => `<div>${a}</div>`).join('')}
             </div>
           ` : ''}
+        </div>
 
-          <button onclick="logInsulinInjection(${bolus.preUnits})" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs shadow flex items-center justify-center gap-1.5">
-            ✨ Зафиксировать укол ${bolus.preUnits} ЕД (Таймер активного инсулина)
+        <!-- ВСПЛЫВАЮЩЕЕ ОКНО ОБЪЯСНЕНИЙ (ПОНЯТИЯ ДЛЯ НОВИЧКОВ) -->
+        ${activePopupTerm && POPUP_EXPLANATIONS[activePopupTerm] ? `
+          <div class="p-4 rounded-3xl theme-soft border-2 border-white/40 shadow-2xl space-y-2 animate-fade-in" style="background:var(--card-bg);">
+            <div class="flex justify-between items-center font-extrabold text-xs">
+              <span>${POPUP_EXPLANATIONS[activePopupTerm].title}</span>
+              <button onclick="togglePopup(null)" class="px-2 py-0.5 rounded-lg theme-input text-xs">✕ Закрыть</button>
+            </div>
+            <div class="text-[11px] opacity-90 leading-relaxed font-sans">
+              ${POPUP_EXPLANATIONS[activePopupTerm].text}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- КНОПКА ПОКАЗА ПРИМЕРОВ УГЛЕВОДОВ -->
+        <div class="flex justify-center">
+          <button onclick="togglePopup('carbsExamples')" class="text-xs underline opacity-80 hover:opacity-100 font-bold">
+            🍎 Посмотреть примеры быстрых и медленных углеводов
           </button>
+        </div>
 
-          <div class="text-[10px] opacity-75 leading-relaxed">ℹ️ <strong>Итого на прием: ${bolus.totalUnits} ЕД</strong> (ХЕ + Варшавский протокол БЖЕ ISPAD + кинетика жиров и белков). Справочный расчет.</div>
+        <!-- 2. РАСЧЕТ НА ДЕНЬ (СВОРАЧИВАЕМЫЙ БЛОК) -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg border-2" style="border-color:var(--brand);">
+          <div class="flex items-center justify-between cursor-pointer select-none" onclick="p.sectionsOpen.day=!p.sectionsOpen.day;saveStorage();renderApp();">
+            <h2 class="font-extrabold text-base flex items-center gap-2"><span>📊 2. Расчет инсулина на весь день</span> <span class="text-xs opacity-60">${p.sectionsOpen.day ? '▲' : '▼'}</span></h2>
+            <span class="px-2.5 py-1 rounded-xl theme-grad text-white font-mono-num font-extrabold text-xs">${dayPlan.dayXE} ХЕ / сут</span>
+          </div>
+          ${p.sectionsOpen.day ? `
+            <div class="space-y-3.5 pt-2 border-t border-white/10">
+              <div class="grid grid-cols-3 gap-2 text-center font-mono-num">
+                <div class="p-2.5 rounded-2xl theme-input">
+                  <div class="text-[10px] font-sans opacity-75">Болюс на Угл</div>
+                  <div class="text-lg font-extrabold">${dayPlan.dayCarbBolus} ЕД</div>
+                  <div class="text-[10px] opacity-70">${m.normC}г (${dayPlan.dayXE} ХЕ)</div>
+                </div>
+                <div class="p-2.5 rounded-2xl theme-input">
+                  <div class="text-[10px] font-sans opacity-75">Болюс на БЖЕ</div>
+                  <div class="text-lg font-extrabold">${dayPlan.dayBjeBolus} ЕД</div>
+                  <div class="text-[10px] opacity-70">${dayPlan.dayBJE} БЖЕ за день</div>
+                </div>
+                <div class="p-2.5 rounded-2xl theme-soft">
+                  <div class="text-[10px] font-sans font-bold">Всего Болюс/дн</div>
+                  <div class="text-lg font-extrabold">${dayPlan.totalBolusDay} ЕД</div>
+                  <div class="text-[10px] opacity-80">База ~${p.basalUnits} ЕД</div>
+                </div>
+              </div>
+
+              <div class="space-y-1.5 text-xs">
+                <div class="font-bold text-[11px] opacity-85">Нажмите на прием пищи, чтобы подставить его КБЖУ в разовый расчет:</div>
+                ${dayPlan.splits.map(s=>`
+                  <div onclick="setMealTime('${s.slot}')" class="p-2.5 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 ${mealTimeSlot===s.slot && !mealBolus.customEdited ? 'theme-soft border border-white/30 shadow-sm' : 'theme-input'}">
+                    <div>
+                      <div class="font-bold">${s.name} <span class="text-[10px] font-mono-num opacity-75">(УК ~${s.effIcr})</span></div>
+                      <div class="text-[10px] opacity-75 font-mono-num">Б:${s.pG}г · Ж:${s.fG}г · У:${s.cG}г (${s.xe} ХЕ · ${s.bje} БЖЕ)</div>
+                    </div>
+                    <div class="text-right font-mono-num shrink-0">
+                      <div class="font-extrabold text-sm">${s.totU} ЕД</div>
+                      <div class="text-[9px] opacity-80">До: ${s.preU} ${s.postU>0?`| После: ${s.postU}`:''}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 3. РАЗОВЫЙ РАСЧЕТ (СВОРАЧИВАЕМЫЙ БЛОК) -->
+        <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
+          <div class="flex items-center justify-between cursor-pointer select-none" onclick="p.sectionsOpen.meal=!p.sectionsOpen.meal;saveStorage();renderApp();">
+            <h2 class="font-extrabold text-base flex items-center gap-2"><span>🍽 3. Разовый расчет по КБЖУ</span> <span class="text-xs opacity-60">${p.sectionsOpen.meal ? '▲' : '▼'}</span></h2>
+            <span class="text-xs font-mono-num font-bold px-2.5 py-1 rounded-xl theme-soft">${mealKcal} ккал</span>
+          </div>
+          ${p.sectionsOpen.meal ? `
+            <div class="space-y-3.5 pt-2 border-t border-white/10">
+              <details class="p-2.5 rounded-2xl theme-input text-xs">
+                <summary class="cursor-pointer font-bold text-[11px] opacity-85">📋 Быстрая вставка цифр БЖУ из другого приложения</summary>
+                <div class="pt-2 flex gap-1.5">
+                  <input type="text" id="inp-smart-parse" onkeydown="blurOnEnter(event)" placeholder="Напр: Б 35 Ж 15 У 48 (или 35 15 48)" class="flex-1 px-2.5 py-1.5 rounded-xl theme-soft text-xs">
+                  <button onclick="if(!parseSmartFoodText(document.getElementById('inp-smart-parse').value)) alert('Введите 3 числа (Белки Жиры Углеводы), например: 35 15 48');" class="px-3 py-1.5 rounded-xl theme-grad text-white font-bold text-xs">ОК</button>
+                </div>
+              </details>
+
+              <div class="space-y-1.5">
+                <div class="text-[11px] font-bold opacity-80">⏰ Время суток (автоматически корректирует УК):</div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  <button onclick="setMealTime('morning')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='morning'?'theme-grad text-white shadow':'theme-input'}">🌅 Утро<div class="text-[9px] opacity-80">УК ×1.15</div></button>
+                  <button onclick="setMealTime('lunch')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='lunch'?'theme-grad text-white shadow':'theme-input'}">☀️ День<div class="text-[9px] opacity-80">УК ×1.0</div></button>
+                  <button onclick="setMealTime('evening')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='evening'?'theme-grad text-white shadow':'theme-input'}">🌙 Вечер<div class="text-[9px] opacity-80">УК ×0.90</div></button>
+                  <button onclick="setMealTime('night')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='night'?'theme-grad text-white shadow':'theme-input'}">🌌 Ночь<div class="text-[9px] opacity-80">УК ×0.95</div></button>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="text-[11px] font-bold opacity-80">🥗 Гликемический индекс (ГИ) приема (влияет на паузу):</div>
+                <div class="grid grid-cols-3 gap-1.5 text-[11px]">
+                  <button onclick="setMealBolus('gi','low')" class="py-1.5 px-2 rounded-xl font-bold transition ${mealBolus.gi==='low'?'theme-grad text-white shadow':'theme-input'}">🟢 Низкий ГИ</button>
+                  <button onclick="setMealBolus('gi','mid')" class="py-1.5 px-2 rounded-xl font-bold transition ${mealBolus.gi==='mid'?'theme-grad text-white shadow':'theme-input'}">🟡 Средний ГИ</button>
+                  <button onclick="setMealBolus('gi','high')" class="py-1.5 px-2 rounded-xl font-bold transition ${mealBolus.gi==='high'?'theme-grad text-white shadow':'theme-input'}">🔴 Высокий ГИ</button>
+                </div>
+              </div>
+
+              <div class="space-y-2 text-xs">
+                <div class="p-3 rounded-2xl theme-soft border border-white/15">
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <div class="font-extrabold">💧 Текущий сахар (необязательно):</div>
+                      <div class="text-[10px] opacity-80">Цель: ${p.targetBg} · ФЧИ: ${bolus.isf} ммоль/ЕД</div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <input type="text" placeholder="—" value="${mealBolus.currBg}" onchange="setMealBolus('currBg',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold rounded-xl theme-input text-sm">
+                      <span class="font-bold text-[11px]">ммоль</span>
+                      ${mealBolus.currBg !== '' ? `<button onclick="setMealBolus('currBg','')" class="text-xs opacity-70 px-1">✕</button>` : ''}
+                    </div>
+                  </div>
+                  ${bolus.hasBg ? `
+                    <div class="mt-2 pt-2 border-t border-white/10 text-[11px] flex justify-between items-center">
+                      <span>Расчетная ДПС (коррекция):</span>
+                      <span class="font-mono-num font-extrabold">${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД ${bolus.iobSubtracted > 0 ? `(вычтен IOB ${bolus.iobSubtracted} ЕД)` : ''}</span>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div class="p-3 rounded-2xl theme-input">
+                  <div class="flex justify-between items-center">
+                    <span class="font-bold">Белки:</span>
+                    <div class="flex items-center gap-1.5">
+                      <input type="text" value="${mealBolus.p}" onchange="setMealBolus('p',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
+                      <span class="font-bold">г</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="p-3 rounded-2xl theme-input">
+                  <div class="flex justify-between items-center">
+                    <span class="font-bold">Жиры:</span>
+                    <div class="flex items-center gap-1.5">
+                      <input type="text" value="${mealBolus.f}" onchange="setMealBolus('f',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
+                      <span class="font-bold">г</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="p-3 rounded-2xl theme-input">
+                  <div class="flex justify-between items-center">
+                    <span class="font-bold">Углеводы (${bolus.xe} ХЕ):</span>
+                    <div class="flex items-center gap-1.5">
+                      <input type="text" value="${mealBolus.c}" onchange="setMealBolus('c',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
+                      <span class="font-bold">г</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <div class="p-3 rounded-2xl theme-input space-y-1">
+                  <div class="text-[11px] font-bold opacity-80">1️⃣ ПЕРЕД ЕДОЙ (УК ~${bolus.effIcr})</div>
+                  <div class="text-2xl font-extrabold font-mono-num">${bolus.preUnits} ЕД</div>
+                  <div class="text-[11px] opacity-95 font-semibold">⏱ ${bolus.dynamicWaitText}</div>
+                  <div class="text-[10px] opacity-75">На угл. сейчас: ${bolus.upfrontCarbUnits} ЕД ${bolus.hasBg ? `· ДПС: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД` : ''}</div>
+                </div>
+                <div class="p-3 rounded-2xl theme-input space-y-1">
+                  <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДОЙ (БЖЕ + Хвост)</div>
+                  <div class="text-2xl font-extrabold font-mono-num">${bolus.splitWaves?`${bolus.postUnits} ЕД`:'0 ЕД'}</div>
+                  <div class="text-[11px] opacity-90">⏱ ${bolus.postTimingText}</div>
+                  <div class="text-[10px] opacity-75">БЖЕ: ${bolus.bjeUnits} ЕД (${bolus.bje} БЖЕ)${bolus.delayedCarbUnits > 0 ? ` + ${bolus.delayedCarbUnits} ЕД угл.` : ''}${bolus.waveHours?` · волна ~${bolus.waveHours}ч`:''}</div>
+                </div>
+              </div>
+
+              ${bolus.kineticAlerts.length > 0 ? `
+                <div class="p-3 rounded-2xl theme-soft space-y-1.5 text-[11px] leading-relaxed border border-white/15">
+                  ${bolus.kineticAlerts.map(a => `<div>${a}</div>`).join('')}
+                </div>
+              ` : ''}
+
+              <button onclick="logInsulinInjection(${bolus.preUnits})" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs shadow flex items-center justify-center gap-1.5">
+                ✨ Зафиксировать укол ${bolus.preUnits} ЕД (Таймер активного инсулина)
+              </button>
+
+              <div class="text-[10px] opacity-75 leading-relaxed">ℹ️ <strong>Итого на прием: ${bolus.totalUnits} ЕД</strong> (ХЕ + Варшавский протокол БЖЕ ISPAD + кинетика жиров и белков, шаг ручки: ${p.penStep} ЕД). Справочный расчет.</div>
+            </div>
+          ` : ''}
         </div>
       </section>
     </main>
@@ -693,7 +797,7 @@ function renderApp() {
           </ul>
         </div>
         <div class="text-[11px] opacity-85 leading-relaxed">
-          ⏱ <strong>Правило 15 минут:</strong> После приема быстрых углеводов подождите ровно 15 минут и перемерьте сахар. Не ешьте шоколад, бананы или бутерброды — жиры замедляют всасывание глюкозы!
+          ⏱ <strong>Правило 15 минут:</strong> После приема быстрых углеводов подождите ровно 15 минут и перемерьте сахар. Не ешьте шоколад, бананы или бутерброды — жиры замедлят всасывание глюкозы!
         </div>
       </div>
     </div>
@@ -709,16 +813,16 @@ function renderApp() {
           <div><strong>Профиль:</strong> ${p.gender==='male'?'Мужчина':'Женщина'}, ${p.age} лет, ${p.height} см, ${p.weight} кг (ИМТ ${m.bmi})</div>
           <div><strong>Цель:</strong> ${p.targetWeight} кг за ${p.targetWeeks} нед. (Норма: ${m.effectiveKcal} ккал)</div>
           <div><strong>Суточное БЖУ:</strong> Б ${m.normP}г / Ж ${m.normF}г / У ${m.normC}г (${m.totalXE} ХЕ)</div>
-          <div><strong>Инсулин:</strong> ${dayPlan.ins.name}</div>
+          <div><strong>Инсулин:</strong> ${dayPlan.ins.name} (База ~${p.basalUnits} ЕД, шаг ручки ${p.penStep} ЕД)</div>
           <div><strong>Коэффициенты:</strong> Базовый УК ${p.icr} (Утро ${+(p.icr*1.15).toFixed(2)} / День ${p.icr} / Вечер ${+(p.icr*0.9).toFixed(2)})</div>
           <div><strong>Чувствительность (ФЧИ):</strong> 1 ЕД = -${dayPlan.effectiveIsf} ммоль/л · Цель ГК: ${p.targetBg}</div>
-          <div><strong>Суточная потребность (TDD):</strong> ~${dayPlan.totalDailyDose} ЕД (Болюс ${dayPlan.totalBolusDay} ЕД + База ~${dayPlan.estBasal} ЕД)</div>
+          <div><strong>Суточная потребность (TDD):</strong> ~${dayPlan.totalDailyDose} ЕД (Болюс ${dayPlan.totalBolusDay} ЕД + База ${p.basalUnits} ЕД)</div>
         </div>
         <button onclick="copyDoctorReport()" class="w-full py-3 rounded-2xl theme-grad text-white font-extrabold text-xs shadow">📄 Скопировать сводку в буфер обмена</button>
       </div>
     </div>
 
-    <!-- AI MENTOR MODAL WITH STYLISH AI MODE SWITCHER -->
+    <!-- AI MENTOR MODAL WITH AI CHAT INPUT -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-8" style="border-color:var(--brand);">
         <div class="flex justify-between items-center sticky top-0 py-2.5 px-3.5 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-1" style="background: var(--card-bg);">
@@ -727,7 +831,7 @@ function renderApp() {
             <h3 class="font-extrabold text-sm sm:text-base leading-tight truncate">Клинический Ментор</h3>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button onclick="toggleAiMode()" class="h-9 px-3 rounded-2xl font-extrabold text-xs inline-flex flex-row items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${isAiActive ? 'theme-grad text-white shadow-lg ring-2 ring-white/30' : 'theme-input opacity-75 hover:opacity-100'}" title="${isAiActive ? 'Режим AI включен (генерация + локальная база)' : 'Нажмите, чтобы включить генерацию AI'}">
+            <button onclick="toggleAiMode()" class="h-9 px-3 rounded-2xl font-extrabold text-xs inline-flex flex-row items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${isAiActive ? 'theme-grad text-white shadow-lg ring-2 ring-white/30' : 'theme-input opacity-75 hover:opacity-100'}" title="${isAiActive ? 'Режим AI включен' : 'Включить AI'}">
               ${IC_SPARK}
               <span>AI</span>
               <span class="w-2 h-2 rounded-full ${isAiActive ? 'bg-emerald-300 animate-pulse' : 'bg-white/30'}"></span>
@@ -741,6 +845,16 @@ function renderApp() {
             ${IC_SPARK}<span>Нейросеть генерирует свежий ответ...</span>
           </div>
         ` : ''}
+
+        <!-- AI CHAT INPUT FIELD (ВОПРОСЫ К AI) -->
+        <div class="p-3.5 rounded-3xl theme-input space-y-2 border border-white/20">
+          <div class="text-xs font-bold flex items-center gap-1.5">💬 Задать вопрос ИИ-ментору:</div>
+          <div class="flex gap-1.5">
+            <input type="text" id="ai-chat-input" onkeydown="if(event.key==='Enter') sendAiQuestion();" placeholder="Напр: Как сколоть высокий сахар после ужина?" class="flex-1 h-9 px-3 rounded-xl theme-soft text-xs">
+            <button onclick="sendAiQuestion()" class="h-9 px-4 rounded-xl theme-grad text-white font-extrabold text-xs shrink-0">Спросить</button>
+          </div>
+          <div id="ai-chat-response" class="text-xs leading-relaxed opacity-95 pt-1 hidden"></div>
+        </div>
 
         <div class="p-4 rounded-3xl theme-soft space-y-1.5 shadow-sm">
           <div class="font-extrabold text-xs flex items-center justify-between gap-2">
@@ -810,9 +924,9 @@ function renderApp() {
     </div>`;
 }
 
-function openAiModal() { document.getElementById('modal-ai').classList.remove('hidden'); }
-function openHypoModal() { document.getElementById('modal-hypo').classList.remove('hidden'); }
-function openDoctorReportModal() { document.getElementById('modal-report').classList.remove('hidden'); }
+function openAiModal() { document.getElementById('modal-ai').classList.add('hidden'); document.getElementById('modal-ai').classList.remove('hidden'); }
+function openHypoModal() { document.getElementById('modal-hypo').classList.add('hidden'); document.getElementById('modal-hypo').classList.remove('hidden'); }
+function openDoctorReportModal() { document.getElementById('modal-report').classList.add('hidden'); document.getElementById('modal-report').classList.remove('hidden'); }
 
 function copyDoctorReport() {
   const el = document.getElementById('report-text-box');
@@ -820,6 +934,36 @@ function copyDoctorReport() {
   navigator.clipboard.writeText(el.innerText).then(() => {
     alert('✅ Клиническая сводка скопирована! Вы можете вставить её в чат с врачом или заметки.');
   });
+}
+
+// Отправка вопроса пользователя к AI
+async function sendAiQuestion() {
+  const inp = document.getElementById('ai-chat-input');
+  const respBox = document.getElementById('ai-chat-response');
+  if (!inp || !inp.value.trim()) return;
+  const q = inp.value.trim();
+  inp.value = '';
+
+  const hasKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
+  if (!hasKey) {
+    respBox.classList.remove('hidden');
+    respBox.innerHTML = '⚠️ Пожалуйста, введите ваш ключ Gemini API в настройках ниже, чтобы задавать вопросы ИИ.';
+    return;
+  }
+
+  isAiLoading = true;
+  renderApp(); openAiModal();
+
+  const prompt = `Ты — опытный врач-эндокринолог и клинический ментор по управлению сахарным диабетом. Ответь на вопрос пользователя бережно, научно и поддерживающе (в 2-3 коротких абзаца). Никогда не используй слово "болезнь", говори "диабет" или "особый образ жизни". Вопрос пользователя: "${q}"`;
+  const answer = await callGeminiText(prompt);
+  isAiLoading = false;
+
+  renderApp(); openAiModal();
+  const boxAfter = document.getElementById('ai-chat-response');
+  if (boxAfter) {
+    boxAfter.classList.remove('hidden');
+    boxAfter.innerHTML = `<strong>Ответ ментора:</strong><br>${answer || 'Не удалось получить ответ от ИИ. Проверьте правильность API ключа.'}`;
+  }
 }
 
 async function rotateStory() {
