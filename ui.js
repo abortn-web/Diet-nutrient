@@ -19,7 +19,7 @@ const DIABETES_STORIES = [
 ];
 
 const DIABETES_SUPPORT_PHRASES = [
-  '☕️ Диабет — это не болезнь, а особый образ жизни, который учит нас глубоко чувствовать свое тело, заботиться о себе и жить осознанно. Вы имеете полное право иногда уставать от этого ритма. Но помните: вы справляетесь просто великолепно! 🌟',
+  '☕️ Диабет — это не болезнь, а особый образ жизни, который учит нас глубоко чувствовать свое тело, заботиться о себе и жить осознанно. Вы имеете полное право уставать от этого ритма. Но помните: вы справляетесь просто великолепно! 🌟',
   '❤️ Помните, что диабет — это не диагноз и не ограничение, а особый образ жизни, требующий внимания и чуткости к себе. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек, и ваше здоровье в надежных руках! ☕️',
   '💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это не бремя, а проявление вашей осознанности и большой любви к себе. Диабет — это особый образ жизни, в котором вы — главный капитан своего корабля! ⛵️',
   '☀️ Вы сильнее, чем думаете. Да, диабет — это особый образ жизни со своими правилами, но каждый раз, когда вы находите баланс и делаете выбор в пользу своего здоровья — побеждаете именно вы. Гордитесь собой! 🛡️',
@@ -40,16 +40,59 @@ const DIABETES_BREAKTHROUGHS = [
 let currentStory = DIABETES_STORIES[0];
 let currentSupport = DIABETES_SUPPORT_PHRASES[0];
 let activeOpenDropdown = null;
+let mealTimeSlot = 'lunch'; // утра, день, вечер, ночь
 
 function toggleDropdown(id) {
   activeOpenDropdown = activeOpenDropdown === id ? null : id;
   renderApp();
 }
 
+function setMealTime(slot) {
+  mealTimeSlot = slot;
+  const p = getProf();
+  const m = computeMetrics();
+  const dayPlan = computeDailyInsulinPlan(m, p);
+  
+  let targetSplit = dayPlan.splits[1]; // день (обед)
+  if (slot === 'morning') targetSplit = dayPlan.splits[0];
+  else if (slot === 'lunch') targetSplit = dayPlan.splits[1];
+  else if (slot === 'evening') targetSplit = dayPlan.splits[2];
+  else if (slot === 'night') targetSplit = dayPlan.splits[3];
+
+  mealBolus.p = targetSplit.pG;
+  mealBolus.f = targetSplit.fG;
+  mealBolus.c = targetSplit.cG;
+  renderApp();
+}
+
+function computeMealBolusWithTime(pGrams, fGrams, cGrams, p) {
+  const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
+  const xe = +(cGrams / 12).toFixed(1);
+  const fpKcal = Math.round(pGrams * 4 + fGrams * 9);
+  const bje = +(fpKcal / 100).toFixed(1);
+  
+  // Корректировка УК в зависимости от времени суток
+  let timeMult = 1.0;
+  if (mealTimeSlot === 'morning') timeMult = 1.15; // Утренняя заря / выше УК
+  else if (mealTimeSlot === 'lunch') timeMult = 1.00;
+  else if (mealTimeSlot === 'evening') timeMult = 0.90;
+  else if (mealTimeSlot === 'night') timeMult = 0.95;
+
+  const effIcr = +(p.icr * timeMult).toFixed(2);
+  const carbUnits = +(xe * effIcr).toFixed(1);
+  const bjeUnits = bje >= 1.0 ? +(bje * effIcr * 0.5).toFixed(1) : 0;
+  const totalUnits = +(carbUnits + bjeUnits).toFixed(1);
+  const splitWaves = bjeUnits >= 0.4 && !ins.coversBJE;
+  const preUnits = splitWaves ? carbUnits : totalUnits;
+  const postUnits = splitWaves ? bjeUnits : 0;
+  const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : 5));
+  return { ins, xe, fpKcal, bje, carbUnits, bjeUnits, totalUnits, preUnits, postUnits, splitWaves, waveHours, effIcr };
+}
+
 function renderApp() {
   const p = getProf(), m = computeMetrics();
   document.documentElement.setAttribute('data-gender', p.gender);
-  const bolus = computeBolusForMeal(mealBolus.p, mealBolus.f, mealBolus.c, p);
+  const bolus = computeMealBolusWithTime(mealBolus.p, mealBolus.f, mealBolus.c, p);
   const mealKcal = Math.round(mealBolus.p * 4 + mealBolus.f * 9 + mealBolus.c * 4);
   const dayPlan = computeDailyInsulinPlan(m, p);
 
@@ -256,9 +299,20 @@ function renderApp() {
         </div>
 
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
-          <div class="flex justify-between items-center">
+          <div class="flex items-center justify-between">
             <h2 class="font-extrabold text-base">🍽 3. Разовый расчет на прием пищи</h2>
             <span class="text-xs font-mono-num font-bold px-2 py-0.5 rounded-lg theme-soft">${mealKcal} ккал</span>
+          </div>
+
+          <!-- TIME OF DAY SELECTOR -->
+          <div class="space-y-1.5">
+            <div class="text-[11px] font-bold opacity-80">⏰ Время приема пищи (учет суточного коэффициента УК):</div>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button onclick="setMealTime('morning')" class="py-2 px-1 rounded-xl text-[11px] font-bold ${mealTimeSlot==='morning'?'theme-grad text-white shadow':'theme-input'}">🌅 Утро</button>
+              <button onclick="setMealTime('lunch')" class="py-2 px-1 rounded-xl text-[11px] font-bold ${mealTimeSlot==='lunch'?'theme-grad text-white shadow':'theme-input'}">☀️ День</button>
+              <button onclick="setMealTime('evening')" class="py-2 px-1 rounded-xl text-[11px] font-bold ${mealTimeSlot==='evening'?'theme-grad text-white shadow':'theme-input'}">🌙 Вечер</button>
+              <button onclick="setMealTime('night')" class="py-2 px-1 rounded-xl text-[11px] font-bold ${mealTimeSlot==='night'?'theme-grad text-white shadow':'theme-soft'}">🌌 Ночь</button>
+            </div>
           </div>
 
           <div class="space-y-2 text-xs">
@@ -295,7 +349,7 @@ function renderApp() {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             <div class="p-3 rounded-2xl theme-input space-y-1">
-              <div class="text-[11px] font-bold opacity-80">1️⃣ ПЕРЕД ЕДОЙ</div>
+              <div class="text-[11px] font-bold opacity-80">1️⃣ ПЕРЕД ЕДОЙ (УК ~${bolus.effIcr})</div>
               <div class="text-2xl font-extrabold font-mono-num">${bolus.preUnits} ЕД</div>
               <div class="text-[11px] opacity-90">⏱ ${bolus.ins.preMin}</div>
               <div class="text-[10px] opacity-75">На углеводы: ${bolus.xe} ХЕ (${mealBolus.c} г)</div>
