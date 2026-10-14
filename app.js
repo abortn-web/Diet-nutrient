@@ -22,10 +22,10 @@ function getProf() {
   return p;
 }
 
-function saveStorage() { try { localStorage.setItem('nutriingo_v5', JSON.stringify(appData)); } catch (e) {} }
+function saveStorage() { try { localStorage.setItem('nutriingo_v7', JSON.stringify(appData)); } catch (e) {} }
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('nutriingo_v5') || localStorage.getItem('nutriingo_v4');
+    const raw = localStorage.getItem('nutriingo_v7') || localStorage.getItem('nutriingo_v6');
     if (raw) { const parsed = JSON.parse(raw); if (parsed && parsed.profiles) appData = parsed; }
   } catch (e) {}
 }
@@ -107,8 +107,15 @@ function computeMetrics() {
   weeklyKg = +(diffKg / p.targetWeeks).toFixed(2);
   targetKcal = curr.tdee + dailyDelta;
 
-  let minSafe = p.gender === 'female' ? Math.max(1150, Math.round(curr.bmr * 0.88)) : Math.max(1400, Math.round(curr.bmr * 0.90));
-  if (p.diabetesType !== 'none') minSafe = Math.max(minSafe, Math.round(curr.tdee * 0.78));
+  // Умный физиологический минимум с прямым учетом текущего веса
+  let weightBasedMin = Math.round(p.weight * (p.diabetesType !== 'none' ? 23.5 : 21.0));
+  let bmrBasedMin = p.gender === 'female' ? Math.round(curr.bmr * 0.88) : Math.round(curr.bmr * 0.90);
+  if (p.diabetesType !== 'none') {
+    bmrBasedMin = Math.max(bmrBasedMin, Math.round(curr.tdee * 0.78));
+  }
+  let minSafe = Math.max(weightBasedMin, bmrBasedMin);
+  minSafe = p.diabetesType === 'none' ? Math.max(1150, minSafe) : Math.max(1400, minSafe);
+
   const effectiveKcal = Math.max(minSafe, targetKcal);
 
   const estBf = p.useBodyFat ? p.bodyFat : (p.gender === 'female' ? 24 : 18);
@@ -122,16 +129,17 @@ function computeMetrics() {
   let normC = 0;
 
   if (p.diabetesType === 'dm2') {
-    const maxDm2Carbs = Math.min(125, Math.round((effectiveKcal * 0.32) / 4));
+    const maxDm2Carbs = Math.min(120, Math.round((effectiveKcal * 0.28) / 4));
+    const minDm2Carbs = 80;
     const rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-    normC = Math.max(55, Math.min(maxDm2Carbs, rawRemC));
+    normC = Math.max(minDm2Carbs, Math.min(maxDm2Carbs, rawRemC));
     normF = Math.round(Math.max(400, effectiveKcal - normP * 4 - normC * 4) / 9);
     p.fatGkg = +(normF / refWeight).toFixed(2);
   } else if (p.diabetesType === 'dm1') {
-    const minDm1Carbs = Math.max(110, Math.round((effectiveKcal * 0.35) / 4));
-    const maxDm1Carbs = Math.min(185, Math.round((effectiveKcal * 0.43) / 4));
+    const minDm1Carbs = 110;
+    const maxDm1Carbs = Math.min(145, Math.round((effectiveKcal * 0.38) / 4));
     const rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-    normC = Math.min(maxDm1Carbs, Math.max(minDm1Carbs, rawRemC));
+    normC = Math.max(minDm1Carbs, Math.min(maxDm1Carbs, rawRemC));
     normF = Math.round(Math.max(360, effectiveKcal - normP * 4 - normC * 4) / 9);
     p.fatGkg = +(normF / refWeight).toFixed(2);
   } else if (p.dietType === 'keto') {
