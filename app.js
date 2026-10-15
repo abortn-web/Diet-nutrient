@@ -15,11 +15,144 @@ let mealBolus = {
   customEdited: false
 };
 
+// Типы болюсного инсулина (бренды вынесены в справочное окно по требованию п.12)
 const INSULIN_TYPES = [
-  { id: 'ultrafast', name: '⚡ Сверхбыстрый', brands: 'Фиасп, Люмжев', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин после еды', coversBJE: false },
-  { id: 'ultralong', name: '🚀 Ультракороткий', brands: 'НовоРапид, Хумалог', preMin: 'За 10–15 мин ПЕРЕД едой', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
-  { id: 'short', name: '⏱ Короткий', brands: 'Актрапид, Регуляр', preMin: 'За 25–30 мин ПЕРЕД едой', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол', coversBJE: true }
+  { id: 'ultrafast', name: '⚡ Сверхбыстрый', desc: 'Пик через 45–60 мин', brands: 'Фиасп (Fiasp), Люмжев (Lyumjev)', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'ultralong', name: '🚀 Ультракороткий', desc: 'Пик через 60–90 мин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт', preMin: 'За 10–15 мин ДО еды', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
+
+// Вдохновляющие истории и фразы поддержки (хранятся здесь, чтобы разгрузить ui.js)
+const DIABETES_STORIES = [
+  { name: '⚖️ Тур Хейердал', desc: 'Великий норвежский путешественник и ученый. Пересекал океаны на плоту «Кон-Тики» и доказал, что диабет — это лишь особенность, а не преграда для открытий.' },
+  { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С диабетом с 6 лет дает стадионные концерты и ведет активный яркий образ жизни.' },
+  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах, показав силу характера и точного контроля.' },
+  { name: '🎬 Холли Берри', desc: 'Обладательница премии «Оскар». С 22 лет живет в осознанном режиме контроля гликемии, снимается в блокбастерах и вдохновляет миллионы.' },
+  { name: '🎾 Александр Зверев', desc: 'Олимпийский чемпион по теннису и мировая звезда корта. Выигрывает пятисетовые матчи на турнирах Большого шлема с диабетом 1 типа.' },
+  { name: '🏔️ Уилл Кросс', desc: 'Альпинист, покоривший высочайшие вершины всех семи континентов планеты (включая Эверест) и оба полюса Земли.' },
+  { name: '🏎️ Чарли Кимболл', desc: 'Пилот гоночной серии IndyCar. Первый гонщик с диабетом, одержавший победу в элитной серии на скоростях свыше 350 км/ч.' },
+  { name: '🎤 Ник Джонас', desc: 'Всемирно известный музыкант и актер. С 13 лет открыто рассказывает о своем образе жизни с инсулиновой помпой и CGM-мониторингом.' }
+];
+
+const DIABETES_SUPPORT_PHRASES = [
+  '☕️ Диабет — это не болезнь, а особый образ жизни, который учит нас глубоко чувствовать свое тело, заботиться о себе и жить осознанно. Вы имеете полное право иногда уставать от этого ритма. Но помните: вы справляетесь просто великолепно! 🌟',
+  '❤️ Помните, что диабет — это не диагноз и не ограничение, а особый образ жизни, требующий внимания и чуткости к себе. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек! ☕️',
+  '💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это не бремя, а проявление вашей осознанности и большой любви к себе. Вы — главный капитан своего корабля! ⛵️',
+  '☀️ Вы сильнее, чем думаете. Да, диабет — это особый образ жизни со своими правилами, но каждый раз, когда вы находите баланс и делаете выбор в пользу своего здоровья — побеждаете именно вы. Гордитесь собой! 🛡️',
+  '✨ Никакие особенности обмена веществ не способны ограничить вашу мечту, вашу радость и ваши цели. Вы управляете своей жизнью. Разрешите себе иногда расслабиться — вы заслуживаете самого теплого отдыха. 🧸',
+  '🌊 Бывают дни, когда сахара идут вверх и вниз без видимых причин, и это выматывает. Это нормально — чувствовать усталость. Главное — не винить себя, вы делаете колоссальную работу каждый день! 💙',
+  '🧭 Знаете, в чем ваша суперсила? Вы управляете сложнейшей биохимической системой своего организма каждый день. Вы — личный пилот лайнера, и даже если случается турбулентность, вы мастерски держите штурвал! ✈️',
+  '🎁 Цифры на экране мониторинга или глюкометра — это просто навигационные данные, а не оценка вас как личности. Вы ценны, любимы и прекрасны при любых показателях! 💖'
+];
+
+// Подробная клиническая энциклопедия для всплывающих окон (п.7, п.8, п.12)
+const HELP_TOPICS = {
+  xe: {
+    title: '🍞 Что такое 1 ХЕ и примеры углеводов',
+    html: `
+      <p><strong>1 ХЕ (Хлебная Единица) = 12 граммов</strong> чистых усваиваемых углеводов (без учета клетчатки). Без инсулина 1 ХЕ поднимает сахар крови в среднем на <strong>1.8–2.2 ммоль/л</strong>.</p>
+      <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-2">
+        <div class="font-extrabold text-rose-300">🔴 Быстрые углеводы (Высокий ГИ ≥ 70) — поднимают сахар за 5–15 мин:</div>
+        <div class="text-[11px] opacity-90">Фруктовый сок (100 мл = 1 ХЕ), обычная Кола, сахар/мед (1 ст.л. = 1 ХЕ), декстроза, белый хлеб, картофельное пюре, спелый банан, манка. <em>Идеальны для купирования гипогликемии!</em></div>
+      </div>
+      <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5">
+        <div class="font-extrabold text-amber-300">🟡 Средние углеводы (Средний ГИ 50–69) — усваиваются за 20–40 мин:</div>
+        <div class="text-[11px] opacity-90">Ржаной/цельнозерновой хлеб (1 кус. = 1 ХЕ), овсянка долгой варки, бурый рис, отварной картофель в мундире, яблоки, груши, ягоды, молоко/кефир.</div>
+      </div>
+      <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5">
+        <div class="font-extrabold text-emerald-300">🟢 Медленные углеводы (Низкий ГИ &lt; 50) — плавный подъем 1–3 часа:</div>
+        <div class="text-[11px] opacity-90">Гречка (50 г вареной = 1 ХЕ), паста из твердых сортов пшеницы (al dente), чечевица, нут, фасоль, киноа, перловка, зеленые овощи, горький шоколад (от 75% какао — жиры замедляют сахар!).</div>
+      </div>
+    `
+  },
+  insulins: {
+    title: '💧 Группы инсулинов и примеры препаратов',
+    html: `
+      <p>Болюсные (пищевые) инсулины делятся по скорости начала работы и длительности действия (DIA):</p>
+      <div class="space-y-2 mt-2">
+        <div class="p-2.5 rounded-2xl theme-input">
+          <div class="font-extrabold">⚡ Сверхбыстрые (активны 3–3.5 часа)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Фиасп (Fiasp), Люмжев (Lyumjev).<br>Обогащены компонентами для мгновенного всасывания. Колются за 0–5 мин до еды или прямо в начале приема пищи.</div>
+        </div>
+        <div class="p-2.5 rounded-2xl theme-input">
+          <div class="font-extrabold">🚀 Ультракороткие (активны 4 часа)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт.<br>Золотой стандарт. Требуют паузы 10–15 мин перед едой со средним ГИ.</div>
+        </div>
+        <div class="p-2.5 rounded-2xl theme-input">
+          <div class="font-extrabold">⏱ Короткие / Регуляр (активны 5–6 часов)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Актрапид, Хумулин Регуляр, Биосулин Р.<br>Разворачиваются медленно (пауза 25–30 мин до еды), но за счет длинного «хвоста» в один укол перекрывают белки и жиры (БЖЕ).</div>
+        </div>
+        <div class="p-2.5 rounded-2xl theme-soft">
+          <div class="font-extrabold">🌙 Базальные (Фоновые / Длинные)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Тресиба (Деглудек), Туджео / Лантус (Гларгин), Левемир (Детемир). Держат ровный сахар натощак и ночью.</div>
+        </div>
+      </div>
+    `
+  },
+  icr: {
+    title: '🧮 Что такое УК и как его считать (Правило 500)',
+    html: `
+      <p><strong>УК (Углеводный коэффициент)</strong> показывает, сколько единиц (ЕД) инсулина нужно на усвоение <strong>1 ХЕ (12 г углеводов)</strong>.</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
+        <div class="font-extrabold">📐 Научная формула расчета (Правило 500 / 450):</div>
+        <div class="text-[11px] opacity-90">1. Найдите свою <strong>СДИ (Суточную дозу инсулина)</strong> = весь болюс за день + вся база (ночной инсулин).<br>2. Разделите <strong>500</strong> (для ультракоротких) или <strong>450</strong> (для коротких) на СДИ — вы получите количество граммов углеводов на 1 ЕД.<br>3. Чтобы перевести в ХЕ: <strong>УК = (12 × СДИ) / 500</strong>.<br><em>Пример: при СДИ = 42 ЕД, базовый УК ≈ (12 × 42) / 500 = 1.0 ЕД на 1 ХЕ.</em></div>
+      </div>
+      <p class="mt-2 text-[11px] opacity-85">⚠️ Из-за циркадных ритмов гормонов утром инсулин работает слабее (УК выше на ~15%), а вечером чувствительность выше (УК ниже на ~10%).</p>
+    `
+  },
+  isf: {
+    title: '📉 Что такое ФЧИ и Правило 100 (1800)',
+    html: `
+      <p><strong>ФЧИ (Фактор чувствительности к инсулину)</strong> показывает, на сколько <strong>ммоль/л</strong> ровно <strong>1 ЕД</strong> инсулина снижает повышенный сахар крови.</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
+        <div class="font-extrabold">📐 Научная формула (Правило 100 для ммоль/л / 1800 для мг/дл):</div>
+        <div class="text-[11px] opacity-90">• Для ультракоротких инсулинов: <strong>ФЧИ = 100 / СДИ</strong> (где СДИ — сумма базы и болюса за сутки).<br>• Для коротких инсулинов: <strong>ФЧИ = 83 / СДИ</strong>.<br><em>Пример: если ваша суточная доза (база + болюс) равна 40 ЕД, то 100 / 40 = 2.5 ммоль/л. Значит, 1 ЕД снизит сахар с 9.0 до 6.5 ммоль/л.</em></div>
+      </div>
+      <p class="mt-2 text-[11px] opacity-85">Приложение считает ФЧИ автоматически с учетом вашей введенной базы и суточного болюса, либо позволяет задать точное число вручную.</p>
+    `
+  },
+  targetBg: {
+    title: '🎯 Целевой сахар и мягкий диапазон',
+    html: `
+      <p><strong>Целевой сахар</strong> — это уровень глюкозы крови, к которому калькулятор стремится привести вас при расчете коррекции (ДПС).</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5">
+        <div class="font-extrabold text-emerald-300">🛡 Мягкий безопасный диапазон (Рекомендация ADA / ISPAD):</div>
+        <div class="text-[11px] opacity-90">• Натощак и перед едой: <strong>5.0 – 6.5 ммоль/л</strong> (оптимальная точка прицела — <strong>5.5–5.8 ммоль/л</strong>).<br>• Через 2 часа после еды: <strong>до 7.8–8.5 ммоль/л</strong>.<br>• Перед сном и ночью: <strong>5.8 – 7.0 ммоль/л</strong> (чуть выше, чтобы исключить риск ночной гипогликемии).</div>
+      </div>
+      <p class="mt-2 text-[11px] opacity-85">Не ставьте целевой сахар ниже 4.8 ммоль/л — это лишает организм запаса прочности при физической активности.</p>
+    `
+  },
+  basal: {
+    title: '🌙 Базальный (фоновый/ночной) инсулин и компенсация',
+    html: `
+      <p><strong>Базальный инсулин (База)</strong> — это фундамент компенсации. Печень круглосуточно выделяет в кровь гликоген, и задача базы — удерживать ровный сахар натощак и ночью без еды.</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
+        <div class="font-extrabold">⚖️ Как база влияет на расчёты еды:</div>
+        <div class="text-[11px] opacity-90">1. В норме база составляет <strong>40–50% от всей суточной дозы (СДИ)</strong>. Остальные 50–60% — это болюсы на еду.<br>2. Ваша доза базы напрямую входит в расчет <strong>ФЧИ (100 / СДИ)</strong> и оценку <strong>базового УК</strong>.<br>3. Если ваша реальная база сильно отличается от расчетной (например, нехватка базы), болюсы на еду будут уходить на покрытие фона, а при избытке базы — вызывать гипы между приемами пищи.</div>
+      </div>
+    `
+  },
+  bje: {
+    title: '🥩🍕 Что такое БЖЕ и «Эффект пиццы»',
+    html: `
+      <p><strong>1 БЖЕ (Белково-Жировая Единица) = 100 ккал</strong> из белков и жиров: <code>(Белки×4 + Жиры×9) / 100</code>.</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5">
+        <div class="font-extrabold">Почему жиры и белки важны:</div>
+        <div class="text-[11px] opacity-90">• <strong>Жиры (от 25 г)</strong> обволакивают желудок и тормозят всасывание даже быстрых углеводов. Если уколоть весь инсулин до еды с большой паузой, инсулин обгонит еду и вызовет гипу!<br>• <strong>Белки (от 30 г)</strong> через 2–4 часа в печени превращаются в глюкозу (глюконеогенез) и дают поздний «дострел» сахара.<br>• По <strong>Варшавскому протоколу ISPAD</strong> на 1 БЖЕ требуется ~50% от вашего УК, которые колются во вторую волну (через 60–90 мин после еды).</div>
+      </div>
+    `
+  },
+  penStep: {
+    title: '💉 Научно-логическое округление по шагу ручки',
+    html: `
+      <p>Обычное математическое округление опасно при диабете: округлить дозу вверх при низковатом сахаре — значит спровоцировать гипогликемию.</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
+        <div class="font-extrabold">🧠 Как работает умное округление в DIAingo:</div>
+        <div class="text-[11px] opacity-90">• Вы выбираете шаг вашей ручки/помпы: <strong>1.0 ЕД</strong>, <strong>0.5 ЕД</strong> или <strong>0.1 ЕД</strong>.<br>• При нормальном сахаре (или вечером/ночью) дробный остаток до 65% от шага ручки округляется <strong>в меньшую сторону (консервативно вниз)</strong> для защиты от гипогликемии.<br>• Только при выраженной гипергликемии (&gt; 8.5 ммоль/л) используется точное симметричное округление до шага ручки.</div>
+      </div>
+    `
+  }
+};
 
 function getProf() {
   const p = appData.profiles[appData.activeProfile];
@@ -28,53 +161,80 @@ function getProf() {
   if (!p.diabetesType) p.diabetesType = 'none';
   if (!p.icr || p.icr <= 0) p.icr = 1.2;
   if (!p.insulinType) p.insulinType = 'ultralong';
+  if (!p.insulinStep || ![0.1, 0.5, 1.0].includes(+p.insulinStep)) p.insulinStep = 0.5;
   if (!p.targetBg || p.targetBg < 4.0) p.targetBg = 5.6;
   if (typeof p.customIsf === 'undefined') p.customIsf = 0;
-  if (!p.penStep) p.penStep = 0.5; // Шаг ручки: 0.5 или 1 ЕД
-  if (!p.basalUnits) p.basalUnits = 12; // Доза длинного инсулина (базы)
+  if (typeof p.basalDose === 'undefined') p.basalDose = 0; // 0 = Авторасчет базы, >0 = Своя доза базы
   if (!Array.isArray(p.iobLog)) p.iobLog = [];
-  if (!p.sectionsOpen) p.sectionsOpen = { p1: true, p2: true, p3: true, ins: true, day: true, meal: true };
+  if (!p.sectionsOpen || typeof p.sectionsOpen !== 'object') {
+    p.sectionsOpen = { p1: true, p2: true, p3: true, d1: true, d2: true, d3: true };
+  }
   return p;
 }
 
 function saveStorage() {
-  try { localStorage.setItem('diaingo_v12', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('diaingo_v14', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const raw = localStorage.getItem('diaingo_v12') || localStorage.getItem('nutriingo_v11') || localStorage.getItem('nutriingo_v10');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.profiles) appData = parsed;
+    const keys = ['diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10', 'nutriingo_v9'];
+    for (const k of keys) {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.profiles) {
+          appData = parsed;
+          break;
+        }
+      }
     }
   } catch (e) {}
 }
 
 function calcBMRForWeight(w, p) {
-  if (p.useBodyFat) return Math.round(370 + 21.6 * (w * (1 - p.bodyFat / 100)));
-  const base = 10 * w + 6.25 * p.height - 5 * p.age;
+  const safeW = Math.max(30, Math.min(250, +w || 70));
+  const safeH = Math.max(100, Math.min(230, +p.height || 170));
+  const safeA = Math.max(10, Math.min(100, +p.age || 30));
+  if (p.useBodyFat) {
+    const bf = Math.max(4, Math.min(60, +p.bodyFat || 20));
+    return Math.round(370 + 21.6 * (safeW * (1 - bf / 100)));
+  }
+  const base = 10 * safeW + 6.25 * safeH - 5 * safeA;
   return Math.round(p.gender === 'male' ? base + 5 : base - 161);
 }
 
 function calcTDEEForWeight(w, p) {
   const bmr = calcBMRForWeight(w, p);
-  const neat = Math.round(bmr * p.neatLevel);
-  const distKm = p.steps * ((p.height * 0.415) / 100000);
+  const neat = Math.round(bmr * (+p.neatLevel || 0.12));
+  const distKm = Math.max(0, +p.steps || 0) * ((p.height * 0.415) / 100000);
   const stepsKcal = Math.round(distKm * w * 0.62);
-  const singleWk = (p.workoutMins / 60) * w * 4.25;
-  const workoutKcal = p.workoutMode === 'today' ? Math.round(singleWk) : Math.round((singleWk * p.workoutDays) / 7);
+  const singleWk = (Math.max(0, +p.workoutMins || 0) / 60) * w * 4.25;
+  const workoutKcal = p.workoutMode === 'today' ? Math.round(singleWk) : Math.round((singleWk * Math.min(7, Math.max(0, +p.workoutDays || 0))) / 7);
   return { bmr, neat, distKm, stepsKcal, workoutKcal, tdee: bmr + neat + stepsKcal + workoutKcal };
 }
 
-// Научно логичное округление дозы с учетом шага ручки (0.5 или 1 ЕД)
-function roundDose(units, step) {
-  if (!units || units <= 0) return 0;
-  const s = step === 1 ? 1 : 0.5;
-  // Медицинское округление: при диабете дозы обычно округляются математически к ближайшему шагу ручки
-  return +(Math.round(units / s) * s).toFixed(1);
+// НАУЧНО-ЛОГИЧЕСКОЕ ОКРУГЛЕНИЕ ДОЗЫ ИНСУЛИНА С УЧЕТОМ ШАГА РУЧКИ И КОНТЕКСТА БЕЗОПАСНОСТИ (п.14, п.15)
+function roundSmartInsulin(rawUnits, stepVal, context = 'normal') {
+  if (!rawUnits || isNaN(rawUnits) || rawUnits <= 0) return 0;
+  const step = (+stepVal === 1.0 || +stepVal === 0.1) ? +stepVal : 0.5;
+  const quotient = rawUnits / step;
+  const intPart = Math.floor(quotient + 1e-9);
+  const frac = quotient - intPart;
+
+  // Клинический порог округления вверх:
+  // При риске гипо (ночь/вечер/низковатый сахар) требуем >= 0.68 шага для округления вверх (иначе округляем вниз!)
+  // В обычном режиме требуем >= 0.58 шага (консервативная защита от передозировки)
+  // Только при высоком сахаре (>8.5) используем стандартный порог 0.45
+  let upThreshold = 0.58;
+  if (context === 'hypo_risk') upThreshold = 0.70;
+  else if (context === 'hyper') upThreshold = 0.45;
+
+  const stepsCount = frac >= upThreshold ? intPart + 1 : intPart;
+  return +(stepsCount * step).toFixed(step === 0.1 ? 1 : 1);
 }
 
+// АКТИВНЫЙ ИНСУЛИН В ТЕЛЕ (IOB) + ЖИВОЙ ТАЙМЕР (п.11)
 function computeActiveIOB(p) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const diaMs = ins.diaHours * 3600 * 1000;
@@ -94,11 +254,17 @@ function computeActiveIOB(p) {
       const remUnits = +(item.units * remFrac).toFixed(2);
       if (remUnits >= 0.05) {
         totalIob += remUnits;
-        const leftMin = Math.round(totalMin - elapsedMin);
+        const leftSecTotal = Math.max(0, Math.round((diaMs - elapsedMs) / 1000));
+        const h = Math.floor(leftSecTotal / 3600);
+        const m = Math.floor((leftSecTotal % 3600) / 60);
+        const s = leftSecTotal % 60;
+        const leftText = h > 0 ? `${h}ч ${String(m).padStart(2, '0')}м` : `${m}м ${String(s).padStart(2, '0')}с`;
+        const pctLeft = Math.min(100, Math.round(remFrac * 100));
         activeRecords.push({
           ...item,
           remUnits: +remUnits.toFixed(1),
-          leftText: leftMin >= 60 ? `${Math.floor(leftMin / 60)}ч ${leftMin % 60}м` : `${leftMin} мин`
+          leftText,
+          pctLeft
         });
       }
     }
@@ -109,7 +275,10 @@ function computeActiveIOB(p) {
 
 function logInsulinInjection(units) {
   const u = parseFloat(units);
-  if (!u || u <= 0) return;
+  if (!u || u <= 0) {
+    alert('⚠️ Доза равна 0 ЕД. Введите углеводы или сахар для расчета укола.');
+    return;
+  }
   const p = getProf();
   const d = new Date();
   const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -126,6 +295,14 @@ function clearIobLog() {
   renderApp();
 }
 
+function toggleSection(secKey) {
+  const p = getProf();
+  p.sectionsOpen[secKey] = p.sectionsOpen[secKey] === false ? true : false;
+  saveStorage();
+  renderApp();
+}
+
+// СУТОЧНЫЙ ПЛАН ИНСУЛИНА С УЧЕТОМ БАЗЫ (НОЧНОГО ИНСУЛИНА) И ПРАВИЛ 500 / 100 (п.1, п.14)
 function computeDailyInsulinPlan(m, p) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const dayXE = +(m.normC / 12).toFixed(1);
@@ -133,10 +310,10 @@ function computeDailyInsulinPlan(m, p) {
   const dayBJE = +(dayFpKcal / 100).toFixed(1);
 
   const splits = [
-    { slot: 'morning', name: '🌅 Завтрак (30%)', share: 0.30, icrMult: 1.15 },
-    { slot: 'lunch',   name: '☀️ Обед (35%)',    share: 0.35, icrMult: 1.00 },
-    { slot: 'evening', name: '🌙 Ужин (25%)',    share: 0.25, icrMult: 0.90 },
-    { slot: 'night',   name: '🍏 Перекус (10%)', share: 0.10, icrMult: 0.95 }
+    { slot: 'morning', name: '🌅 Завтрак (30%)', share: 0.30, icrMult: 1.15, ctx: 'normal' },
+    { slot: 'lunch',   name: '☀️ Обед (35%)',    share: 0.35, icrMult: 1.00, ctx: 'normal' },
+    { slot: 'evening', name: '🌙 Ужин (25%)',    share: 0.25, icrMult: 0.90, ctx: 'hypo_risk' },
+    { slot: 'night',   name: '🍏 Перекус (10%)', share: 0.10, icrMult: 0.95, ctx: 'hypo_risk' }
   ].map(s => {
     const cG = Math.round(m.normC * s.share);
     const pG = Math.round(m.normP * s.share);
@@ -144,8 +321,8 @@ function computeDailyInsulinPlan(m, p) {
     const xe = +(cG / 12).toFixed(1);
     const bje = +((pG * 4 + fG * 9) / 100).toFixed(1);
     const effIcr = +(p.icr * s.icrMult).toFixed(2);
-    const preU = roundDose(xe * effIcr, p.penStep);
-    const postU = (!ins.coversBJE && bje >= 1.0) ? roundDose(bje * effIcr * 0.5, p.penStep) : 0;
+    const preU = roundSmartInsulin(xe * effIcr, p.insulinStep, s.ctx);
+    const postU = (!ins.coversBJE && bje >= 1.0) ? roundSmartInsulin(bje * effIcr * 0.5, p.insulinStep, s.ctx) : 0;
     const totU = +(preU + postU).toFixed(1);
     return { ...s, cG, pG, fG, xe, bje, effIcr, preU, postU, totU };
   });
@@ -153,11 +330,30 @@ function computeDailyInsulinPlan(m, p) {
   const dayCarbBolus = +(splits.reduce((acc, s) => acc + s.preU, 0)).toFixed(1);
   const dayBjeBolus = +(splits.reduce((acc, s) => acc + s.postU, 0)).toFixed(1);
   const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
-  const estBasal = p.basalUnits || +(Math.max(p.weight * 0.22, totalBolusDay * 0.82)).toFixed(1);
-  const totalDailyDose = +(totalBolusDay + estBasal).toFixed(1); // TDD = Суточный болюс + База
 
-  const autoIsf = +(ins.isfRule / Math.max(10, totalDailyDose)).toFixed(1);
+  // Расчетная норма базы (~45% от СДИ или 0.22 ЕД/кг) vs Реально введенная база пользователя
+  const autoBasal = Math.max(4, Math.round(Math.max(p.weight * 0.22, totalBolusDay * 0.82)));
+  const effectiveBasal = (p.basalDose && p.basalDose > 0) ? +p.basalDose : autoBasal;
+  const totalDailyDose = +(totalBolusDay + effectiveBasal).toFixed(1);
+  const basalPct = totalDailyDose > 0 ? Math.round((effectiveBasal / totalDailyDose) * 100) : 45;
+
+  // Баланс базы: в норме база составляет 35–55% от СДИ
+  let basalStatus = 'ok';
+  let basalNote = `Оптимальный баланс: база составляет ${basalPct}% от суточной дозы (${totalDailyDose} ЕД).`;
+  if (basalPct > 56) {
+    basalStatus = 'high';
+    basalNote = `⚠️ Доля базы высокая (${basalPct}% от СДИ). Возможны провалы сахара натощак и ночью — будьте осторожны с ДПС!`;
+  } else if (basalPct < 33) {
+    basalStatus = 'low';
+    basalNote = `ℹ️ Доля базы низкая (${basalPct}% от СДИ). Если сахар растет натощак, часть пищевого болюса уходит на покрытие фона.`;
+  }
+
+  // Научный расчет ФЧИ по Правилу 100 (ультра) / 83 (короткий) от реальной СДИ (База + Болюс)
+  const autoIsf = +(ins.isfRule / Math.max(8, totalDailyDose)).toFixed(1);
   const effectiveIsf = (p.customIsf && p.customIsf > 0) ? +p.customIsf.toFixed(1) : autoIsf;
+
+  // Научный ориентир УК по Правилу 500 (1 ХЕ = 12г => 12 / (500 / СДИ))
+  const rule500Icr = +((12 * Math.max(8, totalDailyDose)) / (ins.id === 'short' ? 450 : 500)).toFixed(2);
 
   if (!mealBolus.initialized || !mealBolus.customEdited) {
     const activeSlot = typeof mealTimeSlot !== 'undefined' ? mealTimeSlot : 'lunch';
@@ -168,9 +364,14 @@ function computeDailyInsulinPlan(m, p) {
     mealBolus.initialized = true;
   }
 
-  return { ins, dayXE, dayBJE, dayCarbBolus, dayBjeBolus, totalBolusDay, estBasal, totalDailyDose, autoIsf, effectiveIsf, splits };
+  return {
+    ins, dayXE, dayBJE, dayCarbBolus, dayBjeBolus, totalBolusDay,
+    autoBasal, effectiveBasal, totalDailyDose, basalPct, basalStatus, basalNote,
+    autoIsf, effectiveIsf, rule500Icr, splits
+  };
 }
 
+// МНОГОУРОВНЕВАЯ ПРОВЕРКА И ТОЧНЫЙ РАСЧЕТ КБЖУ ДЛЯ ЛЮДЕЙ БЕЗ ДИАБЕТА И С ДИАБЕТОМ (п.14)
 function computeMetrics() {
   const p = getProf();
   const curr = calcTDEEForWeight(p.weight, p);
@@ -183,10 +384,10 @@ function computeMetrics() {
   const weeklyKg = +(diffKg / Math.max(1, p.targetWeeks)).toFixed(2);
   const targetKcal = curr.tdee + dailyDelta;
 
-  const weightBasedMin = Math.round(p.weight * (p.diabetesType !== 'none' ? 23.0 : 20.5));
+  const weightBasedMin = Math.round(p.weight * (p.diabetesType !== 'none' ? 22.5 : 20.0));
   let bmrBasedMin = p.gender === 'female' ? Math.round(curr.bmr * 0.88) : Math.round(curr.bmr * 0.90);
   if (p.diabetesType !== 'none') {
-    bmrBasedMin = Math.max(bmrBasedMin, Math.round(curr.tdee * 0.76));
+    bmrBasedMin = Math.max(bmrBasedMin, Math.round(curr.tdee * 0.75));
   }
   let minSafe = Math.max(weightBasedMin, bmrBasedMin);
   minSafe = p.diabetesType === 'none' ? Math.max(1200, minSafe) : Math.max(1400, minSafe);
@@ -202,71 +403,75 @@ function computeMetrics() {
   let normP = Math.round(refWeight * p.protGkg);
   let normF = Math.round(refWeight * p.fatGkg);
 
-  const maxProtG = Math.round((effectiveKcal * 0.42) / 4);
-  if (normP > maxProtG) normP = maxProtG;
+  const maxProtG = Math.round((effectiveKcal * 0.40) / 4);
+  const minProtG = Math.round(refWeight * 1.2);
+  normP = Math.max(minProtG, Math.min(maxProtG, normP));
+
   const minFatG = Math.round(refWeight * 0.65);
-  if (normF < minFatG) normF = minFatG;
+  normF = Math.max(minFatG, normF);
 
-  let minCarbG = 40;
-  let maxCarbG = 400;
+  let normC = 150;
 
-  if (p.dietType === 'keto') {
-    if (p.diabetesType === 'dm1') {
-      minCarbG = 80;
-      maxCarbG = 110;
+  if (p.diabetesType === 'none') {
+    // ЧЕЛОВЕК БЕЗ ДИАБЕТА: точное соблюдение выбранного типа питания и г/кг без искусственного урезания углеводов!
+    if (p.dietType === 'keto') {
+      normC = Math.max(20, Math.min(40, Math.round((effectiveKcal * 0.08) / 4)));
+      normF = Math.max(minFatG, Math.round((effectiveKcal - normP * 4 - normC * 4) / 9));
+    } else if (p.dietType === 'lowcarb') {
+      const rawC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
+      normC = Math.max(50, Math.min(110, rawC));
+      normF = Math.max(minFatG, Math.round((effectiveKcal - normP * 4 - normC * 4) / 9));
     } else {
-      minCarbG = 20;
-      maxCarbG = 35;
+      // Сбалансированное, Высокобелковое, Энергия и Сила:
+      // Белки и жиры фиксируются ровно по выбранным г/кг, а все оставшиеся калории идут в углеводы!
+      let rawC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
+      const minHealthyC = p.dietType === 'energy' ? 140 : 85;
+      if (rawC < minHealthyC) {
+        normC = minHealthyC;
+        const remForFat = effectiveKcal - normP * 4 - normC * 4;
+        if (remForFat >= minFatG * 9) {
+          normF = Math.round(remForFat / 9);
+        } else {
+          normF = minFatG;
+          normP = Math.max(minProtG, Math.round((effectiveKcal - normF * 9 - normC * 4) / 4));
+        }
+      } else {
+        normC = rawC;
+      }
     }
-  } else if (p.dietType === 'lowcarb') {
-    if (p.diabetesType === 'dm1') {
-      minCarbG = 90;
-      maxCarbG = 120;
-    } else if (p.diabetesType === 'dm2') {
-      minCarbG = 60;
-      maxCarbG = 95;
-    } else {
-      minCarbG = 50;
-      maxCarbG = 105;
-    }
-  } else if (p.dietType === 'highprot') {
-    if (p.diabetesType === 'dm2') {
-      minCarbG = 75;
-      maxCarbG = Math.min(125, Math.round((effectiveKcal * 0.30) / 4));
-    } else if (p.diabetesType === 'dm1') {
-      minCarbG = 110;
-      maxCarbG = Math.min(155, Math.round((effectiveKcal * 0.38) / 4));
-    } else {
-      minCarbG = 80;
-      maxCarbG = Math.round((effectiveKcal * 0.45) / 4);
-    }
-  } else {
-    if (p.diabetesType === 'dm2') {
-      minCarbG = 85;
-      maxCarbG = Math.min(135, Math.round((effectiveKcal * 0.33) / 4));
-    } else if (p.diabetesType === 'dm1') {
-      minCarbG = 120;
-      maxCarbG = Math.min(175, Math.round((effectiveKcal * 0.42) / 4));
-    } else {
-      minCarbG = 100;
-      maxCarbG = Math.round((effectiveKcal * 0.55) / 4);
-    }
-  }
-
-  if (maxCarbG < minCarbG) maxCarbG = minCarbG;
-
-  let rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-  let normC = Math.max(minCarbG, Math.min(maxCarbG, rawRemC));
-
-  let remForFatKcal = effectiveKcal - normP * 4 - normC * 4;
-  if (remForFatKcal < minFatG * 9) {
-    normF = minFatG;
-    const minProtG = Math.round(refWeight * 1.35);
-    const neededProtKcal = effectiveKcal - normF * 9 - normC * 4;
-    normP = Math.max(minProtG, Math.round(neededProtKcal / 4));
+    // Финальная доводка до 1 г, чтобы сумма Б*4 + Ж*9 + У*4 == effectiveKcal
     normC = Math.max(20, Math.round((effectiveKcal - normP * 4 - normF * 9) / 4));
   } else {
-    normF = Math.round(remForFatKcal / 9);
+    // ЧЕЛОВЕК С ДИАБЕТОМ (СД 1 или СД 2): клинический коридор углеводов по диете + точный баланс калорий
+    let minCarbG = 60, maxCarbG = 180;
+    if (p.dietType === 'keto') {
+      minCarbG = p.diabetesType === 'dm1' ? 80 : 25;
+      maxCarbG = p.diabetesType === 'dm1' ? 110 : 40;
+    } else if (p.dietType === 'lowcarb') {
+      minCarbG = p.diabetesType === 'dm1' ? 90 : 60;
+      maxCarbG = p.diabetesType === 'dm1' ? 120 : 95;
+    } else if (p.dietType === 'highprot') {
+      minCarbG = p.diabetesType === 'dm2' ? 75 : 110;
+      maxCarbG = p.diabetesType === 'dm2' ? 125 : 155;
+    } else if (p.dietType === 'energy') {
+      minCarbG = p.diabetesType === 'dm2' ? 100 : 140;
+      maxCarbG = p.diabetesType === 'dm2' ? 150 : 210;
+    } else {
+      minCarbG = p.diabetesType === 'dm2' ? 85 : 120;
+      maxCarbG = p.diabetesType === 'dm2' ? 135 : 175;
+    }
+
+    const rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
+    normC = Math.max(minCarbG, Math.min(maxCarbG, rawRemC));
+
+    const remForFatKcal = effectiveKcal - normP * 4 - normC * 4;
+    if (remForFatKcal < minFatG * 9) {
+      normF = minFatG;
+      normP = Math.max(minProtG, Math.round((effectiveKcal - normF * 9 - normC * 4) / 4));
+      normC = Math.max(25, Math.round((effectiveKcal - normP * 4 - normF * 9) / 4));
+    } else {
+      normF = Math.round(remForFatKcal / 9);
+    }
   }
 
   const realPpct = Math.round((normP * 4 / effectiveKcal) * 100);
@@ -287,7 +492,8 @@ function computeMetrics() {
 }
 
 function computeHypoRescue(currBgVal, p) {
-  const bg = parseFloat(String(currBgVal).replace(',', '.')) || 3.2;
+  const rawBg = parseFloat(String(currBgVal).replace(',', '.'));
+  const bg = (!isNaN(rawBg) && rawBg > 0) ? Math.max(1.0, Math.min(15.0, rawBg)) : 3.2;
   const target = Math.max(5.2, p.targetBg || 5.6);
   const deficitMmol = Math.max(0.5, target - bg);
   const raisePerGram = 20 / Math.max(35, p.weight);
@@ -326,7 +532,7 @@ function formatDateOffset(days) {
 function selectDietType(typeId) {
   const p = getProf();
   if (p.diabetesType === 'dm1' && typeId === 'keto') {
-    alert('⚠️ При СД 1 типа строгое Кето не рекомендуется. Выбран безопасный низкоуглеводный режим (Low-Carb).');
+    alert('⚠️ При СД 1 типа строгое Кето не рекомендуется из-за риска кетоацидоза. Выбран безопасный низкоуглеводный режим (Low-Carb).');
     typeId = 'lowcarb';
   }
   const dt = DIET_TYPES.find(x => x.id === typeId);
@@ -347,18 +553,20 @@ function setParam(key, val) {
   const cleanVal = String(val).replace(',', '.');
   if (['age', 'height', 'steps', 'workoutDays', 'workoutMins', 'targetWeeks'].includes(key)) {
     p[key] = Math.max(0, parseInt(cleanVal, 10) || 0);
-  } else if (['weight', 'bodyFat', 'neatLevel', 'targetWeight', 'presetDelta', 'protGkg', 'fatGkg', 'icr', 'targetBg', 'customIsf', 'basalUnits', 'penStep'].includes(key)) {
+  } else if (['weight', 'bodyFat', 'neatLevel', 'targetWeight', 'presetDelta', 'protGkg', 'fatGkg', 'icr', 'targetBg', 'customIsf', 'insulinStep', 'basalDose'].includes(key)) {
     p[key] = Math.max(0, parseFloat(cleanVal) || 0);
   } else {
     p[key] = val;
   }
-  if (key === 'icr' && p.icr < 0.1) p.icr = 0.1;
-  if (key === 'targetBg') p.targetBg = Math.max(4.2, Math.min(9.0, p.targetBg));
-  if (key === 'age' && p.age < 10) p.age = 10;
-  if (key === 'height' && p.height < 100) p.height = 100;
-  if (key === 'weight' && p.weight < 30) p.weight = 30;
-  if (key === 'targetWeight' && p.targetWeight < 30) p.targetWeight = 30;
-  if (key === 'targetWeeks' && p.targetWeeks < 1) p.targetWeeks = 1;
+  if (key === 'icr') p.icr = Math.max(0.1, Math.min(6.0, p.icr));
+  if (key === 'insulinStep' && ![0.1, 0.5, 1.0].includes(p.insulinStep)) p.insulinStep = 0.5;
+  if (key === 'targetBg') p.targetBg = Math.max(4.4, Math.min(9.0, p.targetBg));
+  if (key === 'basalDose') p.basalDose = Math.max(0, Math.min(120, p.basalDose));
+  if (key === 'age') p.age = Math.max(10, Math.min(100, p.age));
+  if (key === 'height') p.height = Math.max(100, Math.min(230, p.height));
+  if (key === 'weight') p.weight = Math.max(30, Math.min(250, p.weight));
+  if (key === 'targetWeight') p.targetWeight = Math.max(30, Math.min(250, p.targetWeight));
+  if (key === 'targetWeeks') p.targetWeeks = Math.max(1, Math.min(156, p.targetWeeks));
 
   mealBolus.customEdited = false;
   saveStorage();
@@ -369,11 +577,18 @@ function setMealBolus(k, v) {
   if (k === 'gi') {
     mealBolus.gi = v;
   } else if (k === 'currBg') {
-    const clean = String(v).replace(',', '.').trim();
-    mealBolus.currBg = clean === '' ? '' : Math.max(1.5, Math.min(35, parseFloat(clean) || 0));
+    let clean = String(v).replace(',', '.').trim();
+    if (clean === '') {
+      mealBolus.currBg = '';
+    } else {
+      let num = parseFloat(clean) || 0;
+      // Автоконвертация, если пользователь случайно ввел сахар в мг/дл (например, 120 вместо 6.7)
+      if (num > 35) num = +(num / 18).toFixed(1);
+      mealBolus.currBg = Math.max(1.5, Math.min(35.0, num));
+    }
   } else {
     const cleanVal = String(v).replace(',', '.');
-    mealBolus[k] = Math.max(0, Math.round(parseFloat(cleanVal) || 0));
+    mealBolus[k] = Math.max(0, Math.min(500, Math.round(parseFloat(cleanVal) || 0)));
     mealBolus.customEdited = true;
   }
   renderApp();
@@ -388,9 +603,9 @@ function parseSmartFoodText(rawText) {
   const cMatch = txt.match(/(?:угл[а-я]*|у|carb[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
 
   if (pMatch || fMatch || cMatch) {
-    if (pMatch) mealBolus.p = Math.round(parseFloat(pMatch[1]));
-    if (fMatch) mealBolus.f = Math.round(parseFloat(fMatch[1]));
-    if (cMatch) mealBolus.c = Math.round(parseFloat(cMatch[1]));
+    if (pMatch) mealBolus.p = Math.min(500, Math.round(parseFloat(pMatch[1])));
+    if (fMatch) mealBolus.f = Math.min(500, Math.round(parseFloat(fMatch[1])));
+    if (cMatch) mealBolus.c = Math.min(500, Math.round(parseFloat(cMatch[1])));
     mealBolus.customEdited = true;
     renderApp();
     return true;
@@ -398,9 +613,9 @@ function parseSmartFoodText(rawText) {
 
   const nums = txt.match(/\d+(?:\.\d+)?/g);
   if (nums && nums.length >= 3) {
-    mealBolus.p = Math.round(parseFloat(nums[0]));
-    mealBolus.f = Math.round(parseFloat(nums[1]));
-    mealBolus.c = Math.round(parseFloat(nums[2]));
+    mealBolus.p = Math.min(500, Math.round(parseFloat(nums[0])));
+    mealBolus.f = Math.min(500, Math.round(parseFloat(nums[1])));
+    mealBolus.c = Math.min(500, Math.round(parseFloat(nums[2])));
     mealBolus.customEdited = true;
     renderApp();
     return true;
@@ -424,3 +639,22 @@ function applySmartMacros(protG, fatG) {
   saveStorage();
   renderApp();
 }
+
+// ЖИВОЙ ТАЙМЕР АКТИВНОГО ИНСУЛИНА: обновляет плашку каждую секунду без сброса фокуса с полей ввода (п.11)
+setInterval(() => {
+  try {
+    const p = getProf();
+    if (!p.iobLog || p.iobLog.length === 0) return;
+    const iobData = computeActiveIOB(p);
+    const badge = document.getElementById('live-iob-units');
+    const sub = document.getElementById('live-iob-sub');
+    if (badge && iobData.activeRecords.length > 0) {
+      badge.textContent = `${iobData.totalIob} ЕД`;
+      if (sub) {
+        sub.textContent = `Укол ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}`;
+      }
+    } else if (badge && iobData.totalIob === 0) {
+      renderApp();
+    }
+  } catch (e) {}
+}, 1000);
