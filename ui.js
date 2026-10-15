@@ -26,15 +26,15 @@ const WORKOUT_INTENSITY_HELP = {
     <div class="space-y-2 mt-2">
       <div class="p-2.5 rounded-2xl theme-input">
         <div class="font-extrabold text-sky-300">🧘 Лёгкая нагрузка (ЧСС ~55–65% от макс.)</div>
-        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[0].examples}<br><em>Эффект:</em> восстановление, развитие выносливости, минимальное влияние на сахар крови.</div>
+        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[0].examples}<br><em>Эффект:</em> восстановление, развитие выносливости, плавное снижение сахара крови (УК -10%).</div>
       </div>
       <div class="p-2.5 rounded-2xl theme-input">
         <div class="font-extrabold text-emerald-300">🏋️ Средняя нагрузка (ЧСС ~65–76% от макс.)</div>
-        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[1].examples}<br><em>Эффект:</em> силовой тонус, укрепление мышц, умеренный расход гликогена.</div>
+        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[1].examples}<br><em>Эффект:</em> силовой тонус, укрепление мышц, заметный рост чувствительности к инсулину (УК -20%).</div>
       </div>
       <div class="p-2.5 rounded-2xl theme-input">
         <div class="font-extrabold text-amber-300">🔥 Высокая нагрузка (ЧСС ~76–88% от макс.)</div>
-        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[2].examples}<br><em>Эффект:</em> максимальный расход калорий, мощный рост потребности в белке и защите гликогена.</div>
+        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[2].examples}<br><em>Эффект:</em> максимальный расход калорий и гликогена, повышенная потребность в белке и защита от отсроченной гипогликемии (УК -25%).</div>
       </div>
     </div>
   `
@@ -64,7 +64,8 @@ function showHelpTopic(key) {
   let item = null;
   if (key === 'neat') item = HELP_TOPICS.neat;
   else if (key === 'workoutIntensity') item = WORKOUT_INTENSITY_HELP;
-  else if (key === 'currBg') item = CURR_BG_HELP;
+  else if (key === 'workoutDiabetes' && typeof WORKOUT_DIABETES_HELP !== 'undefined') item = WORKOUT_DIABETES_HELP;
+  else if (key === 'currBg' && typeof CURR_BG_HELP !== 'undefined') item = CURR_BG_HELP;
   else if (typeof HELP_TOPICS !== 'undefined' && HELP_TOPICS[key]) item = HELP_TOPICS[key];
   if (!item) return;
 
@@ -298,10 +299,11 @@ function getInstantMentorAnswer(q, p, m, dayPlan) {
     };
   }
 
-  if (ql.includes('спорт') || ql.includes('тренир') || ql.includes('шаг') || ql.includes('бег') || ql.includes('зал') || ql.includes('активн')) {
+  if (ql.includes('спорт') || ql.includes('тренир') || ql.includes('шаг') || ql.includes('бег') || ql.includes('зал') || ql.includes('активн') || ql.includes('пульс')) {
+    const wm = getWorkoutMeta(p);
     return {
       matched: true,
-      html: `<strong>🏋️ Спорт и физическая активность:</strong><br>Кардио и долгая ходьба ускоряют кровоток и усиливают работу инсулина в 1.5–2 раза. Если тренировка идет на активном болюсе, уменьшите дозу инсулина на еду перед залом на 25–30% или съешьте 1 ХЕ медленных углеводов без подколки.`
+      html: `<strong>🏋️ Спорт, пульс и защита от гипы:</strong><br>Ваша выбранная нагрузка — <strong>${wm.name} (пульс ${wm.hrMin}–${wm.hrMax} уд/мин)</strong>. Во время и после тренировки мышцы забирают глюкозу напрямую без инсулина. Включите кнопку <strong>«⚡ Тренировка сегодня»</strong> в расчете еды — она автоматически снизит ваш УК на 10–25% и сократит паузу!`
     };
   }
 
@@ -354,6 +356,7 @@ function renderApp() {
   const mealKcal = Math.round(mealBolus.p * 4 + mealBolus.f * 9 + mealBolus.c * 4);
   const hypoRescue = computeHypoRescue(hypoBgInput, p);
   const wMeta = getWorkoutMeta(p);
+  const wkCutPct = p.workoutIntensity === 'high' ? 25 : (p.workoutIntensity === 'mid' ? 20 : 10);
 
   const diffKg = +(p.targetWeight - p.weight).toFixed(1), totalDays = p.targetWeeks * 7;
   const finishDate = formatDateOffset(totalDays);
@@ -362,6 +365,7 @@ function renderApp() {
     return { w, date: formatDateOffset(totalDays * pct) };
   });
 
+  const extra3kKcal = Math.round(((p.height * 0.415) / 100000) * 3000 * p.weight * 0.62);
   const recProt = p.diabetesType !== 'none' ? 1.7 : (p.gender === 'female' ? 1.8 : 2.0);
   const recFat = p.gender === 'female' ? 0.95 : 0.9;
   const isTooStrict = m.targetKcal < m.minSafe;
@@ -469,7 +473,7 @@ function renderApp() {
                 ${activeOpenDropdown==='steps'?`<div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${STEPS_GRID.map(st=>`<button onclick="setParam('steps',${st});toggleDropdown('steps');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.steps===st?'theme-grad text-white':'theme-soft'}">${st}</button>`).join('')}</div>`:''}
               </div>
 
-              <!-- WORKOUT INTENSITY & PULSE ZONES (influences Kcal & macros for everyone) -->
+              <!-- WORKOUT INTENSITY & PULSE ZONES -->
               <div class="p-3 rounded-2xl theme-input space-y-2.5">
                 <div class="flex justify-between items-center text-xs font-bold">
                   <span class="flex items-center">⚡ Тренировки и пульс ${helpBtn('workoutIntensity')}</span>
@@ -536,7 +540,7 @@ function renderApp() {
 
               <div class="p-3 rounded-2xl theme-soft space-y-2 text-xs">
                 ${isTooStrict?`<div class="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400 text-[11px]">⚠️ Жесткий темп! Порог безопасности для вашего веса (${p.weight} кг): <strong>${m.minSafe} ккал</strong>. <button onclick="setParam('targetWeeks',${safeWeeks})" class="underline font-bold">Поставить ${safeWeeks} нед.</button></div>`:`<div class="text-[11px]">✅ Безопасный темп: ${m.weeklyKg} кг/нед. Порог безопасности: ${m.minSafe} ккал. Клетчатка: от ${m.fiberNorm} г/сут.</div>`}
-                <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${m.stepsKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
+                <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${extra3kKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
               </div>
 
               <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-3 rounded-2xl text-left flex justify-between items-center gap-2 transition ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2.5 py-1 rounded-xl bg-black/20 text-white whitespace-nowrap shrink-0">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
@@ -736,7 +740,7 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- DIABETES BLOCK 3 -->
+        <!-- DIABETES BLOCK 3 WITH SYNCED "WORKOUT TODAY" BUTTON -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
           <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d3')">
             <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">🍽 3. Разовый расчет на еду</span><span class="text-xs opacity-60 shrink-0">${isOpen('d3')?'▴':'▾'}</span></h2>
@@ -759,6 +763,19 @@ function renderApp() {
                   <button onclick="setMealTime('lunch')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='lunch'?'theme-grad text-white shadow':'theme-input'}">☀️ День<div class="text-[9px] opacity-80">УК ×1.0</div></button>
                   <button onclick="setMealTime('evening')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='evening'?'theme-grad text-white shadow':'theme-input'}">🌙 Вечер<div class="text-[9px] opacity-80">УК ×0.90</div></button>
                   <button onclick="setMealTime('night')" class="py-2 px-1 rounded-xl text-[11px] font-bold transition ${mealTimeSlot==='night'?'theme-grad text-white shadow':'theme-input'}">🌌 Ночь<div class="text-[9px] opacity-80">УК ×0.95</div></button>
+                </div>
+              </div>
+
+              <!-- SYNCED "WORKOUT TODAY" BUTTON WITH POPUP EXPLANATION -->
+              <div class="p-3 rounded-2xl border transition ${p.workoutMode==='today' ? 'border-emerald-400/70 bg-emerald-500/15' : 'theme-input border-white/10'}">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="text-xs font-extrabold flex items-center">🏃 Спортивный режим укола ${helpBtn('workoutDiabetes')}</div>
+                    <div class="text-[10px] opacity-85 mt-0.5">${wMeta.name} (${wMeta.hrMin}–${wMeta.hrMax} уд/мин) · защита от гипы: <strong>УК -${wkCutPct}%</strong></div>
+                  </div>
+                  <button onclick="toggleWorkoutTodayMode()" class="h-9 px-3 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer ${p.workoutMode==='today' ? 'theme-grad text-white shadow-md' : 'theme-soft opacity-85'}">
+                    ${p.workoutMode==='today' ? '⚡ Тренировка сегодня: ВКЛ' : 'Тренировка сегодня'}
+                  </button>
                 </div>
               </div>
 
@@ -933,6 +950,7 @@ function renderApp() {
         <div id="report-text-box" class="p-3.5 rounded-2xl theme-input text-xs font-mono-num space-y-1.5 leading-relaxed">
           <div><strong>Профиль:</strong> ${p.gender==='male'?'Мужчина':'Женщина'}, ${p.age} лет, ${p.height} см, ${p.weight} кг (ИМТ ${m.bmi})</div>
           <div><strong>Цель:</strong> ${p.targetWeight} кг за ${p.targetWeeks} нед. (Норма: ${m.effectiveKcal} ккал)</div>
+          <div><strong>Активность:</strong> ${wMeta.name} (ЧСС ${wMeta.hrMin}–${wMeta.hrMax} уд/мин), шагов: ${p.steps}/дн</div>
           <div><strong>Суточное БЖУ:</strong> Б ${m.normP}г / Ж ${m.normF}г / У ${m.normC}г ${p.diabetesType!=='none'?`(${m.totalXE} ХЕ)`:''}</div>
           ${p.diabetesType !== 'none' ? `
             <div><strong>Инсулин:</strong> ${dayPlan.ins.name} (шаг ${p.insulinStep} ЕД)</div>
@@ -975,7 +993,7 @@ function renderApp() {
             <button onclick="askAiMentor('Что такое диабет и как работает инсулин?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Что такое диабет?</button>
             <button onclick="askAiMentor('Что такое гипергликемия и как сбить высокий сахар?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Гипергликемия</button>
             <button onclick="askAiMentor('Что такое гипогликемия и как поднять низкий сахар?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Гипогликемия</button>
-            <button onclick="askAiMentor('Как компенсировать пиццу, жиры и белки?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Жиры и БЖЕ</button>
+            <button onclick="askAiMentor('Как тренироваться без гипогликемии?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Спорт и пульс</button>
           </div>
           <div id="ai-chat-box" class="${aiChatAnswer ? '' : 'hidden'} p-3 rounded-2xl theme-soft text-xs leading-relaxed border border-white/15 space-y-1">${aiChatAnswer}</div>
         </div>
@@ -992,7 +1010,7 @@ function renderApp() {
         <div class="p-4 rounded-3xl theme-input space-y-2 border border-white/15">
           <div class="font-extrabold text-xs flex items-center justify-between gap-2">
             <span>❤️ Слово тепла и поддержки для вас</span>
-            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-input flex items-center justify-center cursor-pointer shadow-sm shrink-0">${isAiTrulyActive ? IC_SPARK : IC_REFRESH}</button>
+            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-soft flex items-center justify-center cursor-pointer shadow-sm shrink-0">${isAiTrulyActive ? IC_SPARK : IC_REFRESH}</button>
           </div>
           <div id="support-text-box" class="text-xs leading-relaxed opacity-95 mt-1">${currentSupport}</div>
         </div>
