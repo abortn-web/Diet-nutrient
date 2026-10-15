@@ -15,14 +15,12 @@ let mealBolus = {
   customEdited: false
 };
 
-// Типы болюсного инсулина (бренды вынесены в справочное окно по требованию п.12)
 const INSULIN_TYPES = [
   { id: 'ultrafast', name: '⚡ Сверхбыстрый', desc: 'Пик через 45–60 мин', brands: 'Фиасп (Fiasp), Люмжев (Lyumjev)', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
   { id: 'ultralong', name: '🚀 Ультракороткий', desc: 'Пик через 60–90 мин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт', preMin: 'За 10–15 мин ДО еды', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
   { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
 
-// Вдохновляющие истории и фразы поддержки (хранятся здесь, чтобы разгрузить ui.js)
 const DIABETES_STORIES = [
   { name: '⚖️ Тур Хейердал', desc: 'Великий норвежский путешественник и ученый. Пересекал океаны на плоту «Кон-Тики» и доказал, что диабет — это лишь особенность, а не преграда для открытий.' },
   { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С диабетом с 6 лет дает стадионные концерты и ведет активный яркий образ жизни.' },
@@ -45,23 +43,22 @@ const DIABETES_SUPPORT_PHRASES = [
   '🎁 Цифры на экране мониторинга или глюкометра — это просто навигационные данные, а не оценка вас как личности. Вы ценны, любимы и прекрасны при любых показателях! 💖'
 ];
 
-// Подробная клиническая энциклопедия для всплывающих окон (п.7, п.8, п.12)
 const HELP_TOPICS = {
   xe: {
-    title: '🍞 Что такое 1 ХЕ и примеры углеводов',
+    title: '🍞 Что такое 1 ХЕ и скорость углеводов',
     html: `
       <p><strong>1 ХЕ (Хлебная Единица) = 12 граммов</strong> чистых усваиваемых углеводов (без учета клетчатки). Без инсулина 1 ХЕ поднимает сахар крови в среднем на <strong>1.8–2.2 ммоль/л</strong>.</p>
       <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-2">
-        <div class="font-extrabold text-rose-300">🔴 Быстрые углеводы (Высокий ГИ ≥ 70) — поднимают сахар за 5–15 мин:</div>
-        <div class="text-[11px] opacity-90">Фруктовый сок (100 мл = 1 ХЕ), обычная Кола, сахар/мед (1 ст.л. = 1 ХЕ), декстроза, белый хлеб, картофельное пюре, спелый банан, манка. <em>Идеальны для купирования гипогликемии!</em></div>
+        <div class="font-extrabold text-rose-300">🔴 Быстрые углеводы (Высокий ГИ ≥ 70) — подъем за 5–15 мин:</div>
+        <div class="text-[11px] opacity-90">Фруктовый сок (100 мл = 1 ХЕ), обычная Кола, сахар/мед (1 ст.л. = 1 ХЕ), декстроза, белый хлеб, картофельное пюре, спелый банан, манка.</div>
       </div>
       <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5">
-        <div class="font-extrabold text-amber-300">🟡 Средние углеводы (Средний ГИ 50–69) — усваиваются за 20–40 мин:</div>
-        <div class="text-[11px] opacity-90">Ржаной/цельнозерновой хлеб (1 кус. = 1 ХЕ), овсянка долгой варки, бурый рис, отварной картофель в мундире, яблоки, груши, ягоды, молоко/кефир.</div>
+        <div class="font-extrabold text-amber-300">🟡 Средние углеводы (Средний ГИ 50–69) — усвоение за 20–40 мин:</div>
+        <div class="text-[11px] opacity-90">Ржаной/цельнозерновой хлеб, овсянка долгой варки, бурый рис, отварной картофель в мундире, яблоки, груши, ягоды, молоко/кефир.</div>
       </div>
       <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5">
         <div class="font-extrabold text-emerald-300">🟢 Медленные углеводы (Низкий ГИ &lt; 50) — плавный подъем 1–3 часа:</div>
-        <div class="text-[11px] opacity-90">Гречка (50 г вареной = 1 ХЕ), паста из твердых сортов пшеницы (al dente), чечевица, нут, фасоль, киноа, перловка, зеленые овощи, горький шоколад (от 75% какао — жиры замедляют сахар!).</div>
+        <div class="text-[11px] opacity-90">Гречка (50 г вареной = 1 ХЕ), паста из твердых сортов пшеницы (al dente), чечевица, нут, фасоль, киноа, перловка, зеленые овощи, горький шоколад.</div>
       </div>
     `
   },
@@ -72,18 +69,18 @@ const HELP_TOPICS = {
       <div class="space-y-2 mt-2">
         <div class="p-2.5 rounded-2xl theme-input">
           <div class="font-extrabold">⚡ Сверхбыстрые (активны 3–3.5 часа)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Фиасп (Fiasp), Люмжев (Lyumjev).<br>Обогащены компонентами для мгновенного всасывания. Колются за 0–5 мин до еды или прямо в начале приема пищи.</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Фиасп (Fiasp), Люмжев (Lyumjev).<br>Колются за 0–5 мин до еды или прямо в начале приема пищи.</div>
         </div>
         <div class="p-2.5 rounded-2xl theme-input">
           <div class="font-extrabold">🚀 Ультракороткие (активны 4 часа)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт.<br>Золотой стандарт. Требуют паузы 10–15 мин перед едой со средним ГИ.</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт.<br>Требуют паузы 10–15 мин перед едой со средним ГИ.</div>
         </div>
         <div class="p-2.5 rounded-2xl theme-input">
           <div class="font-extrabold">⏱ Короткие / Регуляр (активны 5–6 часов)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Актрапид, Хумулин Регуляр, Биосулин Р.<br>Разворачиваются медленно (пауза 25–30 мин до еды), но за счет длинного «хвоста» в один укол перекрывают белки и жиры (БЖЕ).</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Актрапид, Хумулин Регуляр, Биосулин Р.<br>Пауза 25–30 мин до еды; длинный «хвост» в один укол перекрывает БЖЕ.</div>
         </div>
         <div class="p-2.5 rounded-2xl theme-soft">
-          <div class="font-extrabold">🌙 Базальные (Фоновые / Длинные)</div>
+          <div class="font-extrabold">🌙 Базальные (Фоновые / Ночные)</div>
           <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Тресиба (Деглудек), Туджео / Лантус (Гларгин), Левемир (Детемир). Держат ровный сахар натощак и ночью.</div>
         </div>
       </div>
@@ -95,9 +92,9 @@ const HELP_TOPICS = {
       <p><strong>УК (Углеводный коэффициент)</strong> показывает, сколько единиц (ЕД) инсулина нужно на усвоение <strong>1 ХЕ (12 г углеводов)</strong>.</p>
       <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
         <div class="font-extrabold">📐 Научная формула расчета (Правило 500 / 450):</div>
-        <div class="text-[11px] opacity-90">1. Найдите свою <strong>СДИ (Суточную дозу инсулина)</strong> = весь болюс за день + вся база (ночной инсулин).<br>2. Разделите <strong>500</strong> (для ультракоротких) или <strong>450</strong> (для коротких) на СДИ — вы получите количество граммов углеводов на 1 ЕД.<br>3. Чтобы перевести в ХЕ: <strong>УК = (12 × СДИ) / 500</strong>.<br><em>Пример: при СДИ = 42 ЕД, базовый УК ≈ (12 × 42) / 500 = 1.0 ЕД на 1 ХЕ.</em></div>
+        <div class="text-[11px] opacity-90">1. Найдите свою <strong>СДИ (Суточную дозу инсулина)</strong> = весь болюс за день + вся база (ночной инсулин).<br>2. Разделите <strong>500</strong> (для ультракоротких) или <strong>450</strong> (для коротких) на СДИ — вы получите количество граммов углеводов на 1 ЕД.<br>3. В пересчете на ХЕ: <strong>УК = (12 × СДИ) / 500</strong>.</div>
       </div>
-      <p class="mt-2 text-[11px] opacity-85">⚠️ Из-за циркадных ритмов гормонов утром инсулин работает слабее (УК выше на ~15%), а вечером чувствительность выше (УК ниже на ~10%).</p>
+      <p class="mt-2 text-[11px] opacity-85">⚠️ Утром гормоны снижают чувствительность к инсулину (УК выше на ~15%), а вечером чувствительность выше (УК ниже на ~10%).</p>
     `
   },
   isf: {
@@ -105,30 +102,28 @@ const HELP_TOPICS = {
     html: `
       <p><strong>ФЧИ (Фактор чувствительности к инсулину)</strong> показывает, на сколько <strong>ммоль/л</strong> ровно <strong>1 ЕД</strong> инсулина снижает повышенный сахар крови.</p>
       <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">📐 Научная формула (Правило 100 для ммоль/л / 1800 для мг/дл):</div>
-        <div class="text-[11px] opacity-90">• Для ультракоротких инсулинов: <strong>ФЧИ = 100 / СДИ</strong> (где СДИ — сумма базы и болюса за сутки).<br>• Для коротких инсулинов: <strong>ФЧИ = 83 / СДИ</strong>.<br><em>Пример: если ваша суточная доза (база + болюс) равна 40 ЕД, то 100 / 40 = 2.5 ммоль/л. Значит, 1 ЕД снизит сахар с 9.0 до 6.5 ммоль/л.</em></div>
+        <div class="font-extrabold">📐 Научная формула (Правило 100 для ммоль/л):</div>
+        <div class="text-[11px] opacity-90">• Для ультракоротких инсулинов: <strong>ФЧИ = 100 / СДИ</strong> (где СДИ — сумма базы и болюса за сутки).<br>• Для коротких инсулинов: <strong>ФЧИ = 83 / СДИ</strong>.<br><em>Пример: при СДИ = 40 ЕД, 100 / 40 = 2.5 ммоль/л на 1 ЕД.</em></div>
       </div>
-      <p class="mt-2 text-[11px] opacity-85">Приложение считает ФЧИ автоматически с учетом вашей введенной базы и суточного болюса, либо позволяет задать точное число вручную.</p>
     `
   },
   targetBg: {
     title: '🎯 Целевой сахар и мягкий диапазон',
     html: `
-      <p><strong>Целевой сахар</strong> — это уровень глюкозы крови, к которому калькулятор стремится привести вас при расчете коррекции (ДПС).</p>
+      <p><strong>Целевой сахар</strong> — это уровень глюкозы крови, к которому калькулятор рассчитывает коррекцию (ДПС).</p>
       <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5">
-        <div class="font-extrabold text-emerald-300">🛡 Мягкий безопасный диапазон (Рекомендация ADA / ISPAD):</div>
-        <div class="text-[11px] opacity-90">• Натощак и перед едой: <strong>5.0 – 6.5 ммоль/л</strong> (оптимальная точка прицела — <strong>5.5–5.8 ммоль/л</strong>).<br>• Через 2 часа после еды: <strong>до 7.8–8.5 ммоль/л</strong>.<br>• Перед сном и ночью: <strong>5.8 – 7.0 ммоль/л</strong> (чуть выше, чтобы исключить риск ночной гипогликемии).</div>
+        <div class="font-extrabold text-emerald-300">🛡 Мягкий безопасный диапазон (ADA / ISPAD):</div>
+        <div class="text-[11px] opacity-90">• Натощак и перед едой: <strong>5.0 – 6.5 ммоль/л</strong> (оптимальная цель — <strong>5.5–5.8 ммоль/л</strong>).<br>• Через 2 часа после еды: <strong>до 7.8–8.5 ммоль/л</strong>.<br>• Перед сном и ночью: <strong>5.8 – 7.0 ммоль/л</strong> (для защиты от ночной гипогликемии).</div>
       </div>
-      <p class="mt-2 text-[11px] opacity-85">Не ставьте целевой сахар ниже 4.8 ммоль/л — это лишает организм запаса прочности при физической активности.</p>
     `
   },
   basal: {
-    title: '🌙 Базальный (фоновый/ночной) инсулин и компенсация',
+    title: '🌙 Базальный (ночной) инсулин и компенсация',
     html: `
-      <p><strong>Базальный инсулин (База)</strong> — это фундамент компенсации. Печень круглосуточно выделяет в кровь гликоген, и задача базы — удерживать ровный сахар натощак и ночью без еды.</p>
+      <p><strong>Базальный инсулин (База)</strong> удерживает ровный сахар натощак, во сне и между приемами пищи, компенсируя фоновую выработку глюкозы печенью.</p>
       <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">⚖️ Как база влияет на расчёты еды:</div>
-        <div class="text-[11px] opacity-90">1. В норме база составляет <strong>40–50% от всей суточной дозы (СДИ)</strong>. Остальные 50–60% — это болюсы на еду.<br>2. Ваша доза базы напрямую входит в расчет <strong>ФЧИ (100 / СДИ)</strong> и оценку <strong>базового УК</strong>.<br>3. Если ваша реальная база сильно отличается от расчетной (например, нехватка базы), болюсы на еду будут уходить на покрытие фона, а при избытке базы — вызывать гипы между приемами пищи.</div>
+        <div class="font-extrabold">⚖️ Как база влияет на расчёты:</div>
+        <div class="text-[11px] opacity-90">1. В норме база составляет <strong>40–50% от всей суточной дозы (СДИ)</strong>.<br>2. Доза базы напрямую входит в расчет вашего <strong>ФЧИ (100 / СДИ)</strong> и ориентира <strong>УК (Правило 500)</strong>.</div>
       </div>
     `
   },
@@ -138,53 +133,61 @@ const HELP_TOPICS = {
       <p><strong>1 БЖЕ (Белково-Жировая Единица) = 100 ккал</strong> из белков и жиров: <code>(Белки×4 + Жиры×9) / 100</code>.</p>
       <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5">
         <div class="font-extrabold">Почему жиры и белки важны:</div>
-        <div class="text-[11px] opacity-90">• <strong>Жиры (от 25 г)</strong> обволакивают желудок и тормозят всасывание даже быстрых углеводов. Если уколоть весь инсулин до еды с большой паузой, инсулин обгонит еду и вызовет гипу!<br>• <strong>Белки (от 30 г)</strong> через 2–4 часа в печени превращаются в глюкозу (глюконеогенез) и дают поздний «дострел» сахара.<br>• По <strong>Варшавскому протоколу ISPAD</strong> на 1 БЖЕ требуется ~50% от вашего УК, которые колются во вторую волну (через 60–90 мин после еды).</div>
+        <div class="text-[11px] opacity-90">• <strong>Жиры (от 25–28 г)</strong> тормозят всасывание углеводов в желудке.<br>• <strong>Белки (от 30 г)</strong> через 1.5–2 часа запускают глюконеогенез в печени и дают поздний подъем сахара.<br>• По <strong>Варшавскому протоколу ISPAD</strong> на 1 БЖЕ требуется ~50% от УК во 2-й укол после еды.</div>
       </div>
     `
   },
   penStep: {
     title: '💉 Научно-логическое округление по шагу ручки',
     html: `
-      <p>Обычное математическое округление опасно при диабете: округлить дозу вверх при низковатом сахаре — значит спровоцировать гипогликемию.</p>
+      <p>Обычное математическое округление опасно: округлить дозу вверх при нормальном или низковатом сахаре — значит повысить риск гипогликемии.</p>
       <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">🧠 Как работает умное округление в DIAingo:</div>
-        <div class="text-[11px] opacity-90">• Вы выбираете шаг вашей ручки/помпы: <strong>1.0 ЕД</strong>, <strong>0.5 ЕД</strong> или <strong>0.1 ЕД</strong>.<br>• При нормальном сахаре (или вечером/ночью) дробный остаток до 65% от шага ручки округляется <strong>в меньшую сторону (консервативно вниз)</strong> для защиты от гипогликемии.<br>• Только при выраженной гипергликемии (&gt; 8.5 ммоль/л) используется точное симметричное округление до шага ручки.</div>
+        <div class="font-extrabold">🧠 Алгоритм округления DIAingo:</div>
+        <div class="text-[11px] opacity-90">• Поддерживается шаг <strong>1.0 ЕД</strong> (ручка), <strong>0.5 ЕД</strong> (Джуниор) и <strong>0.1 ЕД</strong> (помпа).<br>• В покое и вечером дробный остаток до 60–70% шага округляется <strong>консервативно вниз</strong>.<br>• При повышенном сахаре (&gt; 6.8 ммоль/л) порог смещается для полной отработки ДПС.</div>
       </div>
     `
   }
 };
 
-function getProf() {
-  const p = appData.profiles[appData.activeProfile];
+function normalizeSingleProfile(p) {
+  if (!p) return;
   if (!p.macroBase) p.macroBase = 'target';
   if (!p.dietType) p.dietType = 'highprot';
   if (!p.diabetesType) p.diabetesType = 'none';
-  if (!p.icr || p.icr <= 0) p.icr = 1.2;
+  if (!p.icr || isNaN(p.icr) || p.icr <= 0) p.icr = 1.2;
   if (!p.insulinType) p.insulinType = 'ultralong';
   if (!p.insulinStep || ![0.1, 0.5, 1.0].includes(+p.insulinStep)) p.insulinStep = 0.5;
-  if (!p.targetBg || p.targetBg < 4.0) p.targetBg = 5.6;
-  if (typeof p.customIsf === 'undefined') p.customIsf = 0;
-  if (typeof p.basalDose === 'undefined') p.basalDose = 0; // 0 = Авторасчет базы, >0 = Своя доза базы
+  if (!p.targetBg || isNaN(p.targetBg) || p.targetBg < 4.4) p.targetBg = 5.6;
+  if (typeof p.customIsf === 'undefined' || isNaN(p.customIsf)) p.customIsf = 0;
+  if (typeof p.basalDose === 'undefined' || isNaN(p.basalDose)) p.basalDose = 0;
   if (!Array.isArray(p.iobLog)) p.iobLog = [];
   if (!p.sectionsOpen || typeof p.sectionsOpen !== 'object') {
     p.sectionsOpen = { p1: true, p2: true, p3: true, d1: true, d2: true, d3: true };
   }
+}
+
+function getProf() {
+  if (!appData.profiles[appData.activeProfile]) appData.activeProfile = 'p1';
+  const p = appData.profiles[appData.activeProfile];
+  normalizeSingleProfile(p);
   return p;
 }
 
 function saveStorage() {
-  try { localStorage.setItem('diaingo_v14', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('diaingo_v15', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const keys = ['diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10', 'nutriingo_v9'];
+    const keys = ['diaingo_v15', 'diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10'];
     for (const k of keys) {
       const raw = localStorage.getItem(k);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.profiles) {
           appData = parsed;
+          normalizeSingleProfile(appData.profiles.p1);
+          normalizeSingleProfile(appData.profiles.p2);
           break;
         }
       }
@@ -214,27 +217,22 @@ function calcTDEEForWeight(w, p) {
   return { bmr, neat, distKm, stepsKcal, workoutKcal, tdee: bmr + neat + stepsKcal + workoutKcal };
 }
 
-// НАУЧНО-ЛОГИЧЕСКОЕ ОКРУГЛЕНИЕ ДОЗЫ ИНСУЛИНА С УЧЕТОМ ШАГА РУЧКИ И КОНТЕКСТА БЕЗОПАСНОСТИ (п.14, п.15)
+// НАУЧНО-ЛОГИЧЕСКОЕ ОКРУГЛЕНИЕ С ЗАЩИТОЙ ОТ ПОГРЕШНОСТИ ПЛАВАЮЩЕЙ ТОЧКИ JS
 function roundSmartInsulin(rawUnits, stepVal, context = 'normal') {
   if (!rawUnits || isNaN(rawUnits) || rawUnits <= 0) return 0;
   const step = (+stepVal === 1.0 || +stepVal === 0.1) ? +stepVal : 0.5;
   const quotient = rawUnits / step;
-  const intPart = Math.floor(quotient + 1e-9);
-  const frac = quotient - intPart;
+  const intPart = Math.floor(quotient + 1e-7);
+  const frac = Math.max(0, quotient - intPart);
 
-  // Клинический порог округления вверх:
-  // При риске гипо (ночь/вечер/низковатый сахар) требуем >= 0.68 шага для округления вверх (иначе округляем вниз!)
-  // В обычном режиме требуем >= 0.58 шага (консервативная защита от передозировки)
-  // Только при высоком сахаре (>8.5) используем стандартный порог 0.45
   let upThreshold = 0.58;
   if (context === 'hypo_risk') upThreshold = 0.70;
-  else if (context === 'hyper') upThreshold = 0.45;
+  else if (context === 'hyper') upThreshold = 0.42;
 
-  const stepsCount = frac >= upThreshold ? intPart + 1 : intPart;
-  return +(stepsCount * step).toFixed(step === 0.1 ? 1 : 1);
+  const stepsCount = (frac + 1e-7) >= upThreshold ? intPart + 1 : intPart;
+  return +(stepsCount * step).toFixed(1);
 }
 
-// АКТИВНЫЙ ИНСУЛИН В ТЕЛЕ (IOB) + ЖИВОЙ ТАЙМЕР (п.11)
 function computeActiveIOB(p) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const diaMs = ins.diaHours * 3600 * 1000;
@@ -276,7 +274,7 @@ function computeActiveIOB(p) {
 function logInsulinInjection(units) {
   const u = parseFloat(units);
   if (!u || u <= 0) {
-    alert('⚠️ Доза равна 0 ЕД. Введите углеводы или сахар для расчета укола.');
+    alert('⚠️ Доза равна 0 ЕД. Введите углеводы или текущий сахар для расчета укола.');
     return;
   }
   const p = getProf();
@@ -302,7 +300,6 @@ function toggleSection(secKey) {
   renderApp();
 }
 
-// СУТОЧНЫЙ ПЛАН ИНСУЛИНА С УЧЕТОМ БАЗЫ (НОЧНОГО ИНСУЛИНА) И ПРАВИЛ 500 / 100 (п.1, п.14)
 function computeDailyInsulinPlan(m, p) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const dayXE = +(m.normC / 12).toFixed(1);
@@ -331,28 +328,23 @@ function computeDailyInsulinPlan(m, p) {
   const dayBjeBolus = +(splits.reduce((acc, s) => acc + s.postU, 0)).toFixed(1);
   const totalBolusDay = +(dayCarbBolus + dayBjeBolus).toFixed(1);
 
-  // Расчетная норма базы (~45% от СДИ или 0.22 ЕД/кг) vs Реально введенная база пользователя
   const autoBasal = Math.max(4, Math.round(Math.max(p.weight * 0.22, totalBolusDay * 0.82)));
   const effectiveBasal = (p.basalDose && p.basalDose > 0) ? +p.basalDose : autoBasal;
   const totalDailyDose = +(totalBolusDay + effectiveBasal).toFixed(1);
   const basalPct = totalDailyDose > 0 ? Math.round((effectiveBasal / totalDailyDose) * 100) : 45;
 
-  // Баланс базы: в норме база составляет 35–55% от СДИ
   let basalStatus = 'ok';
-  let basalNote = `Оптимальный баланс: база составляет ${basalPct}% от суточной дозы (${totalDailyDose} ЕД).`;
+  let basalNote = `Оптимальный баланс: база составляет ${basalPct}% от СДИ (${totalDailyDose} ЕД).`;
   if (basalPct > 56) {
     basalStatus = 'high';
-    basalNote = `⚠️ Доля базы высокая (${basalPct}% от СДИ). Возможны провалы сахара натощак и ночью — будьте осторожны с ДПС!`;
+    basalNote = `⚠️ Доля базы высокая (${basalPct}% от СДИ). Возможны провалы сахара натощак и ночью — осторожнее с ДПС!`;
   } else if (basalPct < 33) {
     basalStatus = 'low';
-    basalNote = `ℹ️ Доля базы низкая (${basalPct}% от СДИ). Если сахар растет натощак, часть пищевого болюса уходит на покрытие фона.`;
+    basalNote = `ℹ️ Доля базы низкая (${basalPct}% от СДИ). Если сахар растет натощак, часть болюса уходит на покрытие фона.`;
   }
 
-  // Научный расчет ФЧИ по Правилу 100 (ультра) / 83 (короткий) от реальной СДИ (База + Болюс)
   const autoIsf = +(ins.isfRule / Math.max(8, totalDailyDose)).toFixed(1);
   const effectiveIsf = (p.customIsf && p.customIsf > 0) ? +p.customIsf.toFixed(1) : autoIsf;
-
-  // Научный ориентир УК по Правилу 500 (1 ХЕ = 12г => 12 / (500 / СДИ))
   const rule500Icr = +((12 * Math.max(8, totalDailyDose)) / (ins.id === 'short' ? 450 : 500)).toFixed(2);
 
   if (!mealBolus.initialized || !mealBolus.customEdited) {
@@ -371,7 +363,6 @@ function computeDailyInsulinPlan(m, p) {
   };
 }
 
-// МНОГОУРОВНЕВАЯ ПРОВЕРКА И ТОЧНЫЙ РАСЧЕТ КБЖУ ДЛЯ ЛЮДЕЙ БЕЗ ДИАБЕТА И С ДИАБЕТОМ (п.14)
 function computeMetrics() {
   const p = getProf();
   const curr = calcTDEEForWeight(p.weight, p);
@@ -413,7 +404,6 @@ function computeMetrics() {
   let normC = 150;
 
   if (p.diabetesType === 'none') {
-    // ЧЕЛОВЕК БЕЗ ДИАБЕТА: точное соблюдение выбранного типа питания и г/кг без искусственного урезания углеводов!
     if (p.dietType === 'keto') {
       normC = Math.max(20, Math.min(40, Math.round((effectiveKcal * 0.08) / 4)));
       normF = Math.max(minFatG, Math.round((effectiveKcal - normP * 4 - normC * 4) / 9));
@@ -422,8 +412,6 @@ function computeMetrics() {
       normC = Math.max(50, Math.min(110, rawC));
       normF = Math.max(minFatG, Math.round((effectiveKcal - normP * 4 - normC * 4) / 9));
     } else {
-      // Сбалансированное, Высокобелковое, Энергия и Сила:
-      // Белки и жиры фиксируются ровно по выбранным г/кг, а все оставшиеся калории идут в углеводы!
       let rawC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
       const minHealthyC = p.dietType === 'energy' ? 140 : 85;
       if (rawC < minHealthyC) {
@@ -439,10 +427,8 @@ function computeMetrics() {
         normC = rawC;
       }
     }
-    // Финальная доводка до 1 г, чтобы сумма Б*4 + Ж*9 + У*4 == effectiveKcal
     normC = Math.max(20, Math.round((effectiveKcal - normP * 4 - normF * 9) / 4));
   } else {
-    // ЧЕЛОВЕК С ДИАБЕТОМ (СД 1 или СД 2): клинический коридор углеводов по диете + точный баланс калорий
     let minCarbG = 60, maxCarbG = 180;
     if (p.dietType === 'keto') {
       minCarbG = p.diabetesType === 'dm1' ? 80 : 25;
@@ -491,9 +477,11 @@ function computeMetrics() {
   };
 }
 
+// Защита от ввода мг/дл в окне Гипо + точный весовой расчет протокола 15/15
 function computeHypoRescue(currBgVal, p) {
-  const rawBg = parseFloat(String(currBgVal).replace(',', '.'));
-  const bg = (!isNaN(rawBg) && rawBg > 0) ? Math.max(1.0, Math.min(15.0, rawBg)) : 3.2;
+  let rawBg = parseFloat(String(currBgVal).replace(',', '.'));
+  if (!isNaN(rawBg) && rawBg > 25) rawBg = +(rawBg / 18).toFixed(1); // Автоконвертация из мг/дл
+  const bg = (!isNaN(rawBg) && rawBg > 0) ? Math.max(1.0, Math.min(10.0, rawBg)) : 3.3;
   const target = Math.max(5.2, p.targetBg || 5.6);
   const deficitMmol = Math.max(0.5, target - bg);
   const raisePerGram = 20 / Math.max(35, p.weight);
@@ -582,7 +570,6 @@ function setMealBolus(k, v) {
       mealBolus.currBg = '';
     } else {
       let num = parseFloat(clean) || 0;
-      // Автоконвертация, если пользователь случайно ввел сахар в мг/дл (например, 120 вместо 6.7)
       if (num > 35) num = +(num / 18).toFixed(1);
       mealBolus.currBg = Math.max(1.5, Math.min(35.0, num));
     }
@@ -640,7 +627,6 @@ function applySmartMacros(protG, fatG) {
   renderApp();
 }
 
-// ЖИВОЙ ТАЙМЕР АКТИВНОГО ИНСУЛИНА: обновляет плашку каждую секунду без сброса фокуса с полей ввода (п.11)
 setInterval(() => {
   try {
     const p = getProf();
