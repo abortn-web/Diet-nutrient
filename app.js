@@ -1,7 +1,7 @@
 const WORKOUT_INTENSITIES = [
   {
     id: 'low',
-    name: '🧘 Лёгкая',
+    name: 'Легкая',
     metFactor: 3.0,
     hrPctMin: 0.55,
     hrPctMax: 0.65,
@@ -10,7 +10,7 @@ const WORKOUT_INTENSITIES = [
   },
   {
     id: 'mid',
-    name: '🏋️ Средняя',
+    name: 'Средняя',
     metFactor: 4.5,
     hrPctMin: 0.65,
     hrPctMax: 0.76,
@@ -19,7 +19,7 @@ const WORKOUT_INTENSITIES = [
   },
   {
     id: 'high',
-    name: '🔥 Высокая',
+    name: 'Высокая',
     metFactor: 6.5,
     hrPctMin: 0.76,
     hrPctMax: 0.88,
