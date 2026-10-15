@@ -6,7 +6,6 @@ const WEEKS_GRID = [4, 6, 8, 10, 12, 14, 16, 20, 24, 30, 36, 52];
 const PROT_GRID = [1.4, 1.6, 1.8, 2.0, 2.2, 2.5];
 const FAT_GRID = [0.7, 0.8, 0.9, 1.0, 1.2, 1.5];
 const ICR_GRID = [0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5];
-const BG_PRESETS = [4.2, 5.5, 7.2, 9.0, 11.5, 14.0];
 
 let breakthroughsList = [
   { yr: '2026', title: '🧬 Биоинженерные островковые клетки (VX-264)', desc: 'Новое поколение инкапсулированных бета-клеток в защитной мембране вырабатывает собственный инсулин без иммуносупрессии.' },
@@ -20,14 +19,27 @@ const IC_SPARK = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" 
 const IC_REFRESH = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>`;
 const IC_DOC = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>`;
 
+// Всплывающее объяснение специально для поля "Текущий сахар перед едой"
+const CURR_BG_HELP = {
+  title: '💧 Зачем вводить текущий сахар перед едой?',
+  html: `
+    <p>Это поле нужно для автоматического расчёта <strong>ДПС (дозы на коррекцию сахара)</strong> и точного времени паузы перед едой:</p>
+    <div class="p-3 rounded-2xl theme-input space-y-1.5 mt-2">
+      <div>📈 <strong>Если сахар выше целевого:</strong> калькулятор прибавит нужную дозу инсулина (по вашему ФЧИ) к уколу на еду и подскажет, на сколько минут увеличить паузу перед приемом пищи.</div>
+      <div>📉 <strong>Если сахар ниже целевого:</strong> калькулятор бережно уменьшит дозу болюса и отменит паузу, чтобы защитить вас от гипогликемии.</div>
+      <div>✨ <strong>Если сахар в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
+    </div>
+  `
+};
+
 let currentStory = DIABETES_STORIES[0];
 let currentSupport = DIABETES_SUPPORT_PHRASES[0];
 let activeOpenDropdown = null;
 let hypoBgInput = 3.3;
 
-let aiModeEnabled = false;
-let aiConnectionVerified = false;
-let aiCheckingStatus = false;
+let aiModeEnabled = localStorage.getItem('nutricalc_ai_mode') !== 'false';
+let aiConnectionVerified = navigator.onLine;
+let aiStatusHint = '';
 
 let newsBoxOpen = false;
 let aiTurnCounter = 0;
@@ -41,7 +53,12 @@ function helpBtn(topicKey) {
 }
 
 function showHelpTopic(key) {
-  const item = (typeof HELP_TOPICS !== 'undefined' && HELP_TOPICS[key]) ? HELP_TOPICS[key] : null;
+  let item = null;
+  if (key === 'currBg') {
+    item = CURR_BG_HELP;
+  } else if (typeof HELP_TOPICS !== 'undefined' && HELP_TOPICS[key]) {
+    item = HELP_TOPICS[key];
+  }
   if (!item) return;
   const tEl = document.getElementById('help-modal-title');
   const bEl = document.getElementById('help-modal-text');
@@ -62,129 +79,129 @@ function toggleDropdown(id) {
 }
 
 async function verifyExternalAiConnection() {
-  if (!navigator.onLine) return false;
+  if (!navigator.onLine) {
+    aiConnectionVerified = false;
+    return false;
+  }
   const key = (localStorage.getItem('nutricalc_gemini_key') || '').trim();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 3200);
+  const timer = setTimeout(() => ctrl.abort(), 6500);
 
-  try {
-    if (key) {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`, {
-        method: 'POST',
-        signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Ответь одним словом: ОК' }] }],
-          generationConfig: { maxOutputTokens: 10 }
-        })
-      });
-      clearTimeout(timer);
-      if (resp.ok) {
-        const d = await resp.json();
-        if (d?.candidates?.[0]?.content?.parts?.[0]?.text) return true;
-      }
-      return false;
-    }
-
-    const resp2 = await fetch('https://text.pollinations.ai/openai', {
+  const probes = [
+    fetch(`https://text.pollinations.ai/ok?model=openai-fast&seed=${Date.now()}`, { signal: ctrl.signal }).then(r => {
+      if (!r.ok) throw new Error('e1');
+      return true;
+    }),
+    fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'openai-fast',
-        max_tokens: 10,
-        messages: [{ role: 'user', content: 'ping' }]
+      body: JSON.stringify({ model: 'openai-fast', max_tokens: 5, messages: [{ role: 'user', content: 'ok' }] })
+    }).then(r => {
+      if (!r.ok) throw new Error('e2');
+      return true;
+    })
+  ];
+
+  if (key) {
+    probes.push(
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'ok' }] }], generationConfig: { maxOutputTokens: 5 } })
+      }).then(r => {
+        if (!r.ok) throw new Error('e3');
+        return true;
       })
-    });
+    );
+  }
+
+  try {
+    await Promise.any(probes);
     clearTimeout(timer);
-    if (resp2.ok) {
-      const d2 = await resp2.json();
-      if (d2?.choices?.[0]?.message?.content) return true;
-    }
-    return false;
+    aiConnectionVerified = true;
+    return true;
   } catch (e) {
     clearTimeout(timer);
+    aiConnectionVerified = false;
     return false;
   }
 }
 
 async function toggleAiMode() {
-  if (aiCheckingStatus) return;
-
-  if (aiModeEnabled && aiConnectionVerified) {
+  if (aiModeEnabled) {
     aiModeEnabled = false;
-    aiConnectionVerified = false;
+    aiStatusHint = 'Включен локальный режим (мгновенные ответы из встроенной базы)';
     localStorage.setItem('nutricalc_ai_mode', 'false');
     renderApp();
     openAiModal();
     return;
   }
 
-  aiCheckingStatus = true;
-  renderApp();
-  openAiModal();
-
-  const isAlive = await verifyExternalAiConnection();
-  aiCheckingStatus = false;
-
-  if (isAlive) {
-    aiModeEnabled = true;
-    aiConnectionVerified = true;
-    localStorage.setItem('nutricalc_ai_mode', 'true');
-  } else {
-    aiModeEnabled = false;
-    aiConnectionVerified = false;
-    localStorage.setItem('nutricalc_ai_mode', 'false');
-    const hasKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
-    alert(hasKey
-      ? '⚠️ Не удалось подключиться к Gemini API. Проверьте правильность ключа или интернет-соединение (VPN). Кнопка AI оставлена в локальном режиме.'
-      : '⚠️ Внешний AI-сервер сейчас недоступен или заблокирован вашей сетью. Введите персональный ключ Gemini API внизу окна или используйте локальный режим.');
-    const det = document.getElementById('api-key-details');
-    if (det) det.open = true;
-  }
-
-  renderApp();
-  openAiModal();
-}
-
-async function callSmartAi(promptText, systemContext = '') {
   if (!navigator.onLine) {
     aiModeEnabled = false;
     aiConnectionVerified = false;
-    return null;
+    aiStatusHint = '⚠️ Нет подключения к интернету. Работает локальная база.';
+    renderApp();
+    openAiModal();
+    return;
   }
+
+  aiModeEnabled = true;
+  aiConnectionVerified = true;
+  aiStatusHint = '✨ Режим AI включен (облачный ИИ + клиническая база)';
+  localStorage.setItem('nutricalc_ai_mode', 'true');
+  renderApp();
+  openAiModal();
+
+  const ok = await verifyExternalAiConnection();
+  if (!ok) {
+    aiModeEnabled = false;
+    aiConnectionVerified = false;
+    localStorage.setItem('nutricalc_ai_mode', 'false');
+    aiStatusHint = 'ℹ️ Внешний сервер сейчас не отвечает — автоматически включена локальная база знаний.';
+    renderApp();
+    openAiModal();
+  }
+}
+
+async function callSmartAi(promptText, systemContext = '') {
+  if (!navigator.onLine) return null;
   const cacheKey = (systemContext + '|' + promptText).toLowerCase().trim();
   if (aiAnswerCache.has(cacheKey)) return aiAnswerCache.get(cacheKey);
 
   const key = (localStorage.getItem('nutricalc_gemini_key') || '').trim();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 4000);
+  const timer = setTimeout(() => ctrl.abort(), 7000);
   const shortSys = systemContext || 'Ты клинический ментор DIAingo. Ответь на русском языке, коротко (2-4 предложения), научно и тепло. Без слова болезнь.';
 
-  try {
-    if (key) {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`, {
-        method: 'POST',
-        signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${shortSys}\nВопрос пользователя: ${promptText}` }] }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 240 }
-        })
-      });
-      if (resp.ok) {
-        const d = await resp.json();
-        const t = d?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (t && t.trim().length > 10) {
-          clearTimeout(timer);
-          const clean = t.trim();
-          aiAnswerCache.set(cacheKey, clean);
-          return clean;
-        }
-      }
-    }
+  const tasks = [];
 
-    const resp2 = await fetch('https://text.pollinations.ai/openai', {
+  if (key) {
+    ['gemini-2.0-flash', 'gemini-2.5-flash'].forEach(mod => {
+      tasks.push(
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mod}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${shortSys}\nВопрос: ${promptText}` }] }],
+            generationConfig: { temperature: 0.5, maxOutputTokens: 240 }
+          })
+        }).then(async r => {
+          if (!r.ok) throw new Error('g_err');
+          const d = await r.json();
+          const t = d?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!t || t.trim().length < 10) throw new Error('g_empty');
+          return t.trim();
+        })
+      );
+    });
+  }
+
+  tasks.push(
+    fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
@@ -197,24 +214,35 @@ async function callSmartAi(promptText, systemContext = '') {
           { role: 'user', content: promptText }
         ]
       })
-    });
+    }).then(async r => {
+      if (!r.ok) throw new Error('p_err');
+      const d = await r.json();
+      const t = d?.choices?.[0]?.message?.content;
+      if (!t || t.trim().length < 10) throw new Error('p_empty');
+      return t.trim();
+    })
+  );
+
+  const getUrl = `https://text.pollinations.ai/${encodeURIComponent(shortSys + ' Вопрос: ' + promptText)}?model=openai-fast`;
+  tasks.push(
+    fetch(getUrl, { signal: ctrl.signal }).then(async r => {
+      if (!r.ok) throw new Error('get_err');
+      const t = await r.text();
+      if (!t || t.trim().length < 10 || t.includes('<!DOCTYPE')) throw new Error('get_empty');
+      return t.trim();
+    })
+  );
+
+  try {
+    const winner = await Promise.any(tasks);
     clearTimeout(timer);
-    if (resp2.ok) {
-      const d2 = await resp2.json();
-      const t2 = d2?.choices?.[0]?.message?.content;
-      if (t2 && t2.trim().length > 10) {
-        const clean2 = t2.trim();
-        aiAnswerCache.set(cacheKey, clean2);
-        return clean2;
-      }
-    }
+    aiConnectionVerified = true;
+    aiAnswerCache.set(cacheKey, winner);
+    return winner;
   } catch (e) {
     clearTimeout(timer);
+    return null;
   }
-
-  aiModeEnabled = false;
-  aiConnectionVerified = false;
-  return null;
 }
 
 function getInstantMentorAnswer(q, p, m, dayPlan) {
@@ -292,7 +320,7 @@ function getInstantMentorAnswer(q, p, m, dayPlan) {
 
   return {
     matched: false,
-    html: `<strong>💡 Ориентир DIAingo по вашему вопросу («${q}»):</strong><br>Ваша суточная норма — <strong>${m.effectiveKcal} ккал</strong> (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), чувствительность ФЧИ — <strong>1 ЕД = -${dayPlan.effectiveIsf} ммоль/л</strong>, ночная база — <strong>~${dayPlan.effectiveBasal} ЕД</strong>.<br><span class="text-[10px] opacity-80">Нажмите кнопку <strong>«✨ AI»</strong> в шапке окна, чтобы подключить внешнюю нейросеть для свободных вопросов!</span>`
+    html: `<strong>💡 Ориентир DIAingo по вашему вопросу («${q}»):</strong><br>Ваша суточная норма — <strong>${m.effectiveKcal} ккал</strong> (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), чувствительность ФЧИ — <strong>1 ЕД = -${dayPlan.effectiveIsf} ммоль/л</strong>, ночная база — <strong>~${dayPlan.effectiveBasal} ЕД</strong>.`
   };
 }
 
@@ -309,15 +337,6 @@ function setMealTime(slot) {
   renderApp();
 }
 
-function adjustCurrBg(delta) {
-  const p = getProf();
-  const base = (mealBolus.currBg !== '' && !isNaN(parseFloat(mealBolus.currBg))) ? parseFloat(mealBolus.currBg) : p.targetBg;
-  const next = Math.max(2.0, Math.min(30.0, +(base + delta).toFixed(1)));
-  mealBolus.currBg = next;
-  renderApp();
-}
-
-// ВЫВЕРЕННЫЙ РАСЧЕТ ВРЕМЕНИ УКОЛОВ И ДОЗ БЕЗ ЛОГИЧЕСКИХ ПРОТИВОРЕЧИЙ
 function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const xe = +(cGrams / 12).toFixed(1);
@@ -365,7 +384,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     }
   }
 
-  // Эффект пиццы включается ТОЛЬКО когда жиров реально много и по массе (>=28г), и по отношению к углеводам (>=35%)
   const fatToCarbRatio = cGrams > 0 ? (fGrams / cGrams) : 1.0;
   const isPizzaEffect = !ins.coversBJE && fGrams >= 28 && cGrams >= 24 && fatToCarbRatio >= 0.35 && (!hasBg || bgVal < 9.0);
   const delayedCarbShare = isPizzaEffect ? (fGrams >= 40 ? 0.30 : 0.25) : 0;
@@ -385,20 +403,17 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const dpsRounded = safeDps >= 0 ? roundSmartInsulin(safeDps, p.insulinStep, 'hyper') : -roundSmartInsulin(Math.abs(safeDps), p.insulinStep, 'normal');
   const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
 
-  // ВЫВЕРЕННАЯ ЛОГИКА ВРЕМЕНИ 1-ГО УКОЛА (ПАУЗЫ) С УЧЕТОМ ПРОПОРЦИИ ЖИРОВ К УГЛЕВОДАМ
-  let waitMin = ins.baseWait; // 3 мин (сверхбыстрый), 12 мин (ультра), 25 мин (короткий)
+  let waitMin = ins.baseWait;
   if (mealBolus.gi === 'low') waitMin -= (ins.id === 'ultrafast' ? 4 : 6);
   else if (mealBolus.gi === 'high') waitMin += (ins.id === 'ultrafast' ? 5 : 7);
 
   if (mealTimeSlot === 'morning') waitMin += 3;
   else if (mealTimeSlot === 'evening' || mealTimeSlot === 'night') waitMin -= 2;
 
-  // При большой углеводной нагрузке (>= 60 г угл.) и умеренных жирах (< 30% от углеводов) нужна уверенная пауза до еды!
   if (cGrams >= 60 && fatToCarbRatio < 0.30 && mealBolus.gi !== 'low') {
     waitMin += 3;
   }
 
-  // Поправка на высокий сахар (+2..4 мин на каждый ммоль превышения)
   let extraHyperWait = 0;
   if (hasBg && bgVal > 6.8) {
     const excessMmol = bgVal - 6.5;
@@ -407,7 +422,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     waitMin += extraHyperWait;
   }
 
-  // Жиры гасят паузу ТОЛЬКО если их доля существенна по отношению к углеводам (fatToCarbRatio >= 0.35) и сахар не высокий!
   if (!hasBg || bgVal < 8.5) {
     if (fGrams >= 35 && fatToCarbRatio >= 0.45) waitMin -= 8;
     else if (fGrams >= 25 && fatToCarbRatio >= 0.35) waitMin -= 4;
@@ -440,20 +454,15 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     dynamicWaitText = `Пауза ~${waitMin}–${waitMin + 4} мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
   }
 
-  // СИНХРОНИЗИРОВАННЫЙ ТАЙМИНГ 2-ГО УКОЛА И ОБЪЯСНЕНИЯ (БЕЗ ПРОТИВОРЕЧИЙ!)
   let postTimingText = 'не требуется';
   let postExplainTiming = 'через 90–120 мин';
   const isProteinDominant = pGrams >= 30 && !isPizzaEffect;
 
   if (splitWaves) {
     if (isPizzaEffect) {
-      // Когда перенесены углеводы из-за жира — колоть нужно раньше (через 60–75 мин)
       postTimingText = 'через 60–75 мин ПОСЛЕ еды (на задержанные жиром угл. + БЖЕ)';
       postExplainTiming = 'через 60–75 мин';
     } else if (isProteinDominant) {
-      // Когда все углеводы уколоты в 1-ю волну, а во 2-й волне идет белковый глюконеогенез:
-      // Белок начинает поднимать сахар с 90-120 минуты (пик на 2-4 часу).
-      // Для сверхбыстрого инсулина колем через 100-120 мин, для ультракороткого — через 90-120 мин!
       postTimingText = ins.id === 'ultrafast'
         ? 'через 100–120 мин (1.5–2 ч) ПОСЛЕ еды — к началу белкового выброса'
         : 'через 90–120 мин (1.5–2 ч) ПОСЛЕ еды — к началу белкового выброса';
@@ -534,6 +543,7 @@ function renderApp() {
   const safeWeeks = Math.max(4, Math.ceil(Math.abs(diffKg * 7700) / (Math.max(250, m.tdee - m.minSafe) * 7)));
   const isOpen = (sec) => p.sectionsOpen[sec] !== false;
   const isAiTrulyActive = aiModeEnabled && aiConnectionVerified;
+  const savedKeyVal = (localStorage.getItem('nutricalc_gemini_key') || '').trim();
 
   document.getElementById('app').innerHTML = `
     <!-- HEADER WITH DIAingo LOGO -->
@@ -718,7 +728,6 @@ function renderApp() {
           </div>
         ` : ''}
 
-        <!-- ACTIVE INSULIN BANNER WITH CLEAN FULL-WIDTH TOGGLE -->
         ${iobData.totalIob > 0 ? `
           <div class="p-3.5 rounded-3xl border-2 space-y-2.5 shadow-lg" style="border-color:#2DD4BF;background:var(--brand-soft);">
             <div class="flex items-center justify-between gap-2">
@@ -735,7 +744,7 @@ function renderApp() {
           </div>
         ` : ''}
 
-        <!-- DIABETES BLOCK 1: FULL-WIDTH ROWS FOR INSULIN GROUPS & PEN STEP -->
+        <!-- DIABETES BLOCK 1 -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
           <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d1')">
             <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">💧 1. Инсулин, База и УК</span><span class="text-xs opacity-60 shrink-0">${isOpen('d1')?'▴':'▾'}</span></h2>
@@ -819,8 +828,7 @@ function renderApp() {
                 </div>
                 <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
                   <div class="flex justify-between items-center">
-                    <span class="text-[10px] opacity-85 font-bold flex items-center">📉 ФЧИ ${helpBtn('isf')}</span>
-                    ${p.customIsf > 0 ? `<button onclick="setParam('customIsf',0)" class="text-[9px] underline opacity-75">Авто</button>` : `<span class="text-[9px] opacity-70">Авто</span>`}
+                    <span class="text-[10px] opacity-85 font-bold flex items-center">📉 ФЧИ ${helpBtn('isf')}</span>${p.customIsf > 0 ? `<button onclick="setParam('customIsf',0)" class="text-[9px] underline opacity-75">Авто</button>` : `<span class="text-[9px] opacity-70">Авто</span>`}
                   </div>
                   <div class="flex items-center justify-between mt-1.5">
                     <button onclick="setParam('customIsf',${+(Math.max(0.5, dayPlan.effectiveIsf-0.2)).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
@@ -833,7 +841,7 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- DIABETES BLOCK 2: DAILY INSULIN PLAN -->
+        <!-- DIABETES BLOCK 2 -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg border-2" style="border-color:var(--brand);">
           <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d2')">
             <div class="min-w-0">
@@ -881,7 +889,7 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- DIABETES BLOCK 3: SINGLE MEAL CALCULATOR WITH CONSISTENT TIMING -->
+        <!-- DIABETES BLOCK 3: CLEAN INPUT WINDOW FOR CURRENT BG -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
           <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d3')">
             <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">🍽 3. Разовый расчет на еду</span><span class="text-xs opacity-60 shrink-0">${isOpen('d3')?'▴':'▾'}</span></h2>
@@ -920,26 +928,22 @@ function renderApp() {
               </div>
 
               <div class="space-y-2 text-xs">
-                <div class="p-3 rounded-2xl border-2 space-y-2 transition ${bolus.isHighBg ? 'border-amber-400/70 bg-amber-500/10' : (bolus.isHypoNow ? 'border-rose-500/80 bg-rose-500/15' : 'theme-soft border-white/15')}">
+                <!-- CLEAN SINGLE INPUT WINDOW FOR CURRENT BG WITH POPUP EXPLANATION -->
+                <div class="p-3 rounded-2xl border transition ${bolus.isHighBg ? 'border-amber-400/70 bg-amber-500/10' : (bolus.isHypoNow ? 'border-rose-500/80 bg-rose-500/15' : 'theme-soft border-white/15')}">
                   <div class="flex justify-between items-center gap-2">
                     <div class="min-w-0">
-                      <div class="font-extrabold flex items-center">💧 Текущий сахар (ммоль/л) ${helpBtn('targetBg')}</div>
-                      <div class="text-[10px] opacity-80">Цель: ${p.targetBg} · ФЧИ: ${bolus.isf} ммоль/ЕД</div>
+                      <div class="font-bold flex items-center">💧 Текущий сахар: ${helpBtn('currBg')}</div>
+                      <div class="text-[10px] opacity-80 whitespace-nowrap">Цель: ${p.targetBg} · ФЧИ: ${bolus.isf} ммоль/ЕД</div>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                      <button onclick="adjustCurrBg(-0.5)" class="w-8 h-8 rounded-xl theme-input font-bold">-0.5</button>
-                      <input type="text" placeholder="${p.targetBg}" value="${mealBolus.currBg}" onchange="setMealBolus('currBg',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold rounded-xl theme-input text-sm">
-                      <button onclick="adjustCurrBg(0.5)" class="w-8 h-8 rounded-xl theme-input font-bold">+0.5</button>
-                      ${mealBolus.currBg !== '' ? `<button onclick="setMealBolus('currBg','')" class="w-7 h-8 rounded-xl theme-input text-xs opacity-75">✕</button>` : ''}
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <input type="text" inputmode="decimal" placeholder="${p.targetBg}" value="${mealBolus.currBg}" onchange="setMealBolus('currBg',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-input text-sm">
+                      <span class="font-bold text-[11px] whitespace-nowrap">ммоль/л</span>
                     </div>
-                  </div>
-                  <div class="grid grid-cols-6 gap-1 pt-0.5">
-                    ${BG_PRESETS.map(b => `<button onclick="setMealBolus('currBg',${b})" class="py-1 rounded-lg text-[10px] font-mono-num font-bold transition ${parseFloat(mealBolus.currBg)===b?'theme-grad text-white shadow':'theme-input opacity-85'}">${b}</button>`).join('')}
                   </div>
                   ${bolus.hasBg ? `
-                    <div class="pt-1.5 border-t border-white/15 text-[11px] flex justify-between items-center">
-                      <span>Коррекция на сахар (ДПС ${bolus.hyperResistMult>1?`с коэф. резист. ×${bolus.hyperResistMult}`:''}):</span>
-                      <span class="font-mono-num font-extrabold text-sm">${bolus.dpsRounded > 0 ? '+' : ''}${bolus.dpsRounded} ЕД <span class="text-[10px] opacity-75">(точн: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps})</span></span>
+                    <div class="mt-2 pt-1.5 border-t border-white/15 text-[11px] flex justify-between items-center">
+                      <span>Коррекция на сахар (ДПС):</span>
+                      <span class="font-mono-num font-extrabold">${bolus.dpsRounded > 0 ? '+' : ''}${bolus.dpsRounded} ЕД <span class="text-[10px] opacity-75">(точн: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps})</span></span>
                     </div>
                   ` : ''}
                 </div>
@@ -975,7 +979,6 @@ function renderApp() {
                 </div>
               </div>
 
-              <!-- TWO-WAVE RESULT WITH DYNAMIC CONSISTENT HEADERS & TIMING -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <div class="p-3.5 rounded-2xl theme-input space-y-1 flex flex-col justify-between border ${bolus.isHighBg ? 'border-amber-400/50' : 'border-transparent'}">
                   <div class="text-[11px] font-bold opacity-80">${bolus.preHeaderTitle}</div>
@@ -1039,28 +1042,38 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- SOS HYPOGLYCEMIA MODAL -->
+    <!-- SOS HYPOGLYCEMIA MODAL WITH WARM EMPATHETIC MESSAGE & CLEAN FONT -->
     <div id="modal-hypo" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
-      <div class="glass-card rounded-3xl max-w-md w-full p-5 space-y-4 border-2 border-rose-500 shadow-2xl">
+      <div class="glass-card rounded-3xl max-w-md w-full p-5 space-y-3.5 border-2 border-rose-500 shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center">
-          <h3 class="font-extrabold text-base text-white px-3 py-1 rounded-xl" style="background:#E11D48;">🆘 Протокол 15/15: Низкий сахар</h3>
-          <button onclick="document.getElementById('modal-hypo').classList.add('hidden')" class="w-9 h-9 rounded-2xl theme-soft font-bold flex items-center justify-center">✕</button>
+          <h3 class="font-extrabold text-sm sm:text-base text-white px-3 py-1 rounded-xl" style="background:#E11D48;">🆘 Протокол 15/15: Низкий сахар</h3>
+          <button onclick="document.getElementById('modal-hypo').classList.add('hidden')" class="w-9 h-9 rounded-2xl theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
         </div>
+
         <div class="p-3 rounded-2xl theme-input flex justify-between items-center text-xs">
           <span class="font-bold">Ваш текущий сахар (ммоль/л):</span>
-          <input type="text" value="${hypoBgInput}" onchange="hypoBgInput=this.value;renderApp();openHypoModal();" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft">
+          <input type="text" inputmode="decimal" value="${hypoBgInput}" onchange="hypoBgInput=this.value;renderApp();openHypoModal();" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold text-sm rounded-xl theme-soft">
         </div>
+
+        <!-- WARM EMPATHETIC NOTE AGAINST HYPO BINGE EATING -->
+        <div class="p-3.5 rounded-2xl theme-soft border border-white/15 text-xs leading-relaxed">
+          ❤️ <strong>Выдохни на секунду:</strong> я понимаю, что сейчас — когда внутри всё дрожит, а организм бьёт тревогу — тебе хочется съесть всё, что попадается на глаза. Но делать так не стоит: лишняя и жирная еда не поднимет сахар быстрее, а через час приведёт к тяжёлому скачку. Давай купируем гипу мягко и точно:
+        </div>
+
         <div class="p-4 rounded-2xl bg-rose-500/20 border border-rose-400/50 space-y-2 text-xs">
-          <div class="font-extrabold text-sm">Примите СЕЙЧАС: <span class="font-mono-num text-lg underline">${hypoRescue.fastCarbGrams} г</span> быстрых углеводов (${hypoRescue.xe} ХЕ)</div>
-          <div class="text-[11px] opacity-90">Точный расчет для веса <strong>${p.weight} кг</strong>, чтобы плавно поднять сахар с ${hypoRescue.bg} до ${hypoRescue.target} ммоль/л без «отката»:</div>
-          <ul class="space-y-1 pt-1 font-semibold">
-            <li>🍬 Декстроза / Глюкоза: <strong>${hypoRescue.dextroseTabs} таб.</strong> (по 4 г)</li>
-            <li>🧃 Фруктовый сок / Обычная Кола: <strong>${hypoRescue.juiceMl} мл</strong></li>
-            <li>☕️ Сахар (растворить в теплой воде): <strong>${hypoRescue.sugarCubes} кус.</strong></li>
+          <div class="font-extrabold text-sm leading-snug">
+            Примите сейчас: <span class="px-2 py-0.5 rounded-lg bg-rose-500 text-white font-extrabold">${hypoRescue.fastCarbGrams} г</span> быстрых углеводов (${hypoRescue.xe} ХЕ)
+          </div>
+          <div class="text-[11px] opacity-90">Выберите что-то одно (расчёт для веса <strong>${p.weight} кг</strong>, чтобы плавно поднять сахар с ${hypoRescue.bg} до ${hypoRescue.target} ммоль/л без «отката»):</div>
+          <ul class="space-y-1.5 pt-1 font-semibold">
+            <li>🍬 Декстроза / Глюкоза в геле или таблетках: <strong>${hypoRescue.dextroseTabs} шт.</strong> (по 4 г)</li>
+            <li>🧃 Фруктовый сок или обычная сладкая газировка: <strong>${hypoRescue.juiceMl} мл</strong></li>
+            <li>☕️ Обычный сахар или мёд (лучше растворить в тёплой воде): <strong>${hypoRescue.sugarCubes} кус. (${hypoRescue.fastCarbGrams} г)</strong></li>
           </ul>
         </div>
+
         <div class="text-[11px] opacity-85 leading-relaxed">
-          ⏱ <strong>Правило 15 минут:</strong> Примите быстрые углеводы, подождите 15 минут и перемерьте сахар. Не купируйте гипу шоколадом, мороженым или бутербродами — жиры затормозят подъем сахара!
+          ⏱ <strong>Что делать дальше (Правило 15 минут):</strong> после приёма быстрых углеводов просто посидите спокойно 15 минут и перемерьте сахар. Мозгу нужно немного времени, чтобы понять, что глюкоза уже в крови, и отключить чувство острого голода. Пожалуйста, не ешьте сейчас шоколад, выпечку, бананы или бутерброды — жиры и клетчатка затормозят спасение!
         </div>
       </div>
     </div>
@@ -1087,7 +1100,7 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- AI MENTOR MODAL WITH VERIFIED EXTERNAL CONNECTION STATUS -->
+    <!-- AI MENTOR MODAL -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-8" style="border-color:var(--brand);">
         <div class="flex justify-between items-center sticky top-0 py-2.5 px-3.5 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-1" style="background: var(--card-bg);">
@@ -1096,14 +1109,16 @@ function renderApp() {
             <h3 class="font-extrabold text-sm sm:text-base leading-tight truncate">Клинический Ментор</h3>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button onclick="toggleAiMode()" class="h-9 px-3 rounded-2xl font-extrabold text-xs inline-flex flex-row items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${isAiTrulyActive ? 'theme-grad text-white shadow-lg ring-2 ring-white/30' : 'theme-input opacity-65 hover:opacity-100'}" title="${isAiTrulyActive ? 'Внешний ИИ подключен и активен' : 'Локальный режим (нажмите для проверки и подключения внешнего ИИ)'}">
+            <button onclick="toggleAiMode()" class="h-9 px-3 rounded-2xl font-extrabold text-xs inline-flex flex-row items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${isAiTrulyActive ? 'theme-grad text-white shadow-lg ring-2 ring-white/30' : 'theme-input opacity-70 hover:opacity-100'}">
               ${IC_SPARK}
-              <span>${aiCheckingStatus ? 'Проверка...' : 'AI'}</span>
-              <span class="w-2 h-2 rounded-full ${aiCheckingStatus ? 'bg-amber-400 animate-ping' : (isAiTrulyActive ? 'bg-emerald-300 animate-pulse' : 'bg-white/30')}"></span>
+              <span>AI</span>
+              <span class="w-2 h-2 rounded-full ${isAiTrulyActive ? 'bg-emerald-300 animate-pulse' : 'bg-white/30'}"></span>
             </button>
             <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-9 h-9 rounded-2xl theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
           </div>
         </div>
+
+        ${aiStatusHint ? `<div class="px-3 py-1.5 rounded-xl theme-soft text-[11px] text-center opacity-90">${aiStatusHint}</div>` : ''}
 
         <div class="p-4 rounded-3xl theme-input space-y-2.5 border border-white/20">
           <div class="text-xs font-extrabold">💬 Задайте любой вопрос ментору:</div>
@@ -1157,15 +1172,13 @@ function renderApp() {
         </button>
 
         <details id="api-key-details" class="p-3 rounded-2xl theme-input text-xs opacity-75 hover:opacity-100 transition">
-          <summary class="cursor-pointer text-[11px] font-bold">🔑 Персональный ключ Gemini API (для внешнего AI)</summary>
+          <summary class="cursor-pointer text-[11px] font-bold">🔑 Дополнительно: свой ключ Gemini API (необязательно)</summary>
           <div class="pt-2.5 flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-              <span class="text-[10px] opacity-80">Бесплатный ключ Google AI Studio:</span>
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[10px] underline font-bold">Получить ключ ↗</a>
-            </div>
+            <div class="text-[10px] opacity-80 leading-relaxed">Встроенный облачный ИИ уже работает бесплатно без ключей! Если хотите подключить личный ключ Google AI Studio, вставьте его ниже (или очистите поле, если старый ключ не работает):</div>
             <div class="flex gap-1.5 items-center">
-              <input type="password" id="inp-gemini-key" value="${localStorage.getItem('nutricalc_gemini_key')||''}" onkeydown="blurOnEnter(event)" placeholder="AIzaSy..." class="flex-1 h-9 px-3 rounded-xl theme-soft text-xs font-mono-num">
-              <button onclick="saveApiKey()" class="h-9 px-4 rounded-xl theme-grad text-white text-xs font-extrabold shrink-0">Проверить и ОК</button>
+              <input type="password" id="inp-gemini-key" value="${savedKeyVal}" onkeydown="blurOnEnter(event)" placeholder="Оставьте пустым для авто-ИИ..." class="flex-1 h-9 px-3 rounded-xl theme-soft text-xs font-mono-num">
+              <button onclick="saveApiKey()" class="h-9 px-3 rounded-xl theme-grad text-white text-xs font-extrabold shrink-0">Сохранить</button>
+              ${savedKeyVal ? `<button onclick="clearApiKey()" class="h-9 px-2.5 rounded-xl theme-soft text-xs font-bold shrink-0" title="Удалить старый ключ">Сброс</button>` : ''}
             </div>
           </div>
         </details>
@@ -1200,7 +1213,7 @@ async function askAiMentor(presetQuery, forceCloud = false) {
   if (!forceCloud && instant.matched) {
     aiChatAnswer = `
       <div>${instant.html}</div>
-      ${isAiTrulyActive ? `<div class="pt-2 mt-2 border-t border-white/10 flex justify-end"><button onclick="askAiMentor('${safeQ}', true)" class="px-2.5 py-1 rounded-xl theme-input text-[10px] font-extrabold inline-flex items-center gap-1 cursor-pointer" style="color:#2DD4BF;">✨ Спросить внешнюю нейросеть AI</button></div>` : ''}
+      ${isAiTrulyActive ? `<div class="pt-2 mt-2 border-t border-white/10 flex justify-end"><button onclick="askAiMentor('${safeQ}', true)" class="px-2.5 py-1 rounded-xl theme-input text-[10px] font-extrabold inline-flex items-center gap-1 cursor-pointer" style="color:#2DD4BF;">✨ Дополнить ответом облачной нейросети</button></div>` : ''}
     `;
     if (box) {
       box.classList.remove('hidden');
@@ -1212,17 +1225,14 @@ async function askAiMentor(presetQuery, forceCloud = false) {
   if (isAiTrulyActive) {
     if (box) {
       box.classList.remove('hidden');
-      box.innerHTML = `<div class="flex items-center gap-2 font-bold animate-pulse">${IC_SPARK}<span>Внешний AI формирует ответ...</span></div>`;
+      box.innerHTML = `<div class="flex items-center gap-2 font-bold animate-pulse">${IC_SPARK}<span>AI-ментор печатает ответ...</span></div>`;
     }
     const sys = `Ментор DIAingo. Профиль: ${p.weight}кг, норма ${m.effectiveKcal}ккал (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г), УК:${p.icr}, ФЧИ:${dayPlan.effectiveIsf}, база:${dayPlan.effectiveBasal}ЕД. Ответь прямо на вопрос (3 предложения), научно и тепло. Без слова болезнь.`;
     const cloudAns = await callSmartAi(q, sys);
     if (cloudAns) {
-      aiChatAnswer = `<strong>✨ Ответ внешнего AI-ментора:</strong><br>${cloudAns.replace(/\n/g, '<br>')}`;
+      aiChatAnswer = `<strong>✨ Ответ AI-ментора:</strong><br>${cloudAns.replace(/\n/g, '<br>')}`;
       if (box) box.innerHTML = aiChatAnswer;
       return;
-    } else {
-      renderApp();
-      openAiModal();
     }
   }
 
@@ -1287,48 +1297,25 @@ async function refreshNews() {
   }
 }
 
-async function saveApiKey() {
+function saveApiKey() {
   const val = document.getElementById('inp-gemini-key').value.trim();
   localStorage.setItem('nutricalc_gemini_key', val);
-  if (!val) {
-    aiModeEnabled = false;
-    aiConnectionVerified = false;
-    localStorage.setItem('nutricalc_ai_mode', 'false');
-    renderApp(); openAiModal();
-    return;
-  }
-  aiCheckingStatus = true;
-  renderApp(); openAiModal();
-  const ok = await verifyExternalAiConnection();
-  aiCheckingStatus = false;
-  if (ok) {
-    aiModeEnabled = true;
-    aiConnectionVerified = true;
-    localStorage.setItem('nutricalc_ai_mode', 'true');
-    alert('✅ Подключение к внешнему AI подтверждено! Режим AI активирован.');
-  } else {
-    aiModeEnabled = false;
-    aiConnectionVerified = false;
-    localStorage.setItem('nutricalc_ai_mode', 'false');
-    alert('⚠️ Ключ сохранен, но сервер не ответил (проверьте ключ или VPN). Кнопка AI оставлена неактивной.');
-  }
+  aiModeEnabled = true;
+  aiConnectionVerified = navigator.onLine;
+  aiStatusHint = val ? '✅ Ключ сохранен (работает параллельно со встроенным ИИ)' : '✨ Включен встроенный облачный ИИ без ключа';
+  localStorage.setItem('nutricalc_ai_mode', 'true');
   renderApp(); openAiModal();
 }
 
-async function initAiStatusOnLoad() {
-  if (localStorage.getItem('nutricalc_ai_mode') === 'true') {
-    const ok = await verifyExternalAiConnection();
-    if (ok) {
-      aiModeEnabled = true;
-      aiConnectionVerified = true;
-      renderApp();
-    } else {
-      aiModeEnabled = false;
-      aiConnectionVerified = false;
-    }
-  }
+function clearApiKey() {
+  localStorage.removeItem('nutricalc_gemini_key');
+  aiModeEnabled = true;
+  aiConnectionVerified = navigator.onLine;
+  aiStatusHint = '✨ Старый ключ удален. Активирован бесплатный встроенный ИИ!';
+  localStorage.setItem('nutricalc_ai_mode', 'true');
+  renderApp(); openAiModal();
 }
 
 loadStorage();
 renderApp();
-initAiStatusOnLoad();
+verifyExternalAiConnection().then(() => renderApp());
