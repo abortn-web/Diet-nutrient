@@ -13,8 +13,7 @@ let breakthroughsList = [
   { yr: '2026', title: '🤖 Замкнутый контур с ИИ-прогнозированием', desc: 'Системы автодозирования учитывают пульс, шаги и БЖЕ, предотвращая скачки гликемии еще до их начала.' }
 ];
 
-// Тематический логотип DIAingo (Фиолетовый + Тиффани #2DD4BF + Кораллово-розовый)
-const LOGO_SVG = `<svg class="w-9 h-9 shrink-0 drop-shadow" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="diaG" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7C3AED"/><stop offset="55%" stop-color="#2DD4BF"/><stop offset="100%" stop-color="#F43F5E"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#diaG)"/><path d="M20 7C20 7 11 17.2 11 24C11 29 15 33 20 33C25 33 29 29 29 24C29 17.2 20 7 20 7Z" fill="rgba(255,255,255,0.18)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M13.5 23.5H16.5L18.2 19.5L21.2 27L23 23.5H26.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="14" r="1.6" fill="#2DD4BF"/></svg>`;
+const LOGO_SVG = `<svg class="w-8 h-8 shrink-0 drop-shadow" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="diaG" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7C3AED"/><stop offset="55%" stop-color="#2DD4BF"/><stop offset="100%" stop-color="#F43F5E"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#diaG)"/><path d="M20 7C20 7 11 17.2 11 24C11 29 15 33 20 33C25 33 29 29 29 24C29 17.2 20 7 20 7Z" fill="rgba(255,255,255,0.18)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M13.5 23.5H16.5L18.2 19.5L21.2 27L23 23.5H26.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="14" r="1.6" fill="#2DD4BF"/></svg>`;
 
 const IC_SPARK = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z"/></svg>`;
 const IC_REFRESH = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>`;
@@ -24,15 +23,16 @@ let currentStory = DIABETES_STORIES[0];
 let currentSupport = DIABETES_SUPPORT_PHRASES[0];
 let activeOpenDropdown = null;
 let hypoBgInput = 3.3;
-let aiModeEnabled = localStorage.getItem('nutricalc_ai_mode') === 'true';
+let aiModeEnabled = localStorage.getItem('nutricalc_ai_mode') !== 'false';
 let isAiLoading = false;
 let newsBoxOpen = false;
 let aiTurnCounter = 0;
 let showDiabetesToast = false;
 let aiChatAnswer = '';
+let lastUserQuestion = '';
 
 function helpBtn(topicKey) {
-  return `<span onclick="event.stopPropagation();showHelpTopic('${topicKey}')" class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-extrabold ml-1 cursor-pointer select-none shadow-sm" style="background:rgba(45,212,191,0.22);color:#2DD4BF;border:1px solid rgba(45,212,191,0.5);" title="Что это и как считать?">?</span>`;
+  return `<span onclick="event.stopPropagation();showHelpTopic('${topicKey}')" class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-extrabold ml-1 cursor-pointer select-none shrink-0 shadow-sm" style="background:rgba(45,212,191,0.22);color:#2DD4BF;border:1px solid rgba(45,212,191,0.5);" title="Что это и как считать?">?</span>`;
 }
 
 function showHelpTopic(key) {
@@ -57,51 +57,96 @@ function toggleDropdown(id) {
 }
 
 function toggleAiMode() {
-  const key = (localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  if (!aiModeEnabled && !key) {
-    aiModeEnabled = true;
-    localStorage.setItem('nutricalc_ai_mode', 'true');
-    renderApp();
-    openAiModal();
-    const det = document.getElementById('api-key-details');
-    if (det) det.open = true;
-    const inp = document.getElementById('inp-gemini-key');
-    if (inp) inp.focus();
-    return;
-  }
   aiModeEnabled = !aiModeEnabled;
   localStorage.setItem('nutricalc_ai_mode', aiModeEnabled ? 'true' : 'false');
   renderApp();
   openAiModal();
 }
 
-async function callGeminiText(promptText) {
+// Двухуровневый запрос к ИИ: 1) Свой ключ Gemini API, 2) Бесплатный облачный AI-фоллбэк без ключа
+async function callSmartAi(promptText, systemContext = '') {
   const key = (localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  if (!key) return null;
+  if (key) {
+    try {
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemContext ? `${systemContext}\n\n${promptText}` : promptText }] }],
+          generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (txt && txt.trim().length > 10) return txt.trim();
+      }
+    } catch (e) {}
+  }
+
+  // Бесплатный облачный AI (работает без ключа)
   try {
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
+    const resp2 = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { temperature: 0.8, maxOutputTokens: 320 }
+        model: 'openai',
+        messages: [
+          { role: 'system', content: systemContext || 'Ты заботливый клинический эксперт по диабету и питанию приложения DIAingo. Отвечай на русском языке, коротко (3-5 предложений), научно и понятно. Не используй слово болезнь.' },
+          { role: 'user', content: promptText }
+        ]
       })
     });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return txt ? txt.trim() : null;
-  } catch (e) {
-    return null;
+    if (resp2.ok) {
+      const d2 = await resp2.json();
+      const txt2 = d2?.choices?.[0]?.message?.content;
+      if (txt2 && txt2.trim().length > 10) return txt2.trim();
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+// Богатая локальная база знаний на случай отсутствия интернета
+function getLocalExpertAnswer(q, p, m, dayPlan) {
+  const ql = q.toLowerCase();
+  if (ql.includes('что такое диабет') || (ql.includes('диабет') && (ql.includes('это') || ql.includes('тип') || ql.includes('отлич')))) {
+    return `<strong>💎 Что такое сахарный диабет:</strong><br>Это особое состояние обмена веществ, при котором глюкоза из пищи не может самостоятельно попасть в клетки без помощи инсулина (нашего «ключика»).<br>• <strong>СД 1 типа:</strong> поджелудочная железа не вырабатывает свой инсулин, поэтому мы вводим его извне (база держит фон, а болюс компенсирует еду).<br>• <strong>СД 2 типа:</strong> свой инсулин есть, но клетки хуже его чувствуют (инсулинорезистентность) — здесь помогают снижение веса, движение и контроль ГИ.`;
   }
+  if (ql.includes('инсулин') && (ql.includes('что') || ql.includes('как работ') || ql.includes('зачем'))) {
+    return `<strong>💧 Как работает инсулин:</strong><br>Инсулин — это гормон-проводник, который открывает клетки для глюкозы и дает телу энергию. В терапии используют два вида:<br>1. <strong>Базальный (длинный/ночной):</strong> работает 24 часа и держит ровный сахар натощак (ваша норма ~${dayPlan.effectiveBasal} ЕД).<br>2. <strong>Болюсный (ультракороткий):</strong> колется перед едой на углеводы (по УК ~${p.icr}) и на снижение высокого сахара (по ФЧИ ~${dayPlan.effectiveIsf}).`;
+  }
+  if (ql.includes('утр') || ql.includes('зар') || ql.includes('тощак')) {
+    return `<strong>🌅 Почему растет сахар утром («утренняя заря»):</strong><br>С 4 до 8 утра организм выбрасывает гормоны пробуждения (кортизол, гормон роста), которые заставляют печень выделять глюкозу и снижают чувствительность к инсулину. Поэтому утренний УК выше дневного (~${+(p.icr*1.15).toFixed(2)} ЕД/ХЕ), а паузу перед завтраком делают чуть дольше.`;
+  }
+  if (ql.includes('пицц') || ql.includes('жир') || ql.includes('бургер') || ql.includes('шашлык') || ql.includes('стейк') || ql.includes('мяс') || ql.includes('бже') || ql.includes('белок') || ql.includes('белки')) {
+    return `<strong>🍕 Жиры, белки и «Эффект пиццы»:</strong><br>Жиры (от 25 г) обволакивают желудок и тормозят всасывание углеводов, а белки (от 30 г) через 2–4 часа превращаются в печени в глюкозу. Если уколоть весь инсулин сразу до жирной еды — можно словить гипу в первый час, а через 3 часа получить скачок сахара. Решение: делить укол на 2 волны (до еды и через 60–90 мин после).`;
+  }
+  if (ql.includes('гип') || ql.includes('низк') || ql.includes('падает') || ql.includes('тряс')) {
+    return `<strong>🆘 Что делать при низком сахаре (&lt; 4.0 ммоль/л):</strong><br>Действуйте по правилу 15/15: примите <strong>${computeHypoRescue(3.3, p).fastCarbGrams} г быстрых углеводов</strong> БЕЗ жира (сок, декстроза, теплая вода с сахаром) и перемерьте сахар через 15 минут. Шоколад, бананы и бутерброды при гипе не подходят — жиры задержат подъем сахара!`;
+  }
+  if (ql.includes('высок') || ql.includes('гипер') || ql.includes('сбить') || ql.includes('дпс')) {
+    return `<strong>📉 Как безопасно снизить высокий сахар (ДПС):</strong><br>Используйте ваш ФЧИ (~${dayPlan.effectiveIsf} ммоль/л на 1 ЕД): <code>(Текущий сахар − ${p.targetBg}) / ${dayPlan.effectiveIsf}</code>. Обязательно учитывайте активный инсулин (IOB) от прошлых уколов! Не подкалывайте новую ДПС чаще чем раз в 3 часа, чтобы не обрушить сахар.`;
+  }
+  if (ql.includes('спорт') || ql.includes('тренир') || ql.includes('шаг') || ql.includes('бег') || ql.includes('зал')) {
+    return `<strong>🏋️ Спорт и физическая активность:</strong><br>Кардио и долгая ходьба активно сжигают глюкозу и усиливают действие инсулина в 1.5–2 раза (риск гипы). Если тренировка идет на активном болюсе, уменьшите дозу инсулина на еду перед залом на 25–30% или съешьте 1 ХЕ медленных углеводов без подколки. Силовая тренировка, наоборот, может временно повысить сахар из-за адреналина.`;
+  }
+  if (ql.includes('алког') || ql.includes('вин') || ql.includes('пив')) {
+    return `<strong>🍷 Алкоголь и контроль сахара:</strong><br>Печень воспринимает алкоголь как токсин и пока расщепляет его, перестает выделять фоновую глюкозу в кровь. Это создает риск отсроченной ночной гипогликемии. Не колите инсулин на крепкий алкоголь и сухое вино, а перед сном съешьте 1 ХЕ сложных углеводов.`;
+  }
+  if (ql.includes('похуд') || ql.includes('вес') || ql.includes('калор') || ql.includes('дефицит')) {
+    return `<strong>⚖️ Снижение веса и КБЖУ:</strong><br>Ваш базовый обмен (BMR) — <strong>${m.bmr} ккал</strong>, общий расход с активностью (TDEE) — <strong>${m.tdee} ккал</strong>. Для плавного достижения цели (${p.targetWeight} кг) оптимальная норма — <strong>${m.effectiveKcal} ккал/сут</strong> (Белки: ${m.normP}г, Жиры: ${m.normF}г, Углеводы: ${m.normC}г). При снижении веса чувствительность к инсулину растет, поэтому УК и база со временем могут уменьшаться!`;
+  }
+  if (ql.includes('хе') || ql.includes('хлебн') || ql.includes('углевод')) {
+    return `<strong>🍞 Что такое ХЕ и сколько углеводов нужно:</strong><br>1 ХЕ = 12 г усваиваемых углеводов. Ваша суточная норма по профилю — <strong>${m.normC} г (${m.totalXE} ХЕ в день)</strong>. Старайтесь выбирать медленные углеводы с клетчаткой (гречка, овсянка, паста твердых сортов, бобовые, овощи) — они дают ровную линию сахара без пиков.`;
+  }
+  return `<strong>💡 Экспертный разбор по вашему вопросу («${q}»):</strong><br>В управлении гликемией и весом всё строится на балансе 3 факторов: точный подсчет углеводов (ваша норма — <strong>${m.normC} г / ${m.totalXE} ХЕ</strong> в сутки), правильно выставленный фон (ночная база ~<strong>${dayPlan.effectiveBasal} ЕД</strong>) и учет времени суток (УК утром ~${+(p.icr*1.15).toFixed(2)}, днем ~${p.icr}, вечером ~${+(p.icr*0.9).toFixed(2)}). Попробуйте уточнить вопрос: например, про <em>завтрак, спорт, жиры, базу или высокий сахар</em>!`;
 }
 
 function setMealTime(slot) {
   mealTimeSlot = slot;
   mealBolus.customEdited = false;
-  const p = getProf();
-  const m = computeMetrics();
-  const dayPlan = computeDailyInsulinPlan(m, p);
+  const p = getProf(), m = computeMetrics(), dayPlan = computeDailyInsulinPlan(m, p);
   const found = dayPlan.splits.find(x => x.slot === slot) || dayPlan.splits[1];
   if (found) {
     mealBolus.p = found.pG;
@@ -134,7 +179,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const bgVal = hasBg ? parseFloat(mealBolus.currBg) : null;
   const isHypoNow = hasBg && bgVal < 4.0;
 
-  // Контекст безопасности для научно-логического округления (п.14, п.15)
   let roundCtx = (mealTimeSlot === 'evening' || mealTimeSlot === 'night') ? 'hypo_risk' : 'normal';
   if (hasBg && bgVal < 4.8) roundCtx = 'hypo_risk';
   else if (hasBg && bgVal > 8.5) roundCtx = 'hyper';
@@ -227,6 +271,13 @@ function buildWeightSvgChart(checkpoints) {
   return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-24 overflow-visible"><polyline fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" />${pts.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4.5" fill="var(--brand)" stroke="#fff" stroke-width="1.5" /><text x="${pt.x}" y="${pt.y - 8}" text-anchor="middle" fill="currentColor" font-size="9.5" font-weight="800">${pt.w}кг</text><text x="${pt.x}" y="${height - 3}" text-anchor="middle" fill="currentColor" opacity="0.7" font-size="8.5">${pt.date}</text>`).join('')}</svg>`;
 }
 
+// Короткие названия для карточек инсулина, чтобы слово "Ультракороткий" не вылезало за края (п.16)
+function getShortInsulinLabel(id) {
+  if (id === 'ultrafast') return '⚡ Сверхбыстрый';
+  if (id === 'ultralong') return '🚀 Ультракорот.';
+  return '⏱ Короткий';
+}
+
 function renderApp() {
   const p = getProf(), m = computeMetrics();
   document.documentElement.setAttribute('data-gender', p.gender);
@@ -248,45 +299,40 @@ function renderApp() {
   const recFat = p.gender === 'female' ? 0.95 : 0.9;
   const isTooStrict = m.targetKcal < m.minSafe;
   const safeWeeks = Math.max(4, Math.ceil(Math.abs(diffKg * 7700) / (Math.max(250, m.tdee - m.minSafe) * 7)));
-  const hasSavedKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  const isAiActive = aiModeEnabled && hasSavedKey;
   const isOpen = (sec) => p.sectionsOpen[sec] !== false;
 
   document.getElementById('app').innerHTML = `
-    <!-- CLEAN HEADER WITH DIAingo LOGO & PROFILE SWITCHER (п.9) -->
+    <!-- FIXED SINGLE-LINE HEADER WITHOUT OVERLAPPING SUBTITLE -->
     <header class="sticky top-0 z-30 px-3 pt-2.5 pb-1.5">
       <div class="max-w-7xl mx-auto glass-card rounded-2xl px-3 py-2 flex items-center justify-between gap-2 shadow-lg border border-white/10">
-        <div class="flex items-center gap-2.5 min-w-0">
+        <div class="flex items-center gap-2 min-w-0 shrink-0">
           ${LOGO_SVG}
-          <div>
-            <div class="font-extrabold text-base sm:text-lg tracking-tight leading-none flex items-center gap-1">
-              <span>DIA</span><span style="color:#2DD4BF;">ingo</span>
-            </div>
-            <div class="text-[9px] opacity-70 font-semibold tracking-wide">SMART METABOLIC & INSULIN CARE</div>
+          <div class="font-extrabold text-base sm:text-lg tracking-tight leading-none whitespace-nowrap">
+            <span>DIA</span><span style="color:#2DD4BF;">ingo</span>
           </div>
         </div>
         <div class="inline-flex items-center gap-1 p-1 rounded-xl theme-input shrink-0">
-          <button onclick="switchProfile('p1')" class="h-7 px-3 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p1'?'theme-grad text-white shadow':'opacity-75'}">♂ Профиль 1</button>
-          <button onclick="switchProfile('p2')" class="h-7 px-3 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p2'?'theme-grad text-white shadow':'opacity-75'}">♀ Профиль 2</button>
+          <button onclick="switchProfile('p1')" class="h-7 px-2.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p1'?'theme-grad text-white shadow':'opacity-75'}">♂ Профиль 1</button>
+          <button onclick="switchProfile('p2')" class="h-7 px-2.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p2'?'theme-grad text-white shadow':'opacity-75'}">♀ Профиль 2</button>
         </div>
       </div>
     </header>
 
     <div class="max-w-7xl mx-auto px-3 pt-1.5 lg:hidden">
       <div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl glass-card">
-        <button onclick="activeTab='calc';showDiabetesToast=false;renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold transition ${activeTab==='calc'?'theme-grad text-white shadow':'opacity-75'}">✨ КБЖУ и План</button>
-        <button onclick="activeTab='diabetes';showDiabetesToast=true;renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold transition ${activeTab==='diabetes'?'theme-grad text-white shadow':'opacity-75'}">💧 Калькулятор Диабета</button>
+        <button onclick="activeTab='calc';showDiabetesToast=false;renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${activeTab==='calc'?'theme-grad text-white shadow':'opacity-75'}">✨ КБЖУ и План</button>
+        <button onclick="activeTab='diabetes';showDiabetesToast=true;renderApp();" class="py-2.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${activeTab==='diabetes'?'theme-grad text-white shadow':'opacity-75'}">💧 Калькулятор Диабета</button>
       </div>
     </div>
 
     <main class="max-w-7xl mx-auto px-3 pt-3.5 pb-28 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <section class="lg:col-span-6 space-y-4 ${activeTab==='diabetes'?'hidden lg:block':''}">
         
-        <!-- COLLAPSIBLE BLOCK 1: PARAMS (п.13) -->
+        <!-- BLOCK 1: PARAMS -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('p1')">
-            <h2 class="font-extrabold text-base flex items-center gap-2"><span>1. Ваши параметры</span><span class="text-xs opacity-60">${isOpen('p1')?'▴':'▾'}</span></h2>
-            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-bold">${p.weight} кг · ИМТ ${m.bmi}</span>
+          <div class="flex justify-between items-center gap-2 cursor-pointer select-none" onclick="toggleSection('p1')">
+            <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">1. Ваши параметры</span><span class="text-xs opacity-60 shrink-0">${isOpen('p1')?'▴':'▾'}</span></h2>
+            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-bold whitespace-nowrap shrink-0">${p.weight} кг · ИМТ ${m.bmi}</span>
           </div>
           ${isOpen('p1') ? `
             <div class="space-y-3.5 pt-1">
@@ -308,12 +354,12 @@ function renderApp() {
               </div>
 
               <div class="p-3 rounded-2xl theme-input space-y-2">
-                <div class="flex items-center justify-between">
-                  <div onclick="setParam('useBodyFat',${!p.useBodyFat})" class="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div class="w-10 h-6 rounded-full p-0.5 transition flex items-center ${p.useBodyFat?'theme-grad justify-end':'theme-soft justify-start'}"><div class="w-5 h-5 rounded-full bg-white shadow"></div></div>
-                    <span class="text-xs font-bold">Учитывать % жира (${p.useBodyFat?'Кетч-МакАрдл':'Миффлин'})</span>
+                <div class="flex items-center justify-between gap-2">
+                  <div onclick="setParam('useBodyFat',${!p.useBodyFat})" class="flex items-center gap-2 cursor-pointer select-none">
+                    <div class="w-10 h-6 rounded-full p-0.5 transition flex items-center shrink-0 ${p.useBodyFat?'theme-grad justify-end':'theme-soft justify-start'}"><div class="w-5 h-5 rounded-full bg-white shadow"></div></div>
+                    <span class="text-xs font-bold">Учитывать % жира</span>
                   </div>
-                  ${p.useBodyFat?`<div class="flex items-center gap-1 cursor-pointer" onclick="toggleDropdown('bf')"><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat-0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.bodyFat}" onclick="event.stopPropagation()" onchange="setParam('bodyFat',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-bold text-xs rounded-xl theme-soft"><span class="text-xs font-bold">%</span><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat+0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button></div>`:''}
+                  ${p.useBodyFat?`<div class="flex items-center gap-1 cursor-pointer shrink-0" onclick="toggleDropdown('bf')"><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat-0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.bodyFat}" onclick="event.stopPropagation()" onchange="setParam('bodyFat',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-bold text-xs rounded-xl theme-soft"><span class="text-xs font-bold">%</span><button onclick="event.stopPropagation();setParam('bodyFat',${+(p.bodyFat+0.5).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">+</button></div>`:''}
                 </div>
                 ${p.useBodyFat && activeOpenDropdown==='bf'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${[10,12,15,18,20,22,25,28,30,32,35,40].map(bf=>`<button onclick="setParam('bodyFat',${bf});toggleDropdown('bf');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.bodyFat===bf?'theme-grad text-white':'theme-soft'}">${bf}%</button>`).join('')}</div>`:''}
               </div>
@@ -321,9 +367,9 @@ function renderApp() {
               <div class="p-3 rounded-2xl theme-input space-y-2">
                 <div class="text-xs font-bold">💎 Особенности углеводного обмена (КБЖУ):</div>
                 <div class="grid grid-cols-3 gap-1.5">
-                  <button onclick="setDiabetesType('none')" class="py-2 px-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.diabetesType==='none'?'theme-grad text-white shadow':'theme-soft'}">Нет (Стандарт)</button>
-                  <button onclick="setDiabetesType('dm1')" class="py-2 px-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.diabetesType==='dm1'?'theme-grad text-white shadow':'theme-soft'}">СД 1 типа</button>
-                  <button onclick="setDiabetesType('dm2')" class="py-2 px-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.diabetesType==='dm2'?'theme-grad text-white shadow':'theme-soft'}">СД 2 типа</button>
+                  <button onclick="setDiabetesType('none')" class="py-2 px-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.diabetesType==='none'?'theme-grad text-white shadow':'theme-soft'}">Нет (Норма)</button>
+                  <button onclick="setDiabetesType('dm1')" class="py-2 px-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.diabetesType==='dm1'?'theme-grad text-white shadow':'theme-soft'}">СД 1 типа</button>
+                  <button onclick="setDiabetesType('dm2')" class="py-2 px-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.diabetesType==='dm2'?'theme-grad text-white shadow':'theme-soft'}">СД 2 типа</button>
                 </div>
               </div>
 
@@ -332,11 +378,11 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- COLLAPSIBLE BLOCK 2: ACTIVITY (п.13) -->
+        <!-- BLOCK 2: ACTIVITY -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('p2')">
-            <h2 class="font-extrabold text-base flex items-center gap-2"><span>2. Активность: Шаги + Тренировки</span><span class="text-xs opacity-60">${isOpen('p2')?'▴':'▾'}</span></h2>
-            <span class="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-xl theme-soft">TDEE: ${m.tdee}</span>
+          <div class="flex justify-between items-center gap-2 cursor-pointer select-none" onclick="toggleSection('p2')">
+            <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">2. Активность и Тренировки</span><span class="text-xs opacity-60 shrink-0">${isOpen('p2')?'▴':'▾'}</span></h2>
+            <span class="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-xl theme-soft whitespace-nowrap shrink-0">TDEE: ${m.tdee}</span>
           </div>
           ${isOpen('p2') ? `
             <div class="space-y-3.5 pt-1">
@@ -357,11 +403,11 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- COLLAPSIBLE BLOCK 3: GOAL & MACROS (п.13, п.14) -->
+        <!-- BLOCK 3: GOAL & MACROS -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
-          <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('p3')">
-            <h2 class="font-extrabold text-base flex items-center gap-2"><span>3. Цель и Норма КБЖУ</span><span class="text-xs opacity-60">${isOpen('p3')?'▴':'▾'}</span></h2>
-            <span class="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-xl theme-grad text-white">${m.effectiveKcal} ккал</span>
+          <div class="flex justify-between items-center gap-2 cursor-pointer select-none" onclick="toggleSection('p3')">
+            <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">3. Цель и Норма КБЖУ</span><span class="text-xs opacity-60 shrink-0">${isOpen('p3')?'▴':'▾'}</span></h2>
+            <span class="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-xl theme-grad text-white whitespace-nowrap shrink-0">${m.effectiveKcal} ккал</span>
           </div>
           ${isOpen('p3') ? `
             <div class="space-y-3.5 pt-1">
@@ -385,14 +431,14 @@ function renderApp() {
 
               ${p.diabetesType!=='none'?`
                 <div class="p-3.5 rounded-2xl border-2 space-y-2 text-xs" style="border-color:var(--brand);background:var(--brand-soft);">
-                  <div class="font-extrabold flex items-center justify-between">
-                    <span>💎 Протокол ${p.diabetesType==='dm1'?'СД 1 типа (ХЕ + БЖЕ)':'СД 2 типа (Контроль ГИ)'} ${helpBtn('xe')}</span>
-                    <span class="px-2.5 py-0.5 rounded-xl theme-grad text-white font-mono-num">${m.totalXE} ХЕ/сут</span>
+                  <div class="font-extrabold flex items-center justify-between gap-2">
+                    <span class="flex items-center">💎 Протокол ${p.diabetesType==='dm1'?'СД 1 типа':'СД 2 типа'} ${helpBtn('xe')}</span>
+                    <span class="px-2.5 py-0.5 rounded-xl theme-grad text-white font-mono-num whitespace-nowrap shrink-0">${m.totalXE} ХЕ/сут</span>
                   </div>
                   <div class="text-[11px] opacity-90 leading-relaxed">
                     ${p.diabetesType==='dm1'
                       ? `• Углеводы адаптированы под выбранный тип питания: <strong>${m.normC} г (${m.totalXE} ХЕ)</strong> для стабильного гликемического профиля.`
-                      : `• Углеводы ограничены до <strong>${m.normC} г/сут (${m.totalXE} ХЕ)</strong> с низким ГИ. На основной прием: до <strong>${m.maxMealCarbs} г (${m.maxMealXE} ХЕ)</strong>. Клетчатка: <strong>${m.fiberNorm} г/сут</strong>.`}
+                      : `• Углеводы ограничены до <strong>${m.normC} г/сут (${m.totalXE} ХЕ)</strong> с низким ГИ. На основной прием: до <strong>${m.maxMealCarbs} г (${m.maxMealXE} ХЕ)</strong>.`}
                   </div>
                 </div>
               `:''}
@@ -402,11 +448,11 @@ function renderApp() {
                 <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${extra3kKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
               </div>
 
-              <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-3 rounded-2xl text-left flex justify-between items-center transition ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2.5 py-1 rounded-xl bg-black/20 text-white shrink-0">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
+              <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-3 rounded-2xl text-left flex justify-between items-center gap-2 transition ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2.5 py-1 rounded-xl bg-black/20 text-white whitespace-nowrap shrink-0">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
 
               <div class="p-3 rounded-2xl theme-input space-y-2.5 text-xs">
                 <div class="text-[10px] opacity-80 font-bold">База расчета белка и жиров (г/кг):</div>
-                <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('macroBase','target')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold whitespace-nowrap ${p.macroBase==='target'?'theme-grad text-white':'theme-soft'}">Желаемый (${p.targetWeight}кг)</button><button onclick="setParam('macroBase','current')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold whitespace-nowrap ${p.macroBase==='current'?'theme-grad text-white':'theme-soft'}">Текущий (${p.weight}кг)</button><button onclick="setParam('macroBase','lbm')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold whitespace-nowrap ${p.macroBase==='lbm'?'theme-grad text-white':'theme-soft'}">Сухая (${m.lbmWeight}кг)</button></div>
+                <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('macroBase','target')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold whitespace-nowrap ${p.macroBase==='target'?'theme-grad text-white':'theme-soft'}">Цель (${p.targetWeight}кг)</button><button onclick="setParam('macroBase','current')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold whitespace-nowrap ${p.macroBase==='current'?'theme-grad text-white':'theme-soft'}">Вес (${p.weight}кг)</button><button onclick="setParam('macroBase','lbm')" class="py-1.5 px-1 rounded-xl text-[10px] font-bold whitespace-nowrap ${p.macroBase==='lbm'?'theme-grad text-white':'theme-soft'}">Сухая (${m.lbmWeight}кг)</button></div>
                 <div class="space-y-1 cursor-pointer" onclick="toggleDropdown('prot')"><div class="flex justify-between"><span>Белки (${m.effProtGkg} г/кг от ${m.refLabel})</span><strong>${m.normP} г</strong></div>
                   ${activeOpenDropdown==='prot'?`<div class="grid grid-cols-6 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${PROT_GRID.map(v=>`<button onclick="setParam('protGkg',${v});toggleDropdown('prot');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.protGkg===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
                 </div>
@@ -417,8 +463,7 @@ function renderApp() {
             </div>
           ` : ''}
 
-          <!-- SUMMARY PILLS ALWAYS VISIBLE -->
-          <div class="grid grid-cols-4 gap-2 pt-1"><div class="p-2.5 rounded-2xl theme-grad text-white text-center"><div class="text-[10px]">НОРМА</div><div class="font-mono-num font-extrabold text-sm">${m.effectiveKcal}</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Белки</div><div class="font-mono-num font-extrabold text-sm">${m.normP}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Жиры</div><div class="font-mono-num font-extrabold text-sm">${m.normF}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center" onclick="showHelpTopic('xe')"><div class="text-[10px] cursor-pointer">${p.diabetesType==='none'?'Углеводы':`Угл (${m.totalXE}ХЕ)`}</div><div class="font-mono-num font-extrabold text-sm">${m.normC}г</div></div></div>
+          <div class="grid grid-cols-4 gap-2 pt-1"><div class="p-2.5 rounded-2xl theme-grad text-white text-center"><div class="text-[10px]">НОРМА</div><div class="font-mono-num font-extrabold text-sm">${m.effectiveKcal}</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Белки</div><div class="font-mono-num font-extrabold text-sm">${m.normP}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center"><div class="text-[10px]">Жиры</div><div class="font-mono-num font-extrabold text-sm">${m.normF}г</div></div><div class="p-2.5 rounded-2xl theme-soft text-center cursor-pointer" onclick="showHelpTopic('xe')"><div class="text-[10px]">${p.diabetesType==='none'?'Углеводы':`Угл (${m.totalXE}ХЕ)`}</div><div class="font-mono-num font-extrabold text-sm">${m.normC}г</div></div></div>
         </div>
 
         <div class="px-2 text-center pb-2">
@@ -439,62 +484,70 @@ function renderApp() {
           </div>
         ` : ''}
 
-        <!-- LIVE ACTIVE INSULIN TIMER BANNER (п.11) -->
         ${iobData.totalIob > 0 ? `
           <div class="p-3.5 rounded-3xl border-2 flex items-center justify-between gap-2 shadow-lg" style="border-color:#2DD4BF;background:var(--brand-soft);">
             <div>
-              <div class="text-xs font-extrabold flex items-center gap-1.5">⏳ Активный инсулин в теле (IOB): <span id="live-iob-units" class="font-mono-num text-base" style="color:#2DD4BF;">${iobData.totalIob} ЕД</span></div>
+              <div class="text-xs font-extrabold flex items-center gap-1.5">⏳ Активный инсулин (IOB): <span id="live-iob-units" class="font-mono-num text-base" style="color:#2DD4BF;">${iobData.totalIob} ЕД</span></div>
               <div id="live-iob-sub" class="text-[10px] opacity-90 font-mono-num mt-0.5">Укол ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}</div>
             </div>
             <button onclick="clearIobLog()" class="px-2.5 py-1.5 rounded-xl theme-input text-[10px] font-bold shrink-0">Сброс</button>
           </div>
         ` : ''}
 
-        <!-- DIABETES BLOCK 1: INSULIN, PEN STEP, BASAL, ICR & ISF (п.1, п.7, п.12, п.13, п.15) -->
+        <!-- DIABETES BLOCK 1: INSULIN, PEN STEP, BASAL, ICR & ISF (FIXED CELL FIT) -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
-          <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleSection('d1')">
-            <h2 class="font-extrabold text-base flex items-center gap-2"><span>💧 1. Инсулин, База и УК</span><span class="text-xs opacity-60">${isOpen('d1')?'▴':'▾'}</span></h2>
-            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-mono-num font-bold flex items-center" onclick="event.stopPropagation();showHelpTopic('xe')">1 ХЕ = 12 г ${helpBtn('xe')}</span>
+          <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d1')">
+            <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">💧 1. Инсулин, База и УК</span><span class="text-xs opacity-60 shrink-0">${isOpen('d1')?'▴':'▾'}</span></h2>
+            <span class="text-[11px] px-2.5 py-1 rounded-xl theme-soft font-mono-num font-bold inline-flex items-center whitespace-nowrap shrink-0" onclick="event.stopPropagation();showHelpTopic('xe')">1 ХЕ = 12 г ${helpBtn('xe')}</span>
           </div>
           ${isOpen('d1') ? `
             <div class="space-y-3.5 pt-1">
-              <!-- INSULIN GROUPS WITHOUT CLUTTER BRANDS ON BUTTONS (п.12) -->
+              <!-- INSULIN GROUPS WITH CLEAN FITTING LABELS -->
               <div class="space-y-1.5">
-                <div class="text-xs font-bold opacity-85 flex items-center justify-between">
-                  <span>Группа болюсного инсулина по действию:</span>
-                  <span onclick="showHelpTopic('insulins')" class="text-[11px] underline cursor-pointer font-bold" style="color:#2DD4BF;">Примеры препаратов ${helpBtn('insulins')}</span>
+                <div class="text-xs font-bold opacity-85 flex items-center justify-between gap-2">
+                  <span>Группа болюсного инсулина:</span>
+                  <span onclick="showHelpTopic('insulins')" class="text-[11px] underline cursor-pointer font-bold whitespace-nowrap shrink-0" style="color:#2DD4BF;">Примеры препаратов ${helpBtn('insulins')}</span>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5">
                   ${INSULIN_TYPES.map(ins=>`
-                    <button onclick="setParam('insulinType','${ins.id}')" class="p-2.5 rounded-2xl text-left flex flex-col justify-between transition ${p.insulinType===ins.id?'theme-grad text-white shadow-md':'theme-input'}">
-                      <div class="text-[11px] font-extrabold leading-tight">${ins.name}</div>
-                      <div class="text-[9px] opacity-80 mt-1 font-mono-num">Активен ~${ins.diaHours}ч</div>
+                    <button onclick="setParam('insulinType','${ins.id}')" class="p-2.5 rounded-2xl text-center flex flex-col items-center justify-between transition ${p.insulinType===ins.id?'theme-grad text-white shadow-md':'theme-input'}">
+                      <div class="text-[11px] font-extrabold leading-tight whitespace-nowrap">${getShortInsulinLabel(ins.id)}</div>
+                      <div class="text-[10px] opacity-80 mt-1 font-mono-num whitespace-nowrap">~${ins.diaHours} ч</div>
                     </button>
                   `).join('')}
                 </div>
               </div>
 
-              <!-- PEN STEP SELECTOR WITH LOGICAL ROUNDING HELP (п.15) -->
+              <!-- PEN STEP SELECTOR WITH TWO-LINE CARDS SO TEXT NEVER OVERLAPS -->
               <div class="p-3 rounded-2xl theme-input space-y-2">
-                <div class="text-xs font-bold flex items-center justify-between">
-                  <span>💉 Шаг вашей ручки / помпы ${helpBtn('penStep')}</span>
-                  <span class="font-mono-num text-[11px] opacity-80">Умное округление</span>
+                <div class="text-xs font-bold flex items-center justify-between gap-2">
+                  <span class="flex items-center">💉 Шаг ручки / помпы ${helpBtn('penStep')}</span>
+                  <span class="font-mono-num text-[10px] opacity-75 whitespace-nowrap">Умное округление</span>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5">
-                  <button onclick="setParam('insulinStep',1.0)" class="py-2 px-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${p.insulinStep===1.0?'theme-grad text-white shadow':'theme-soft'}">1.0 ЕД (Ручка)</button>
-                  <button onclick="setParam('insulinStep',0.5)" class="py-2 px-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${p.insulinStep===0.5?'theme-grad text-white shadow':'theme-soft'}">0.5 ЕД (Джуниор)</button>
-                  <button onclick="setParam('insulinStep',0.1)" class="py-2 px-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${p.insulinStep===0.1?'theme-grad text-white shadow':'theme-soft'}">0.1 ЕД (Помпа)</button>
+                  <button onclick="setParam('insulinStep',1.0)" class="py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition ${p.insulinStep===1.0?'theme-grad text-white shadow':'theme-soft'}">
+                    <span class="text-xs font-mono-num font-extrabold">1.0 ЕД</span>
+                    <span class="text-[9px] opacity-80">Ручка</span>
+                  </button>
+                  <button onclick="setParam('insulinStep',0.5)" class="py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition ${p.insulinStep===0.5?'theme-grad text-white shadow':'theme-soft'}">
+                    <span class="text-xs font-mono-num font-extrabold">0.5 ЕД</span>
+                    <span class="text-[9px] opacity-80">Джуниор</span>
+                  </button>
+                  <button onclick="setParam('insulinStep',0.1)" class="py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition ${p.insulinStep===0.1?'theme-grad text-white shadow':'theme-soft'}">
+                    <span class="text-xs font-mono-num font-extrabold">0.1 ЕД</span>
+                    <span class="text-[9px] opacity-80">Помпа</span>
+                  </button>
                 </div>
               </div>
 
-              <!-- BASAL (NIGHT/LONG) INSULIN INPUT (п.1) -->
+              <!-- BASAL INSULIN INPUT -->
               <div class="p-3 rounded-2xl theme-input space-y-1.5">
-                <div class="flex justify-between items-center">
-                  <div>
-                    <div class="text-xs font-bold flex items-center">🌙 Ночной / Базальный инсулин (ЕД/сут) ${helpBtn('basal')}</div>
-                    <div class="text-[10px] opacity-75">${p.basalDose>0 ? `Ваша база (${dayPlan.basalPct}% от СДИ ${dayPlan.totalDailyDose} ЕД)` : `Авторасчет (~${dayPlan.autoBasal} ЕД · 45% от СДИ)`}</div>
+                <div class="flex justify-between items-center gap-2">
+                  <div class="min-w-0">
+                    <div class="text-xs font-bold flex items-center">🌙 Ночной / Базальный ${helpBtn('basal')}</div>
+                    <div class="text-[10px] opacity-75">${p.basalDose>0 ? `Ваша база (${dayPlan.basalPct}% от СДИ ${dayPlan.totalDailyDose} ЕД)` : `Авто (~${dayPlan.autoBasal} ЕД · 45% от СДИ)`}</div>
                   </div>
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-1.5 shrink-0">
                     <button onclick="setParam('basalDose',${Math.max(0, dayPlan.effectiveBasal-1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button>
                     <input type="text" value="${dayPlan.effectiveBasal}" onchange="setParam('basalDose',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft">
                     <button onclick="setParam('basalDose',${dayPlan.effectiveBasal+1})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button>
@@ -503,21 +556,21 @@ function renderApp() {
                 ${p.basalDose > 0 ? `<div class="text-[10px] opacity-85 flex justify-between items-center pt-1"><span>${dayPlan.basalNote}</span><button onclick="setParam('basalDose',0)" class="underline ml-2 shrink-0">Авто</button></div>` : ''}
               </div>
 
-              <!-- ICR (УГЛЕВОДНЫЙ КОЭФФИЦИЕНТ) (п.7) -->
+              <!-- ICR -->
               <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('icr')">
-                <div class="flex justify-between items-center">
-                  <div>
-                    <span class="text-xs font-bold">Базовый индекс УК (ЕД на 1 ХЕ) ${helpBtn('icr')}</span>
-                    <div class="text-[10px] opacity-75">Ориентир по Правилу 500: ~${dayPlan.rule500Icr} ЕД/ХЕ</div>
+                <div class="flex justify-between items-center gap-2">
+                  <div class="min-w-0">
+                    <div class="text-xs font-bold flex items-center">Базовый УК (ЕД на 1 ХЕ) ${helpBtn('icr')}</div>
+                    <div class="text-[10px] opacity-75">По Правилу 500: ~${dayPlan.rule500Icr} ЕД/ХЕ</div>
                   </div>
-                  <div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button onclick="setParam('icr',${+(Math.max(0.1,p.icr-0.1)).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.icr}" onchange="setParam('icr',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('icr',${+(p.icr+0.1).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div>
+                  <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()"><button onclick="setParam('icr',${+(Math.max(0.1,p.icr-0.1)).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${p.icr}" onchange="setParam('icr',this.value)" onkeydown="blurOnEnter(event)" class="w-14 h-8 text-center font-mono-num font-extrabold text-sm rounded-xl theme-soft"><button onclick="setParam('icr',${+(p.icr+0.1).toFixed(1)})" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button></div>
                 </div>
                 ${activeOpenDropdown==='icr'?`<div class="grid grid-cols-8 gap-1 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${ICR_GRID.map(v=>`<button onclick="setParam('icr',${v});toggleDropdown('icr');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.icr===v?'theme-grad text-white':'theme-soft'}">${v}</button>`).join('')}</div>`:''}
               </div>
 
               <div class="grid grid-cols-2 gap-2 text-xs">
                 <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
-                  <span class="text-[10px] opacity-85 font-bold flex items-center">🎯 Целевой сахар ${helpBtn('targetBg')}</span>
+                  <span class="text-[10px] opacity-85 font-bold flex items-center">🎯 Целевой ГК ${helpBtn('targetBg')}</span>
                   <div class="flex items-center justify-between mt-1.5">
                     <button onclick="setParam('targetBg',${+(p.targetBg-0.2).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
                     <input type="text" value="${p.targetBg}" onchange="setParam('targetBg',this.value)" onkeydown="blurOnEnter(event)" class="w-12 h-7 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft">
@@ -526,7 +579,7 @@ function renderApp() {
                 </div>
                 <div class="p-3 rounded-2xl theme-input flex flex-col justify-between">
                   <div class="flex justify-between items-center">
-                    <span class="text-[10px] opacity-85 font-bold flex items-center">📉 ФЧИ (ммоль/ЕД) ${helpBtn('isf')}</span>${p.customIsf > 0 ? `<button onclick="setParam('customIsf',0)" class="text-[9px] underline opacity-75">Авто</button>` : `<span class="text-[9px] opacity-70">Авто</span>`}
+                    <span class="text-[10px] opacity-85 font-bold flex items-center">📉 ФЧИ ${helpBtn('isf')}</span>${p.customIsf > 0 ? `<button onclick="setParam('customIsf',0)" class="text-[9px] underline opacity-75">Авто</button>` : `<span class="text-[9px] opacity-70">Авто</span>`}
                   </div>
                   <div class="flex items-center justify-between mt-1.5">
                     <button onclick="setParam('customIsf',${+(Math.max(0.5, dayPlan.effectiveIsf-0.2)).toFixed(1)})" class="w-7 h-7 rounded-xl theme-soft font-bold">-</button>
@@ -539,14 +592,14 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- DIABETES BLOCK 2: DAILY INSULIN PLAN (п.1, п.13) -->
+        <!-- DIABETES BLOCK 2: DAILY INSULIN PLAN -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg border-2" style="border-color:var(--brand);">
-          <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleSection('d2')">
-            <div>
-              <div class="text-[10px] font-bold uppercase opacity-75">Суточная потребность (СДИ: ~${dayPlan.totalDailyDose} ЕД)</div>
-              <h2 class="font-extrabold text-base flex items-center gap-2"><span>📊 2. Инсулин на весь день</span><span class="text-xs opacity-60">${isOpen('d2')?'▴':'▾'}</span></h2>
+          <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d2')">
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase opacity-75">Суточная доза (СДИ: ~${dayPlan.totalDailyDose} ЕД)</div>
+              <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5"><span class="truncate">📊 2. Инсулин на весь день</span><span class="text-xs opacity-60 shrink-0">${isOpen('d2')?'▴':'▾'}</span></h2>
             </div>
-            <span class="px-2.5 py-1 rounded-xl theme-grad text-white font-mono-num font-extrabold text-xs">${dayPlan.dayXE} ХЕ / сут</span>
+            <span class="px-2.5 py-1 rounded-xl theme-grad text-white font-mono-num font-extrabold text-xs whitespace-nowrap shrink-0">${dayPlan.dayXE} ХЕ / сут</span>
           </div>
           ${isOpen('d2') ? `
             <div class="space-y-3.5 pt-1">
@@ -557,12 +610,12 @@ function renderApp() {
                   <div class="text-[10px] opacity-70">${m.normC}г (${dayPlan.dayXE} ХЕ)</div>
                 </div>
                 <div class="p-2.5 rounded-2xl theme-input">
-                  <div class="text-[10px] font-sans opacity-75">Болюс БЖЕ ${helpBtn('bje')}</div>
+                  <div class="text-[10px] font-sans opacity-75 flex items-center justify-center">Болюс БЖЕ ${helpBtn('bje')}</div>
                   <div class="text-lg font-extrabold">${dayPlan.dayBjeBolus} ЕД</div>
                   <div class="text-[10px] opacity-70">${dayPlan.dayBJE} БЖЕ/дн</div>
                 </div>
                 <div class="p-2.5 rounded-2xl theme-soft">
-                  <div class="text-[10px] font-sans font-bold">Ночная База ${helpBtn('basal')}</div>
+                  <div class="text-[10px] font-sans font-bold flex items-center justify-center">База ${helpBtn('basal')}</div>
                   <div class="text-lg font-extrabold">${dayPlan.effectiveBasal} ЕД</div>
                   <div class="text-[10px] opacity-80">${dayPlan.basalPct}% от СДИ</div>
                 </div>
@@ -587,11 +640,11 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- DIABETES BLOCK 3: SINGLE MEAL CALCULATOR (п.3, п.4, п.11, п.16) -->
+        <!-- DIABETES BLOCK 3: SINGLE MEAL CALCULATOR -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
-          <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleSection('d3')">
-            <h2 class="font-extrabold text-base flex items-center gap-2"><span>🍽 3. Разовый расчет на еду</span><span class="text-xs opacity-60">${isOpen('d3')?'▴':'▾'}</span></h2>
-            <span class="text-xs font-mono-num font-bold px-2.5 py-1 rounded-xl theme-soft">${mealKcal} ккал</span>
+          <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d3')">
+            <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">🍽 3. Разовый расчет на еду</span><span class="text-xs opacity-60 shrink-0">${isOpen('d3')?'▴':'▾'}</span></h2>
+            <span class="text-xs font-mono-num font-bold px-2.5 py-1 rounded-xl theme-soft whitespace-nowrap shrink-0">${mealKcal} ккал</span>
           </div>
           ${isOpen('d3') ? `
             <div class="space-y-3.5 pt-1">
@@ -613,11 +666,10 @@ function renderApp() {
                 </div>
               </div>
 
-              <!-- STRICTLY ALIGNED GI BUTTONS WITH EQUAL PADDING & NO WRAP (п.8, п.16) -->
               <div class="space-y-1.5">
                 <div class="text-[11px] font-bold opacity-80 flex items-center justify-between">
                   <span>🥗 Гликемический индекс (ГИ) еды:</span>
-                  <span onclick="showHelpTopic('xe')" class="text-[10px] underline cursor-pointer" style="color:#2DD4BF;">Примеры ГИ продуктов ${helpBtn('xe')}</span>
+                  <span onclick="showHelpTopic('xe')" class="text-[10px] underline cursor-pointer whitespace-nowrap" style="color:#2DD4BF;">Примеры продуктов ${helpBtn('xe')}</span>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5">
                   <button onclick="setMealBolus('gi','low')" class="h-9 px-2 rounded-xl text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap transition ${mealBolus.gi==='low'?'theme-grad text-white shadow':'theme-input'}"><span>🟢</span><span>Низкий ГИ</span></button>
@@ -627,7 +679,6 @@ function renderApp() {
               </div>
 
               <div class="space-y-2 text-xs">
-                <!-- CURRENT BLOOD GLUCOSE FOR MEAL INSULIN (п.3) -->
                 <div class="p-3 rounded-2xl theme-soft border border-white/15">
                   <div class="flex justify-between items-center gap-2">
                     <div>
@@ -665,7 +716,7 @@ function renderApp() {
                 </div>
 
                 <div class="p-3 rounded-2xl theme-input flex justify-between items-center">
-                  <span class="font-bold">Углеводы (${bolus.xe} ХЕ): ${helpBtn('xe')}</span>
+                  <span class="font-bold flex items-center">Углеводы (${bolus.xe} ХЕ): ${helpBtn('xe')}</span>
                   <div class="flex items-center gap-1.5">
                     <input type="text" value="${mealBolus.c}" onchange="setMealBolus('c',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm">
                     <span class="font-bold">г</span>
@@ -673,7 +724,6 @@ function renderApp() {
                 </div>
               </div>
 
-              <!-- TWO-WAVE RESULT WITH FIXED "ПОСЛЕ ЕДЫ" TYPO (п.4) -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <div class="p-3.5 rounded-2xl theme-input space-y-1 flex flex-col justify-between">
                   <div class="text-[11px] font-bold opacity-80">1️⃣ ПЕРЕД ЕДОЙ (УК ~${bolus.effIcr})</div>
@@ -682,7 +732,7 @@ function renderApp() {
                   <div class="text-[10px] opacity-75">На еду: ${bolus.upfrontCarbUnits} ЕД ${bolus.hasBg ? `· ДПС: ${bolus.safeDps > 0 ? '+' : ''}${bolus.safeDps} ЕД` : ''}</div>
                 </div>
                 <div class="p-3.5 rounded-2xl theme-input space-y-1 flex flex-col justify-between">
-                  <div class="text-[11px] font-bold opacity-80">2️⃣ ПОСЛЕ ЕДЫ (БЖЕ + Хвост) ${helpBtn('bje')}</div>
+                  <div class="text-[11px] font-bold opacity-80 flex items-center">2️⃣ ПОСЛЕ ЕДЫ (БЖЕ + Хвост) ${helpBtn('bje')}</div>
                   <div class="text-2xl font-extrabold font-mono-num">${bolus.splitWaves?`${bolus.postUnits} ЕД`:'0 ЕД'}</div>
                   <div class="text-[11px] opacity-90">⏱ ${bolus.postTimingText}</div>
                   <div class="text-[10px] opacity-75">БЖЕ: ${bolus.bjeUnits} ЕД (${bolus.bje} БЖЕ)${bolus.delayedCarbUnits > 0 ? ` + ${bolus.delayedCarbUnits} ЕД угл.` : ''}${bolus.waveHours?` · волна ~${bolus.waveHours}ч`:''}</div>
@@ -706,22 +756,22 @@ function renderApp() {
       </section>
     </main>
 
-    <!-- FROZEN BOTTOM BAR: BRIGHT HYPO BUTTON + REPORT + AI MENTOR (п.2, п.10) -->
+    <!-- FROZEN BOTTOM BAR -->
     <div class="fixed bottom-0 left-0 right-0 z-40 glass-card border-t px-3 py-2.5 shadow-2xl">
       <div class="max-w-7xl mx-auto grid grid-cols-12 gap-2 items-center">
-        <button onclick="openHypoModal()" class="col-span-3 h-11 rounded-2xl text-white font-extrabold text-xs flex items-center justify-center gap-1 shadow-lg cursor-pointer transition hover:scale-[1.02]" style="background:linear-gradient(135deg,#E11D48,#BE123C);border:1px solid rgba(255,255,255,0.35);">
+        <button onclick="openHypoModal()" class="col-span-3 h-11 rounded-2xl text-white font-extrabold text-xs flex items-center justify-center gap-1 shadow-lg cursor-pointer transition" style="background:linear-gradient(135deg,#E11D48,#BE123C);border:1px solid rgba(255,255,255,0.35);">
           <span>🆘</span><span>Гипо</span>
         </button>
-        <button onclick="openDoctorReportModal()" class="col-span-3 h-11 rounded-2xl theme-soft font-extrabold text-xs flex items-center justify-center gap-1.5 shadow cursor-pointer transition hover:scale-[1.02]">
+        <button onclick="openDoctorReportModal()" class="col-span-3 h-11 rounded-2xl theme-soft font-extrabold text-xs flex items-center justify-center gap-1.5 shadow cursor-pointer transition">
           ${IC_DOC}<span>Отчёт</span>
         </button>
-        <button onclick="openAiModal()" class="col-span-6 h-11 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg cursor-pointer transition hover:scale-[1.02]">
+        <button onclick="openAiModal()" class="col-span-6 h-11 rounded-2xl theme-grad text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg cursor-pointer transition">
           ${IC_SPARK}<span>AI-Помощник и Ментор</span>
         </button>
       </div>
     </div>
 
-    <!-- EDUCATIONAL HELP POPUP MODAL (п.7, п.8, п.12) -->
+    <!-- EDUCATIONAL HELP POPUP MODAL -->
     <div id="modal-help" onclick="closeHelpModal()" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
       <div onclick="event.stopPropagation()" class="glass-card rounded-3xl max-w-md w-full p-5 space-y-3.5 border-2 shadow-2xl max-h-[88vh] overflow-y-auto" style="border-color:#2DD4BF;">
         <div class="flex justify-between items-center gap-2">
@@ -781,40 +831,43 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- AI MENTOR MODAL WITH QUESTION TEXT FIELD (п.5, п.6) -->
+    <!-- AI MENTOR MODAL WITH REAL WORKING AI CHAT -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-8" style="border-color:var(--brand);">
         <div class="flex justify-between items-center sticky top-0 py-2.5 px-3.5 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-1" style="background: var(--card-bg);">
           <div class="flex items-center gap-2 min-w-0">
             ${LOGO_SVG}
-            <h3 class="font-extrabold text-sm sm:text-base leading-tight truncate">Клинический AI-Ментор</h3>
+            <h3 class="font-extrabold text-sm sm:text-base leading-tight truncate">Клинический Ментор</h3>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button onclick="toggleAiMode()" class="h-9 px-3 rounded-2xl font-extrabold text-xs inline-flex flex-row items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${isAiActive ? 'theme-grad text-white shadow-lg ring-2 ring-white/30' : 'theme-input opacity-75 hover:opacity-100'}">
-              ${IC_SPARK}<span>AI</span><span class="w-2 h-2 rounded-full ${isAiActive ? 'bg-emerald-300 animate-pulse' : 'bg-white/30'}"></span>
+            <button onclick="toggleAiMode()" class="h-9 px-3 rounded-2xl font-extrabold text-xs inline-flex flex-row items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${aiModeEnabled ? 'theme-grad text-white shadow-lg ring-2 ring-white/30' : 'theme-input opacity-75 hover:opacity-100'}">
+              ${IC_SPARK}<span>AI</span><span class="w-2 h-2 rounded-full ${aiModeEnabled ? 'bg-emerald-300 animate-pulse' : 'bg-white/30'}"></span>
             </button>
             <button onclick="document.getElementById('modal-ai').classList.add('hidden')" class="w-9 h-9 rounded-2xl theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
           </div>
         </div>
 
-        ${isAiLoading ? `<div class="p-2.5 rounded-2xl theme-soft text-center text-xs font-bold animate-pulse flex items-center justify-center gap-2">${IC_SPARK}<span>Ментор формирует ответ...</span></div>` : ''}
-
-        <!-- ASK AI MENTOR TEXT FIELD (п.5, п.6) -->
+        <!-- ASK AI MENTOR TEXT FIELD + QUICK CHIPS -->
         <div class="p-4 rounded-3xl theme-input space-y-2.5 border border-white/20">
-          <div class="text-xs font-extrabold flex items-center justify-between">
-            <span>💬 Задайте любой вопрос по питанию или компенсации:</span>
-          </div>
+          <div class="text-xs font-extrabold">💬 Задайте любой вопрос AI-ментору:</div>
           <div class="flex gap-1.5">
-            <input type="text" id="inp-ai-question" onkeydown="if(event.key==='Enter'){this.blur();askAiMentor();}" placeholder="Напр: Почему растет сахар утром или как колоть на пиццу?" class="flex-1 h-10 px-3 rounded-xl theme-soft text-xs">
-            <button onclick="askAiMentor()" class="h-10 px-4 rounded-xl theme-grad text-white font-extrabold text-xs shrink-0 shadow">Спросить</button>
+            <input type="text" id="inp-ai-question" value="${lastUserQuestion}" onkeydown="if(event.key==='Enter'){event.preventDefault();askAiMentor(this.value);}" placeholder="Что такое диабет? Как колоть на пиццу?" class="flex-1 h-10 px-3 rounded-xl theme-soft text-xs">
+            <button onmousedown="event.preventDefault();askAiMentor()" onclick="askAiMentor()" class="h-10 px-4 rounded-xl theme-grad text-white font-extrabold text-xs shrink-0 shadow cursor-pointer">Спросить</button>
           </div>
-          ${aiChatAnswer ? `<div class="p-3 rounded-2xl theme-soft text-xs leading-relaxed border border-white/10">${aiChatAnswer}</div>` : ''}
+          <div class="flex flex-wrap gap-1 pt-0.5">
+            <button onclick="askAiMentor('Что такое диабет и как работает инсулин?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Что такое диабет?</button>
+            <button onclick="askAiMentor('Почему растет сахар утром натощак?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Утренняя заря</button>
+            <button onclick="askAiMentor('Как компенсировать пиццу, жиры и белки?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Жиры и БЖЕ</button>
+            <button onclick="askAiMentor('Как тренироваться без гипогликемии?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Спорт и сахар</button>
+          </div>
+          ${isAiLoading ? `<div class="p-3 rounded-2xl theme-soft text-xs font-bold animate-pulse flex items-center gap-2">${IC_SPARK}<span>AI-ментор печатает ответ на ваш вопрос...</span></div>` : ''}
+          ${!isAiLoading && aiChatAnswer ? `<div class="p-3 rounded-2xl theme-soft text-xs leading-relaxed border border-white/15 space-y-1">${aiChatAnswer}</div>` : ''}
         </div>
 
         <div class="p-4 rounded-3xl theme-soft space-y-1.5 shadow-sm">
           <div class="font-extrabold text-xs flex items-center justify-between gap-2">
             <span>⭐ Вдохновляющая история успеха</span>
-            <button onclick="rotateStory()" class="w-9 h-9 rounded-2xl theme-input flex items-center justify-center cursor-pointer shadow-sm shrink-0">${isAiActive ? IC_SPARK : IC_REFRESH}</button>
+            <button onclick="rotateStory()" class="w-9 h-9 rounded-2xl theme-input flex items-center justify-center cursor-pointer shadow-sm shrink-0">${aiModeEnabled ? IC_SPARK : IC_REFRESH}</button>
           </div>
           <div class="text-xs font-extrabold mt-1">${currentStory.name}</div>
           <div class="text-[11px] opacity-90 leading-relaxed">${currentStory.desc}</div>
@@ -823,7 +876,7 @@ function renderApp() {
         <div class="p-4 rounded-3xl theme-input space-y-2 border border-white/15">
           <div class="font-extrabold text-xs flex items-center justify-between gap-2">
             <span>❤️ Слово тепла и поддержки для вас</span>
-            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-soft flex items-center justify-center cursor-pointer shadow-sm shrink-0">${isAiActive ? IC_SPARK : IC_REFRESH}</button>
+            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-soft flex items-center justify-center cursor-pointer shadow-sm shrink-0">${aiModeEnabled ? IC_SPARK : IC_REFRESH}</button>
           </div>
           <div class="text-xs leading-relaxed opacity-95 mt-1">${currentSupport}</div>
         </div>
@@ -835,7 +888,7 @@ function renderApp() {
           <div class="${newsBoxOpen ? '' : 'hidden'} p-4 rounded-3xl theme-input space-y-2.5 text-[11px]">
             <div class="flex justify-between items-center font-bold text-xs mb-1">
               <span>Последние достижения науки</span>
-              <button onclick="refreshNews()" class="h-8 px-3 rounded-xl theme-soft text-[11px] font-extrabold inline-flex items-center gap-1.5">${isAiActive ? IC_SPARK : IC_REFRESH}<span>Обновить</span></button>
+              <button onclick="refreshNews()" class="h-8 px-3 rounded-xl theme-soft text-[11px] font-extrabold inline-flex items-center gap-1.5">${aiModeEnabled ? IC_SPARK : IC_REFRESH}<span>Обновить</span></button>
             </div>
             <div class="space-y-2">
               ${breakthroughsList.map(b=>`<div class="p-3 rounded-2xl theme-soft"><div class="font-bold flex items-center justify-between gap-2"><span>${b.title}</span><span class="opacity-75 font-mono-num shrink-0">${b.yr}</span></div><div class="opacity-85 mt-1 leading-relaxed">${b.desc}</div></div>`).join('')}
@@ -848,7 +901,7 @@ function renderApp() {
         </button>
 
         <details id="api-key-details" class="p-3 rounded-2xl theme-input text-xs opacity-75 hover:opacity-100 transition">
-          <summary class="cursor-pointer text-[11px] font-bold">🔑 Настройка ключа Gemini API для генерации AI</summary>
+          <summary class="cursor-pointer text-[11px] font-bold">🔑 Персональный ключ Gemini API (по желанию)</summary>
           <div class="pt-2.5 flex flex-col gap-2">
             <div class="flex justify-between items-center">
               <span class="text-[10px] opacity-80">Бесплатный ключ Google AI Studio:</span>
@@ -876,47 +929,41 @@ function copyDoctorReport() {
   });
 }
 
-// Умный ответ на вопрос пользователя (работает через Gemini API или встроенную клиническую базу) (п.5, п.6)
-async function askAiMentor() {
+// ИСПРАВЛЕННЫЙ ОБРАБОТЧИК ВОПРОСОВ К AI-МЕНТОРУ (работает при любом вопросе!)
+async function askAiMentor(presetQuery) {
   const inp = document.getElementById('inp-ai-question');
-  if (!inp || !inp.value.trim()) return;
-  const q = inp.value.trim();
-  const p = getProf(), m = computeMetrics(), dayPlan = computeDailyInsulinPlan(m, p);
-  const hasKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
+  const q = (typeof presetQuery === 'string' && presetQuery.trim()) ? presetQuery.trim() : (inp ? inp.value.trim() : '');
+  if (!q) return;
+  lastUserQuestion = q;
+  if (inp) inp.blur();
 
-  if (hasKey) {
+  const p = getProf(), m = computeMetrics(), dayPlan = computeDailyInsulinPlan(m, p);
+
+  if (aiModeEnabled) {
     isAiLoading = true;
     renderApp(); openAiModal();
-    const prompt = `Ты — заботливый клинический ментор приложения DIAingo. Профиль пользователя: вес ${p.weight}кг, цель ${p.targetWeight}кг, норма ${m.effectiveKcal} ккал (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г), УК:${p.icr}, ФЧИ:${dayPlan.effectiveIsf}, база:${dayPlan.effectiveBasal} ЕД. Дай четкий, научно обоснованный и теплый ответ (3-4 предложения) на вопрос: "${q}". Не используй слово "болезнь".`;
-    const res = await callGeminiText(prompt);
+    const sys = `Ты — клинический AI-ментор приложения DIAingo. Профиль пользователя: ${p.gender==='male'?'мужчина':'женщина'}, вес ${p.weight}кг, цель ${p.targetWeight}кг, суточная норма ${m.effectiveKcal} ккал (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), УК:${p.icr}, ФЧИ:${dayPlan.effectiveIsf} ммоль/ЕД, ночная база:${dayPlan.effectiveBasal} ЕД. Отвечай прямо на заданный вопрос, тепло, понятно для новичка и научно точно (3-5 предложений). Не используй слово "болезнь".`;
+    const cloudAns = await callSmartAi(q, sys);
     isAiLoading = false;
-    if (res) {
-      aiChatAnswer = `<strong>✨ Ответ AI-Ментора:</strong><br>${res}`;
+    if (cloudAns) {
+      aiChatAnswer = `<strong>✨ Ответ AI-ментора:</strong><br>${cloudAns.replace(/\n/g, '<br>')}`;
+      lastUserQuestion = '';
       renderApp(); openAiModal();
       return;
     }
   }
 
-  // Локальный экспертный ответ, если API-ключ еще не подключен
-  const ql = q.toLowerCase();
-  if (ql.includes('утр') || ql.includes('зар') || ql.includes('тощак')) {
-    aiChatAnswer = `<strong>🌅 Повышение сахара утром («феномен утренней зари»):</strong> В 4–8 утра выбрасываются контррегуляторные гормоны (кортизол, гормон роста), снижающие чувствительность к инсулину. Поэтому утренний УК в DIAingo автоматически увеличен на ×1.15 (до ~${+(p.icr*1.15).toFixed(2)}), а при росте сахара еще до завтрака стоит проверить достаточность ночной базы (~${dayPlan.effectiveBasal} ЕД).`;
-  } else if (ql.includes('пицц') || ql.includes('жир') || ql.includes('бургер') || ql.includes('шашлык') || ql.includes('стейк') || ql.includes('бже')) {
-    aiChatAnswer = `<strong>🍕 Жирная и белковая еда:</strong> Жиры замедляют опорожнение желудка, а белки через 2–4 часа дают выброс глюкозы из печени. Не делайте длинную паузу перед жирной едой и делите болюс на 2 укола: основную часть на углеводы до еды и дозу на БЖЕ через 60–90 минут после еды.`;
-  } else if (ql.includes('гип') || ql.includes('низк') || ql.includes('падает')) {
-    aiChatAnswer = `<strong>🆘 При падении сахара (&lt; 4.0 ммоль/л):</strong> Используйте правило 15/15 — примите быстрые углеводы без жира (сок, декстроза, сахар в теплой воде) и перемерьте через 15 минут. Для вашего веса (${p.weight} кг) точная доза рассчитана по кнопке «Гипо» внизу экрана.`;
-  } else {
-    aiChatAnswer = `<strong>💡 Рекомендация ментора DIAingo:</strong> По вашему профилю суточная норма составляет <strong>${m.effectiveKcal} ккал</strong> (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), расчетная чувствительность ФЧИ ~<strong>${dayPlan.effectiveIsf} ммоль/ЕД</strong>. <em>(Чтобы получать развернутые ответы нейросети на любые свободные вопросы, подключите бесплатный ключ Gemini API внизу окна).</em>`;
-  }
+  // Если выключен режим AI или нет сети — отвечает расширенная клиническая база
+  aiChatAnswer = getLocalExpertAnswer(q, p, m, dayPlan);
+  lastUserQuestion = '';
   renderApp(); openAiModal();
 }
 
 async function rotateStory() {
-  const hasKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
   aiTurnCounter++;
-  if (aiModeEnabled && hasKey && aiTurnCounter % 2 === 1) {
+  if (aiModeEnabled && aiTurnCounter % 2 === 1) {
     isAiLoading = true; renderApp(); openAiModal();
-    const res = await callGeminiText('Напиши 1 реальную вдохновляющую историю известного человека с сахарным диабетом. НЕ используй слово "болезнь". Строго в формате: ЭМОДЗИ Имя Фамилия | Описание 2 предложения.');
+    const res = await callSmartAi('Напиши 1 реальную вдохновляющую историю известного человека (спортсмена, актера, музыканта или ученого) с сахарным диабетом. НЕ используй слово "болезнь". Строго в формате: ЭМОДЗИ Имя Фамилия | Описание 2 предложения.');
     isAiLoading = false;
     if (res && res.includes('|')) {
       const parts = res.split('|');
@@ -929,12 +976,11 @@ async function rotateStory() {
 }
 
 async function rotateSupport() {
-  const hasKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
   aiTurnCounter++;
-  if (aiModeEnabled && hasKey && aiTurnCounter % 2 === 0) {
+  if (aiModeEnabled && aiTurnCounter % 2 === 0) {
     isAiLoading = true; renderApp(); openAiModal();
     const p = getProf();
-    const res = await callGeminiText(`Напиши короткое (3 предложения) очень теплое сообщение поддержки для ${p.gender === 'female' ? 'женщины' : 'мужчины'}, которая контролирует гликемию и питание. НЕ используй слово "болезнь", пиши что это особый образ жизни.`);
+    const res = await callSmartAi(`Напиши короткое (3 предложения) очень теплое сообщение поддержки для ${p.gender === 'female' ? 'женщины' : 'мужчины'}, которая контролирует гликемию и питание. НЕ используй слово "болезнь", пиши что это особый осознанный образ жизни.`);
     isAiLoading = false;
     if (res && res.length > 20) {
       currentSupport = res + ' ✨';
@@ -948,10 +994,9 @@ async function rotateSupport() {
 function toggleNews() { newsBoxOpen = !newsBoxOpen; renderApp(); openAiModal(); }
 
 async function refreshNews() {
-  const hasKey = !!(localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  if (aiModeEnabled && hasKey) {
+  if (aiModeEnabled) {
     isAiLoading = true; renderApp(); openAiModal();
-    const res = await callGeminiText('Напиши 1 свежий научный прорыв в управлении гликемией или биоинженерии бета-клеток (2025-2026). Строго в формате: ЭМОДЗИ Заголовок | Описание 1-2 предложения.');
+    const res = await callSmartAi('Напиши 1 свежий научный прорыв в управлении гликемией или биоинженерии бета-клеток (2025-2026). Строго в формате: ЭМОДЗИ Заголовок | Описание 1-2 предложения.');
     isAiLoading = false;
     if (res && res.includes('|')) {
       const parts = res.split('|');
@@ -967,8 +1012,9 @@ async function refreshNews() {
 function saveApiKey() {
   const val = document.getElementById('inp-gemini-key').value.trim();
   localStorage.setItem('nutricalc_gemini_key', val);
-  aiModeEnabled = !!val;
-  localStorage.setItem('nutricalc_ai_mode', aiModeEnabled ? 'true' : 'false');
+  aiModeEnabled = true;
+  localStorage.setItem('nutricalc_ai_mode', 'true');
+  alert('✅ Ключ сохранен!');
   renderApp(); openAiModal();
 }
 
