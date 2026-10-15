@@ -19,7 +19,6 @@ const IC_SPARK = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" 
 const IC_REFRESH = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>`;
 const IC_DOC = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>`;
 
-// Всплывающее объяснение специально для поля "Текущий сахар перед едой"
 const CURR_BG_HELP = {
   title: '💧 Зачем вводить текущий сахар перед едой?',
   html: `
@@ -337,6 +336,7 @@ function setMealTime(slot) {
   renderApp();
 }
 
+// ИСПРАВЛЕННЫЙ РАСЧЕТ С БАЛАНСОМ СЛАГАЕМЫХ И ПОТОЛКОМ БЕЗОПАСНОСТИ ДПС
 function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const xe = +(cGrams / 12).toFixed(1);
@@ -356,7 +356,7 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const rawBjeU = bje >= 1.0 ? +(bje * effIcr * bjeFactor).toFixed(2) : 0;
 
   const isf = (dayPlan && dayPlan.effectiveIsf > 0) ? dayPlan.effectiveIsf : 2.5;
-  let rawDps = 0, safeDps = 0, iobSubtracted = 0, hyperResistMult = 1.0;
+  let rawDps = 0, safeDps = 0, iobSubtracted = 0, hyperResistMult = 1.0, isDpsCapped = false;
 
   const hasBg = mealBolus.currBg !== '' && !isNaN(parseFloat(mealBolus.currBg));
   const bgVal = hasBg ? parseFloat(mealBolus.currBg) : null;
@@ -367,6 +367,9 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   let roundCtx = (mealTimeSlot === 'evening' || mealTimeSlot === 'night') ? 'hypo_risk' : 'normal';
   if (hasBg && bgVal < 4.8) roundCtx = 'hypo_risk';
   else if (hasBg && bgVal >= 6.8) roundCtx = 'hyper';
+
+  // Безопасный клинический потолок разовой ДПС (~18% от СДИ, но не менее 4 ЕД и не более 7 ЕД за 1 раз)
+  const maxSafeSingleDps = Math.max(4.0, Math.min(7.0, +((dayPlan ? dayPlan.totalDailyDose : 35) * 0.18).toFixed(1)));
 
   if (hasBg && bgVal > 0) {
     const diffBg = bgVal - p.targetBg;
@@ -379,6 +382,10 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
       const activeIob = (subtractIobFromDps && iobData) ? iobData.totalIob : 0;
       safeDps = Math.max(0, +(rawDps - activeIob).toFixed(2));
       iobSubtracted = +(rawDps - safeDps).toFixed(1);
+      if (safeDps > maxSafeSingleDps) {
+        safeDps = maxSafeSingleDps;
+        isDpsCapped = true;
+      }
     } else if (diffBg < -0.3) {
       safeDps = +rawDps.toFixed(2);
     }
@@ -391,16 +398,19 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const rawUpfrontCarb = +(rawCarbU - rawDelayedCarb).toFixed(2);
 
   const splitWaves = (rawBjeU >= 0.35 || rawDelayedCarb >= 0.35) && !ins.coversBJE && !isZeroFood;
-  const rawPre = isHypoNow && isZeroFood ? 0 : Math.max(0, (splitWaves ? rawUpfrontCarb : (rawCarbU + rawBjeU)) + safeDps);
-  const rawPost = splitWaves ? (rawBjeU + rawDelayedCarb) : 0;
 
-  const preUnits = roundSmartInsulin(rawPre, p.insulinStep, roundCtx);
-  const postUnits = roundSmartInsulin(rawPost, p.insulinStep, roundCtx);
-  const totalUnits = +(preUnits + postUnits).toFixed(1);
+  // Сбалансированное округление слагаемых, чтобы расшифровка всегда сходилась с итогом 1-го и 2-го укола!
   const upfrontCarbUnits = roundSmartInsulin(rawUpfrontCarb, p.insulinStep, roundCtx);
   const delayedCarbUnits = roundSmartInsulin(rawDelayedCarb, p.insulinStep, roundCtx);
   const bjeUnits = roundSmartInsulin(rawBjeU, p.insulinStep, roundCtx);
-  const dpsRounded = safeDps >= 0 ? roundSmartInsulin(safeDps, p.insulinStep, 'hyper') : -roundSmartInsulin(Math.abs(safeDps), p.insulinStep, 'normal');
+  const dpsRounded = safeDps >= 0
+    ? roundSmartInsulin(safeDps, p.insulinStep, 'hyper')
+    : -roundSmartInsulin(Math.abs(safeDps), p.insulinStep, 'normal');
+
+  const basePreUnits = splitWaves ? upfrontCarbUnits : +(upfrontCarbUnits + bjeUnits).toFixed(1);
+  const preUnits = (isHypoNow && isZeroFood) ? 0 : Math.max(0, +(basePreUnits + dpsRounded).toFixed(1));
+  const postUnits = splitWaves ? +(bjeUnits + delayedCarbUnits).toFixed(1) : 0;
+  const totalUnits = +(preUnits + postUnits).toFixed(1);
   const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
 
   let waitMin = ins.baseWait;
@@ -477,7 +487,7 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   if (isHypoNow) {
     kineticAlerts.push(`🚨 <strong>Гипогликемия (${bgVal} ммоль/л):</strong> Болюс на еду уменьшен на <strong>${Math.abs(dpsRounded)} ЕД</strong>. Сначала примите быстрые углеводы (кнопка «Гипо» внизу экрана), дождитесь подъема ГК выше 5.0 ммоль/л и только затем колите уменьшенную дозу.`);
   } else if (isSevereHyper) {
-    kineticAlerts.push(`🔥 <strong>Высокая гипергликемия (${bgVal} ммоль/л):</strong> При сахаре ≥ 13 ммоль/л возникает инсулинорезистентность (учтен коэф. ×${hyperResistMult}). В 1-й укол включена ДПС <strong>+${dpsRounded} ЕД</strong>. <strong>Рекомендация:</strong> сделайте паузу ${Math.max(25, waitMin)} мин перед едой, чтобы инсулин начал снижать сахар до приема углеводов!`);
+    kineticAlerts.push(`🔥 <strong>Высокая гипергликемия (${bgVal} ммоль/л):</strong> При сахаре ≥ 13 ммоль/л возникает инсулинорезистентность (учтен коэф. ×${hyperResistMult}). В 1-й укол включена ДПС <strong>+${dpsRounded} ЕД</strong>${isDpsCapped ? ' (ограничена безопасным разовым пределом — остаток сколите через 3 часа)' : ''}. Сделайте паузу ${Math.max(25, waitMin)} мин перед едой!`);
   } else if (isHighBg) {
     kineticAlerts.push(`📈 <strong>Повышенный сахар перед едой (${bgVal} ммоль/л):</strong> К болюсу на еду добавлена коррекция (ДПС) <strong>+${dpsRounded} ЕД</strong> для возврата к цели ${p.targetBg} ммоль/л${extraHyperWait > 0 ? `, а пауза до еды увеличена на +${extraHyperWait} мин` : ''}.`);
   }
@@ -889,7 +899,7 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- DIABETES BLOCK 3: CLEAN INPUT WINDOW FOR CURRENT BG -->
+        <!-- DIABETES BLOCK 3 -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
           <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d3')">
             <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">🍽 3. Разовый расчет на еду</span><span class="text-xs opacity-60 shrink-0">${isOpen('d3')?'▴':'▾'}</span></h2>
@@ -928,7 +938,7 @@ function renderApp() {
               </div>
 
               <div class="space-y-2 text-xs">
-                <!-- CLEAN SINGLE INPUT WINDOW FOR CURRENT BG WITH POPUP EXPLANATION -->
+                <!-- CLEAN SINGLE INPUT WINDOW FOR CURRENT BG -->
                 <div class="p-3 rounded-2xl border transition ${bolus.isHighBg ? 'border-amber-400/70 bg-amber-500/10' : (bolus.isHypoNow ? 'border-rose-500/80 bg-rose-500/15' : 'theme-soft border-white/15')}">
                   <div class="flex justify-between items-center gap-2">
                     <div class="min-w-0">
@@ -1042,7 +1052,7 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- SOS HYPOGLYCEMIA MODAL WITH WARM EMPATHETIC MESSAGE & CLEAN FONT -->
+    <!-- SOS HYPOGLYCEMIA MODAL -->
     <div id="modal-hypo" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
       <div class="glass-card rounded-3xl max-w-md w-full p-5 space-y-3.5 border-2 border-rose-500 shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center">
@@ -1055,7 +1065,6 @@ function renderApp() {
           <input type="text" inputmode="decimal" value="${hypoBgInput}" onchange="hypoBgInput=this.value;renderApp();openHypoModal();" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold text-sm rounded-xl theme-soft">
         </div>
 
-        <!-- WARM EMPATHETIC NOTE AGAINST HYPO BINGE EATING -->
         <div class="p-3.5 rounded-2xl theme-soft border border-white/15 text-xs leading-relaxed">
           ❤️ <strong>Выдохни на секунду:</strong> я понимаю, что сейчас — когда внутри всё дрожит, а организм бьёт тревогу — тебе хочется съесть всё, что попадается на глаза. Но делать так не стоит: лишняя и жирная еда не поднимет сахар быстрее, а через час приведёт к тяжёлому скачку. Давай купируем гипу мягко и точно:
         </div>
