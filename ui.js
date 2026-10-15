@@ -19,14 +19,23 @@ const IC_SPARK = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" 
 const IC_REFRESH = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>`;
 const IC_DOC = `<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>`;
 
-const CURR_BG_HELP = {
-  title: '💧 Зачем вводить текущий сахар перед едой?',
+const WORKOUT_INTENSITY_HELP = {
+  title: '⚡ Интенсивность и пульсовые зоны тренировки',
   html: `
-    <p>Это поле нужно для автоматического расчёта <strong>ДПС (дозы на коррекцию сахара)</strong> и точного времени паузы перед едой:</p>
-    <div class="p-3 rounded-2xl theme-input space-y-1.5 mt-2">
-      <div>📈 <strong>Если сахар выше целевого:</strong> калькулятор прибавит нужную дозу инсулина (по вашему ФЧИ) к уколу на еду и подскажет, на сколько минут увеличить паузу перед приемом пищи.</div>
-      <div>📉 <strong>Если сахар ниже целевого:</strong> калькулятор бережно уменьшит дозу болюса и отменит паузу, чтобы защитить вас от гипогликемии.</div>
-      <div>✨ <strong>Если сахар в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
+    <p>Интенсивность тренировки определяет, сколько дополнительных калорий расходует ваше тело и насколько сильно нагружается сердечно-сосудистая система:</p>
+    <div class="space-y-2 mt-2">
+      <div class="p-2.5 rounded-2xl theme-input">
+        <div class="font-extrabold text-sky-300">🧘 Лёгкая нагрузка (ЧСС ~55–65% от макс.)</div>
+        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[0].examples}<br><em>Эффект:</em> восстановление, развитие выносливости, минимальное влияние на сахар крови.</div>
+      </div>
+      <div class="p-2.5 rounded-2xl theme-input">
+        <div class="font-extrabold text-emerald-300">🏋️ Средняя нагрузка (ЧСС ~65–76% от макс.)</div>
+        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[1].examples}<br><em>Эффект:</em> силовой тонус, укрепление мышц, умеренный расход гликогена.</div>
+      </div>
+      <div class="p-2.5 rounded-2xl theme-input">
+        <div class="font-extrabold text-amber-300">🔥 Высокая нагрузка (ЧСС ~76–88% от макс.)</div>
+        <div class="text-[11px] opacity-90 mt-0.5">${WORKOUT_INTENSITIES[2].examples}<br><em>Эффект:</em> максимальный расход калорий, мощный рост потребности в белке и защите гликогена.</div>
+      </div>
     </div>
   `
 };
@@ -53,12 +62,12 @@ function helpBtn(topicKey) {
 
 function showHelpTopic(key) {
   let item = null;
-  if (key === 'currBg') {
-    item = CURR_BG_HELP;
-  } else if (typeof HELP_TOPICS !== 'undefined' && HELP_TOPICS[key]) {
-    item = HELP_TOPICS[key];
-  }
+  if (key === 'neat') item = HELP_TOPICS.neat;
+  else if (key === 'workoutIntensity') item = WORKOUT_INTENSITY_HELP;
+  else if (key === 'currBg') item = CURR_BG_HELP;
+  else if (typeof HELP_TOPICS !== 'undefined' && HELP_TOPICS[key]) item = HELP_TOPICS[key];
   if (!item) return;
+
   const tEl = document.getElementById('help-modal-title');
   const bEl = document.getElementById('help-modal-text');
   if (tEl) tEl.innerHTML = item.title;
@@ -336,200 +345,6 @@ function setMealTime(slot) {
   renderApp();
 }
 
-// ИСПРАВЛЕННЫЙ РАСЧЕТ С БАЛАНСОМ СЛАГАЕМЫХ И ПОТОЛКОМ БЕЗОПАСНОСТИ ДПС
-function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
-  const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
-  const xe = +(cGrams / 12).toFixed(1);
-  const fpKcal = Math.round(pGrams * 4 + fGrams * 9);
-  const bje = +(fpKcal / 100).toFixed(1);
-  const isZeroFood = pGrams === 0 && fGrams === 0 && cGrams === 0;
-
-  let timeMult = 1.0;
-  if (mealTimeSlot === 'morning') timeMult = 1.15;
-  else if (mealTimeSlot === 'lunch') timeMult = 1.00;
-  else if (mealTimeSlot === 'evening') timeMult = 0.90;
-  else if (mealTimeSlot === 'night') timeMult = 0.95;
-
-  const effIcr = +(p.icr * timeMult).toFixed(2);
-  const rawCarbU = +(xe * effIcr).toFixed(2);
-  const bjeFactor = (fGrams >= 30 && cGrams >= 25) ? 0.55 : 0.50;
-  const rawBjeU = bje >= 1.0 ? +(bje * effIcr * bjeFactor).toFixed(2) : 0;
-
-  const isf = (dayPlan && dayPlan.effectiveIsf > 0) ? dayPlan.effectiveIsf : 2.5;
-  let rawDps = 0, safeDps = 0, iobSubtracted = 0, hyperResistMult = 1.0, isDpsCapped = false;
-
-  const hasBg = mealBolus.currBg !== '' && !isNaN(parseFloat(mealBolus.currBg));
-  const bgVal = hasBg ? parseFloat(mealBolus.currBg) : null;
-  const isHypoNow = hasBg && bgVal < 4.2;
-  const isHighBg = hasBg && bgVal > p.targetBg + 0.4;
-  const isSevereHyper = hasBg && bgVal >= 13.0;
-
-  let roundCtx = (mealTimeSlot === 'evening' || mealTimeSlot === 'night') ? 'hypo_risk' : 'normal';
-  if (hasBg && bgVal < 4.8) roundCtx = 'hypo_risk';
-  else if (hasBg && bgVal >= 6.8) roundCtx = 'hyper';
-
-  // Безопасный клинический потолок разовой ДПС (~18% от СДИ, но не менее 4 ЕД и не более 7 ЕД за 1 раз)
-  const maxSafeSingleDps = Math.max(4.0, Math.min(7.0, +((dayPlan ? dayPlan.totalDailyDose : 35) * 0.18).toFixed(1)));
-
-  if (hasBg && bgVal > 0) {
-    const diffBg = bgVal - p.targetBg;
-    if (bgVal >= 13.5) hyperResistMult = 1.20;
-    else if (bgVal >= 11.0) hyperResistMult = 1.12;
-
-    rawDps = +((diffBg / isf) * hyperResistMult).toFixed(2);
-
-    if (rawDps > 0) {
-      const activeIob = (subtractIobFromDps && iobData) ? iobData.totalIob : 0;
-      safeDps = Math.max(0, +(rawDps - activeIob).toFixed(2));
-      iobSubtracted = +(rawDps - safeDps).toFixed(1);
-      if (safeDps > maxSafeSingleDps) {
-        safeDps = maxSafeSingleDps;
-        isDpsCapped = true;
-      }
-    } else if (diffBg < -0.3) {
-      safeDps = +rawDps.toFixed(2);
-    }
-  }
-
-  const fatToCarbRatio = cGrams > 0 ? (fGrams / cGrams) : 1.0;
-  const isPizzaEffect = !ins.coversBJE && fGrams >= 28 && cGrams >= 24 && fatToCarbRatio >= 0.35 && (!hasBg || bgVal < 9.0);
-  const delayedCarbShare = isPizzaEffect ? (fGrams >= 40 ? 0.30 : 0.25) : 0;
-  const rawDelayedCarb = +(rawCarbU * delayedCarbShare).toFixed(2);
-  const rawUpfrontCarb = +(rawCarbU - rawDelayedCarb).toFixed(2);
-
-  const splitWaves = (rawBjeU >= 0.35 || rawDelayedCarb >= 0.35) && !ins.coversBJE && !isZeroFood;
-
-  // Сбалансированное округление слагаемых, чтобы расшифровка всегда сходилась с итогом 1-го и 2-го укола!
-  const upfrontCarbUnits = roundSmartInsulin(rawUpfrontCarb, p.insulinStep, roundCtx);
-  const delayedCarbUnits = roundSmartInsulin(rawDelayedCarb, p.insulinStep, roundCtx);
-  const bjeUnits = roundSmartInsulin(rawBjeU, p.insulinStep, roundCtx);
-  const dpsRounded = safeDps >= 0
-    ? roundSmartInsulin(safeDps, p.insulinStep, 'hyper')
-    : -roundSmartInsulin(Math.abs(safeDps), p.insulinStep, 'normal');
-
-  const basePreUnits = splitWaves ? upfrontCarbUnits : +(upfrontCarbUnits + bjeUnits).toFixed(1);
-  const preUnits = (isHypoNow && isZeroFood) ? 0 : Math.max(0, +(basePreUnits + dpsRounded).toFixed(1));
-  const postUnits = splitWaves ? +(bjeUnits + delayedCarbUnits).toFixed(1) : 0;
-  const totalUnits = +(preUnits + postUnits).toFixed(1);
-  const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
-
-  let waitMin = ins.baseWait;
-  if (mealBolus.gi === 'low') waitMin -= (ins.id === 'ultrafast' ? 4 : 6);
-  else if (mealBolus.gi === 'high') waitMin += (ins.id === 'ultrafast' ? 5 : 7);
-
-  if (mealTimeSlot === 'morning') waitMin += 3;
-  else if (mealTimeSlot === 'evening' || mealTimeSlot === 'night') waitMin -= 2;
-
-  if (cGrams >= 60 && fatToCarbRatio < 0.30 && mealBolus.gi !== 'low') {
-    waitMin += 3;
-  }
-
-  let extraHyperWait = 0;
-  if (hasBg && bgVal > 6.8) {
-    const excessMmol = bgVal - 6.5;
-    const minPerMmol = ins.id === 'ultrafast' ? 2.0 : (ins.id === 'ultralong' ? 3.2 : 4.0);
-    extraHyperWait = Math.min(30, Math.round(excessMmol * minPerMmol));
-    waitMin += extraHyperWait;
-  }
-
-  if (!hasBg || bgVal < 8.5) {
-    if (fGrams >= 35 && fatToCarbRatio >= 0.45) waitMin -= 8;
-    else if (fGrams >= 25 && fatToCarbRatio >= 0.35) waitMin -= 4;
-  }
-
-  let preHeaderTitle = `1️⃣ ПЕРЕД ЕДОЙ (УК ~${effIcr})`;
-  let dynamicWaitText = ins.preMin;
-
-  if (isHypoNow) {
-    preHeaderTitle = `1️⃣ ПОСЛЕ КУПИРОВАНИЯ ГИПЫ (УК ~${effIcr})`;
-    dynamicWaitText = '🚨 СНАЧАЛА купируйте низкий сахар! Укол только ПОСЛЕ начала еды и подъема ГК';
-  } else if (isZeroFood && isHighBg) {
-    preHeaderTitle = `1️⃣ ЧИСТАЯ КОРРЕКЦИЯ ДПС`;
-    dynamicWaitText = '💉 Укол сейчас (без еды). Контрольный замер сахара через 2 часа';
-  } else if (isSevereHyper) {
-    dynamicWaitText = `🚨 Сахар высокий (${bgVal})! Уколите ${preUnits} ЕД сейчас и выждите паузу ~${Math.max(25, waitMin)}–${Math.max(30, waitMin + 10)} мин ДО еды`;
-  } else if (hasBg && bgVal >= 8.5) {
-    dynamicWaitText = `⏳ Увеличенная пауза ~${Math.max(12, waitMin)}–${Math.max(16, waitMin + 4)} мин ДО еды (учтен высокий сахар ${bgVal} ммоль/л)`;
-  } else if (cGrams === 0 && (pGrams > 0 || fGrams > 0)) {
-    preHeaderTitle = `1️⃣ БЕЗ УГЛЕВОДОВ (УК ~${effIcr})`;
-    dynamicWaitText = preUnits > 0 ? 'В начале еды (только коррекция ДПС)' : 'Перед едой укол не требуется (0 г углеводов)';
-  } else if (waitMin <= 0) {
-    preHeaderTitle = `1️⃣ В НАЧАЛЕ / ВО ВРЕМЯ ЕДЫ (УК ~${effIcr})`;
-    dynamicWaitText = mealBolus.gi === 'low'
-      ? 'Колите в середине или сразу после еды (медленные углеводы с низким ГИ)'
-      : 'Колите прямо в начале еды без паузы (высокая доля жиров замедлит всасывание)';
-  } else if (waitMin <= 4) {
-    dynamicWaitText = `За 3–5 мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
-  } else {
-    dynamicWaitText = `Пауза ~${waitMin}–${waitMin + 4} мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
-  }
-
-  let postTimingText = 'не требуется';
-  let postExplainTiming = 'через 90–120 мин';
-  const isProteinDominant = pGrams >= 30 && !isPizzaEffect;
-
-  if (splitWaves) {
-    if (isPizzaEffect) {
-      postTimingText = 'через 60–75 мин ПОСЛЕ еды (на задержанные жиром угл. + БЖЕ)';
-      postExplainTiming = 'через 60–75 мин';
-    } else if (isProteinDominant) {
-      postTimingText = ins.id === 'ultrafast'
-        ? 'через 100–120 мин (1.5–2 ч) ПОСЛЕ еды — к началу белкового выброса'
-        : 'через 90–120 мин (1.5–2 ч) ПОСЛЕ еды — к началу белкового выброса';
-      postExplainTiming = ins.id === 'ultrafast' ? 'через 100–120 мин (1.5–2 ч)' : 'через 90–120 мин (1.5–2 ч)';
-    } else {
-      postTimingText = 'через 75–90 мин ПОСЛЕ еды (на жировую волну БЖЕ)';
-      postExplainTiming = 'через 75–90 мин';
-    }
-  }
-
-  const kineticAlerts = [];
-  if (isHypoNow) {
-    kineticAlerts.push(`🚨 <strong>Гипогликемия (${bgVal} ммоль/л):</strong> Болюс на еду уменьшен на <strong>${Math.abs(dpsRounded)} ЕД</strong>. Сначала примите быстрые углеводы (кнопка «Гипо» внизу экрана), дождитесь подъема ГК выше 5.0 ммоль/л и только затем колите уменьшенную дозу.`);
-  } else if (isSevereHyper) {
-    kineticAlerts.push(`🔥 <strong>Высокая гипергликемия (${bgVal} ммоль/л):</strong> При сахаре ≥ 13 ммоль/л возникает инсулинорезистентность (учтен коэф. ×${hyperResistMult}). В 1-й укол включена ДПС <strong>+${dpsRounded} ЕД</strong>${isDpsCapped ? ' (ограничена безопасным разовым пределом — остаток сколите через 3 часа)' : ''}. Сделайте паузу ${Math.max(25, waitMin)} мин перед едой!`);
-  } else if (isHighBg) {
-    kineticAlerts.push(`📈 <strong>Повышенный сахар перед едой (${bgVal} ммоль/л):</strong> К болюсу на еду добавлена коррекция (ДПС) <strong>+${dpsRounded} ЕД</strong> для возврата к цели ${p.targetBg} ммоль/л${extraHyperWait > 0 ? `, а пауза до еды увеличена на +${extraHyperWait} мин` : ''}.`);
-  }
-
-  if (isPizzaEffect) {
-    kineticAlerts.push(`🍕 <strong>Эффект жирной пищи (${fGrams}г жиров на ${cGrams}г угл.):</strong> Высокая доля жиров затормозит всасывание углеводов. Чтобы избежать гипы в 1-й час, <strong>${delayedCarbUnits} ЕД</strong> из углеводной дозы перенесено во 2-й укол (${postExplainTiming} после еды).`);
-  }
-
-  if (pGrams >= 30 && bjeUnits > 0) {
-    kineticAlerts.push(`🥩 <strong>Белковый «дострел» (${pGrams}г белка + ${fGrams}г жиров = ${bje} БЖЕ):</strong> Белки и жиры усваиваются 4–5 часов, а через 1.5–2 часа печень начнет превращать часть аминокислот в глюкозу (глюконеогенез). Поэтому 2-й укол (<strong>${bjeUnits} ЕД</strong> на БЖЕ) ставится <strong>${postExplainTiming} после еды</strong>, чтобы его пик точно совпал с белковым подъемом сахара.`);
-  }
-
-  return {
-    ins, xe, fpKcal, bje, upfrontCarbUnits, delayedCarbUnits, bjeUnits,
-    totalUnits, preUnits, postUnits, splitWaves, waveHours, effIcr, isf, hasBg, bgVal,
-    rawDps: +rawDps.toFixed(2), safeDps: +safeDps.toFixed(2), dpsRounded,
-    iobSubtracted, hyperResistMult, preHeaderTitle, dynamicWaitText, postTimingText, kineticAlerts, isHighBg, isHypoNow
-  };
-}
-
-function blurOnEnter(e) {
-  if (e.key === 'Enter') e.target.blur();
-}
-
-function buildWeightSvgChart(checkpoints) {
-  const wVals = checkpoints.map(c => c.w);
-  const minW = Math.min(...wVals) - 1.5, maxW = Math.max(...wVals) + 1.5;
-  const range = Math.max(2, maxW - minW), width = 320, height = 95, padX = 28, padY = 20;
-  const pts = checkpoints.map((c, idx) => ({
-    ...c,
-    x: Math.round(padX + (idx / (checkpoints.length - 1)) * (width - padX * 2)),
-    y: Math.round(height - padY - ((c.w - minW) / range) * (height - padY * 2))
-  }));
-  return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-24 overflow-visible"><polyline fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" />${pts.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4.5" fill="var(--brand)" stroke="#fff" stroke-width="1.5" /><text x="${pt.x}" y="${pt.y - 8}" text-anchor="middle" fill="currentColor" font-size="9.5" font-weight="800">${pt.w}кг</text><text x="${pt.x}" y="${height - 3}" text-anchor="middle" fill="currentColor" opacity="0.7" font-size="8.5">${pt.date}</text>`).join('')}</svg>`;
-}
-
-function getShortInsulinLabel(id) {
-  if (id === 'ultrafast') return '⚡ Сверхбыстрый инсулин';
-  if (id === 'ultralong') return '🚀 Ультракороткий инсулин';
-  return '⏱ Короткий (Регуляр)';
-}
-
 function renderApp() {
   const p = getProf(), m = computeMetrics();
   document.documentElement.setAttribute('data-gender', p.gender);
@@ -538,6 +353,7 @@ function renderApp() {
   const bolus = computeMealBolusWithTime(mealBolus.p, mealBolus.f, mealBolus.c, p, dayPlan, iobData);
   const mealKcal = Math.round(mealBolus.p * 4 + mealBolus.f * 9 + mealBolus.c * 4);
   const hypoRescue = computeHypoRescue(hypoBgInput, p);
+  const wMeta = getWorkoutMeta(p);
 
   const diffKg = +(p.targetWeight - p.weight).toFixed(1), totalDays = p.targetWeeks * 7;
   const finishDate = formatDateOffset(totalDays);
@@ -546,7 +362,6 @@ function renderApp() {
     return { w, date: formatDateOffset(totalDays * pct) };
   });
 
-  const extra3kKcal = Math.round(((p.height * 0.415) / 100000) * 3000 * p.weight * 0.62);
   const recProt = p.diabetesType !== 'none' ? 1.7 : (p.gender === 'female' ? 1.8 : 2.0);
   const recFat = p.gender === 'female' ? 0.95 : 0.9;
   const isTooStrict = m.targetKcal < m.minSafe;
@@ -632,7 +447,7 @@ function renderApp() {
           ` : ''}
         </div>
 
-        <!-- BLOCK 2: ACTIVITY -->
+        <!-- BLOCK 2: ACTIVITY WITH WORKOUT INTENSITY & PULSE ZONES -->
         <div class="glass-card rounded-3xl p-4 space-y-3.5 shadow-lg">
           <div class="flex justify-between items-center gap-2 cursor-pointer select-none" onclick="toggleSection('p2')">
             <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">2. Активность и Тренировки</span><span class="text-xs opacity-60 shrink-0">${isOpen('p2')?'▴':'▾'}</span></h2>
@@ -640,15 +455,37 @@ function renderApp() {
           </div>
           ${isOpen('p2') ? `
             <div class="space-y-3.5 pt-1">
-              <div class="grid grid-cols-3 gap-1.5"><button onclick="setParam('neatLevel',0.12)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.12?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Сидячий</div><div class="text-[10px] opacity-75">+12%</div></button><button onclick="setParam('neatLevel',0.18)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.18?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Умеренный</div><div class="text-[10px] opacity-75">+18%</div></button><button onclick="setParam('neatLevel',0.25)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.25?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Активный</div><div class="text-[10px] opacity-75">+25%</div></button></div>
+              <div class="space-y-1.5">
+                <div class="text-xs font-bold opacity-80 flex items-center">Бытовой образ жизни (NEAT): ${helpBtn('neat')}</div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button onclick="setParam('neatLevel',0.12)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.12?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Сидячий</div><div class="text-[10px] opacity-75">+12%</div></button>
+                  <button onclick="setParam('neatLevel',0.18)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.18?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Умеренный</div><div class="text-[10px] opacity-75">+18%</div></button>
+                  <button onclick="setParam('neatLevel',0.25)" class="p-2.5 rounded-2xl text-left text-xs transition ${p.neatLevel===0.25?'theme-grad text-white font-bold shadow':'theme-input'}"><div>Активный</div><div class="text-[10px] opacity-75">+25%</div></button>
+                </div>
+              </div>
               
               <div class="p-3 rounded-2xl theme-input space-y-2 cursor-pointer" onclick="toggleDropdown('steps')">
                 <div class="flex justify-between items-center"><div><div class="text-xs font-bold">👟 Шагов в день:</div><div class="text-[11px] opacity-75">~${m.distKm.toFixed(1)} км · +${m.stepsKcal} ккал</div></div><div class="flex items-center gap-1" onclick="event.stopPropagation()"><button onclick="setParam('steps',${Math.max(0,p.steps-1000)})" class="px-2.5 h-8 rounded-xl theme-soft font-bold text-xs">-1к</button><input type="text" value="${p.steps}" onchange="setParam('steps',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-extrabold text-xs rounded-xl theme-soft"><button onclick="setParam('steps',${p.steps+1000})" class="px-2.5 h-8 rounded-xl theme-soft font-bold text-xs">+1к</button></div></div>
                 ${activeOpenDropdown==='steps'?`<div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/10" onclick="event.stopPropagation()">${STEPS_GRID.map(st=>`<button onclick="setParam('steps',${st});toggleDropdown('steps');" class="py-1.5 rounded-xl text-xs font-mono-num font-bold ${p.steps===st?'theme-grad text-white':'theme-soft'}">${st}</button>`).join('')}</div>`:''}
               </div>
 
+              <!-- WORKOUT INTENSITY & PULSE ZONES (influences Kcal & macros for everyone) -->
               <div class="p-3 rounded-2xl theme-input space-y-2.5">
-                <div class="flex justify-between items-center text-xs font-bold"><span>⚡ Тренировки</span><span class="font-mono-num">+${m.workoutKcal} ккал/дн</span></div>
+                <div class="flex justify-between items-center text-xs font-bold">
+                  <span class="flex items-center">⚡ Тренировки и пульс ${helpBtn('workoutIntensity')}</span>
+                  <span class="font-mono-num">+${m.workoutKcal} ккал/дн</span>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  ${WORKOUT_INTENSITIES.map(wi => `
+                    <button onclick="setParam('workoutIntensity','${wi.id}')" class="p-2 rounded-xl text-center flex flex-col items-center justify-between transition ${p.workoutIntensity===wi.id?'theme-grad text-white shadow':'theme-soft'}">
+                      <span class="text-xs font-bold">${wi.name}</span>
+                      <span class="text-[9px] opacity-80 mt-0.5">${wi.shortDesc}</span>
+                    </button>
+                  `).join('')}
+                </div>
+                <div class="text-[10px] opacity-85 px-1 font-mono-num">
+                  💓 <strong>Ваша зона ЧСС:</strong> ${wMeta.hrMin}–${wMeta.hrMax} уд/мин (Макс: ${wMeta.maxHr} уд/мин)
+                </div>
                 <div><div class="text-[10px] opacity-75 mb-1">Тренировок в неделю:</div><div class="grid grid-cols-8 gap-1">${[0,1,2,3,4,5,6,7].map(d=>`<button onclick="setParam('workoutDays',${d})" class="py-1.5 rounded-xl text-xs font-mono-num font-bold transition ${p.workoutDays===d?'theme-grad text-white shadow':'theme-soft'}">${d}</button>`).join('')}</div></div>
                 <div><div class="text-[10px] opacity-75 mb-1">Длительность (минут):</div><div class="grid grid-cols-6 gap-1">${[30,45,60,75,90,120].map(mn=>`<button onclick="setParam('workoutMins',${mn})" class="py-1.5 rounded-xl text-xs font-mono-num font-bold transition ${p.workoutMins===mn?'theme-grad text-white shadow':'theme-soft'}">${mn}</button>`).join('')}</div></div>
                 <div class="grid grid-cols-2 gap-1.5 pt-1"><button onclick="setParam('workoutMode','avg')" class="py-2 px-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.workoutMode==='avg'?'theme-grad text-white shadow':'theme-soft'}">Среднее в неделю</button><button onclick="setParam('workoutMode','today')" class="py-2 px-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${p.workoutMode==='today'?'theme-grad text-white shadow':'theme-soft'}">Тренировка сегодня</button></div>
@@ -699,7 +536,7 @@ function renderApp() {
 
               <div class="p-3 rounded-2xl theme-soft space-y-2 text-xs">
                 ${isTooStrict?`<div class="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400 text-[11px]">⚠️ Жесткий темп! Порог безопасности для вашего веса (${p.weight} кг): <strong>${m.minSafe} ккал</strong>. <button onclick="setParam('targetWeeks',${safeWeeks})" class="underline font-bold">Поставить ${safeWeeks} нед.</button></div>`:`<div class="text-[11px]">✅ Безопасный темп: ${m.weeklyKg} кг/нед. Порог безопасности: ${m.minSafe} ккал. Клетчатка: от ${m.fiberNorm} г/сут.</div>`}
-                <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${extra3kKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
+                <div class="grid grid-cols-2 gap-1.5"><button onclick="setParam('steps',${p.steps+3000})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">👟 +3 000 шагов</div><div class="text-[10px] opacity-75">+${m.stepsKcal} ккал к рациону</div></button><button onclick="applySmartMacros(${recProt},${recFat})" class="p-2.5 rounded-2xl theme-input text-left"><div class="font-bold text-[11px]">🥩 Смарт-БЖУ</div><div class="text-[10px] opacity-75">Б ${recProt} · Ж ${recFat} г/кг</div></button></div>
               </div>
 
               <div class="space-y-1.5"><div class="text-xs font-bold">🥗 Тип питания под цель:</div>${DIET_TYPES.map(dt=>`<button onclick="selectDietType('${dt.id}')" class="w-full p-3 rounded-2xl text-left flex justify-between items-center gap-2 transition ${p.dietType===dt.id?'theme-grad text-white shadow':'theme-input'}"><div><div class="text-xs font-bold">${dt.name}</div><div class="text-[10px] opacity-80">${dt.desc}</div></div><span class="text-[10px] font-mono-num font-bold px-2.5 py-1 rounded-xl bg-black/20 text-white whitespace-nowrap shrink-0">${p.dietType===dt.id?`${m.realPpct}/${m.realFpct}/${m.realCpct}%`:`${dt.p}/${dt.f}/${dt.c}%`}</span></button>`).join('')}</div>
@@ -938,7 +775,6 @@ function renderApp() {
               </div>
 
               <div class="space-y-2 text-xs">
-                <!-- CLEAN SINGLE INPUT WINDOW FOR CURRENT BG -->
                 <div class="p-3 rounded-2xl border transition ${bolus.isHighBg ? 'border-amber-400/70 bg-amber-500/10' : (bolus.isHypoNow ? 'border-rose-500/80 bg-rose-500/15' : 'theme-soft border-white/15')}">
                   <div class="flex justify-between items-center gap-2">
                     <div class="min-w-0">
@@ -1156,7 +992,7 @@ function renderApp() {
         <div class="p-4 rounded-3xl theme-input space-y-2 border border-white/15">
           <div class="font-extrabold text-xs flex items-center justify-between gap-2">
             <span>❤️ Слово тепла и поддержки для вас</span>
-            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-soft flex items-center justify-center cursor-pointer shadow-sm shrink-0">${isAiTrulyActive ? IC_SPARK : IC_REFRESH}</button>
+            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-input flex items-center justify-center cursor-pointer shadow-sm shrink-0">${isAiTrulyActive ? IC_SPARK : IC_REFRESH}</button>
           </div>
           <div id="support-text-box" class="text-xs leading-relaxed opacity-95 mt-1">${currentSupport}</div>
         </div>
@@ -1181,12 +1017,12 @@ function renderApp() {
         </button>
 
         <details id="api-key-details" class="p-3 rounded-2xl theme-input text-xs opacity-75 hover:opacity-100 transition">
-          <summary class="cursor-pointer text-[11px] font-bold">🔑 Дополнительно: свой ключ Gemini API (необязательно)</summary>
+          <summary class="cursor-pointer text-[11px] font-bold">🔑 Персональный ключ Gemini API (для внешнего AI)</summary>
           <div class="pt-2.5 flex flex-col gap-2">
             <div class="text-[10px] opacity-80 leading-relaxed">Встроенный облачный ИИ уже работает бесплатно без ключей! Если хотите подключить личный ключ Google AI Studio, вставьте его ниже (или очистите поле, если старый ключ не работает):</div>
             <div class="flex gap-1.5 items-center">
               <input type="password" id="inp-gemini-key" value="${savedKeyVal}" onkeydown="blurOnEnter(event)" placeholder="Оставьте пустым для авто-ИИ..." class="flex-1 h-9 px-3 rounded-xl theme-soft text-xs font-mono-num">
-              <button onclick="saveApiKey()" class="h-9 px-3 rounded-xl theme-grad text-white text-xs font-extrabold shrink-0">Сохранить</button>
+              <button onclick="saveApiKey()" class="h-9 px-4 rounded-xl theme-grad text-white text-xs font-extrabold shrink-0">Сохранить</button>
               ${savedKeyVal ? `<button onclick="clearApiKey()" class="h-9 px-2.5 rounded-xl theme-soft text-xs font-bold shrink-0" title="Удалить старый ключ">Сброс</button>` : ''}
             </div>
           </div>
