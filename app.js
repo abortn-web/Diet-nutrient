@@ -21,6 +21,37 @@ const INSULIN_TYPES = [
   { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
 
+// Уровни интенсивности тренировок (влияют на TDEE и распределение КБЖУ для всех профилей)
+const WORKOUT_INTENSITIES = [
+  {
+    id: 'low',
+    name: '🧘 Лёгкая',
+    metFactor: 3.0,
+    hrPctMin: 0.55,
+    hrPctMax: 0.65,
+    shortDesc: 'Йога, пилатес, стретчинг, ЛФК',
+    examples: 'Йога, пилатес, стретчинг, суставная гимнастика, спокойное плавание, настольный теннис, неспешный велопрогулочный темп.'
+  },
+  {
+    id: 'mid',
+    name: '🏋️ Средняя',
+    metFactor: 4.5,
+    hrPctMin: 0.65,
+    hrPctMax: 0.76,
+    shortDesc: 'Силовая в зале, фитнес, кардио',
+    examples: 'Классическая силовая тренировка в тренажерном зале (с отдыхом 1.5–2 мин между подходами), групповой фитнес, эллипс, бодрое плавание, сноуборд/горные лыжи.'
+  },
+  {
+    id: 'high',
+    name: '🔥 Высокая',
+    metFactor: 6.5,
+    hrPctMin: 0.76,
+    hrPctMax: 0.88,
+    shortDesc: 'Кроссфит, HIIT, бег, спарринги',
+    examples: 'Интенсивный кроссфит, круговые и интервальные тренировки (HIIT/Табата), бег в темпе, бокс/единоборства, футбол/баскетбол, тяжелый силовой день ног/спины с коротким отдыхом.'
+  }
+];
+
 const DIABETES_STORIES = [
   { name: '⚖️ Тур Хейердал', desc: 'Великий норвежский путешественник и ученый. Пересекал океаны на плоту «Кон-Тики» и доказал, что диабет — это лишь особенность, а не преграда для открытий.' },
   { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С диабетом с 6 лет дает стадионные концерты и ведет активный яркий образ жизни.' },
@@ -44,6 +75,27 @@ const DIABETES_SUPPORT_PHRASES = [
 ];
 
 const HELP_TOPICS = {
+  neat: {
+    title: '🛋 Что такое бытовой образ жизни (NEAT)?',
+    html: `
+      <p><strong>NEAT (Non-Exercise Activity Thermogenesis)</strong> — это энергия, которую ваше тело тратит в течение дня на обычную бытовую и рабочую суету <strong>без учёта шагов и спорта</strong> (жестикуляция, поддержание позы, домашние дела, работа руками, термический эффект пищи).</p>
+      <div class="space-y-2 mt-2">
+        <div class="p-2.5 rounded-2xl theme-input">
+          <div class="font-extrabold text-sky-300">💻 Сидячий (+12% к базовому обмену)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> офисная работа за компьютером, удаленка из дома, программист, бухгалтер, водитель, студент на лекциях. Большую часть дня вы проводите сидя, а бытовая нагрузка минимальна.</div>
+        </div>
+        <div class="p-2.5 rounded-2xl theme-input">
+          <div class="font-extrabold text-emerald-300">🚶 Умеренный (+18% к базовому обмену)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> преподаватель, врач, продавец-консультант, парикмахер, работа на ногах в течение части дня, активные игры с детьми, ежедневная готовка и уборка по дому.</div>
+        </div>
+        <div class="p-2.5 rounded-2xl theme-input">
+          <div class="font-extrabold text-amber-300">🔨 Активный (+25% к базовому обмену)</div>
+          <div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> работа в постоянном движении или физический труд (тренер, курьер, официант, строитель, работник склада/производства, работа на участке).</div>
+        </div>
+      </div>
+      <p class="mt-2 text-[11px] opacity-85">💡 <em>Почему проценты именно такие (+12..+25%)?</em> Потому что ваши <strong>шаги</strong> и <strong>тренировки</strong> калькулятор считает отдельно с точностью до километра и минуты, чтобы не начислять калории дважды!</p>
+    `
+  },
   xe: {
     title: '🍞 Что такое 1 ХЕ и скорость углеводов',
     html: `
@@ -154,6 +206,7 @@ function normalizeSingleProfile(p) {
   if (!p.macroBase) p.macroBase = 'target';
   if (!p.dietType) p.dietType = 'highprot';
   if (!p.diabetesType) p.diabetesType = 'none';
+  if (!p.workoutIntensity || !['low', 'mid', 'high'].includes(p.workoutIntensity)) p.workoutIntensity = 'mid';
   if (!p.icr || isNaN(p.icr) || p.icr <= 0) p.icr = 1.2;
   if (!p.insulinType) p.insulinType = 'ultralong';
   if (!p.insulinStep || ![0.1, 0.5, 1.0].includes(+p.insulinStep)) p.insulinStep = 0.5;
@@ -174,12 +227,12 @@ function getProf() {
 }
 
 function saveStorage() {
-  try { localStorage.setItem('diaingo_v15', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('diaingo_v16', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const keys = ['diaingo_v15', 'diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10'];
+    const keys = ['diaingo_v16', 'diaingo_v15', 'diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10'];
     for (const k of keys) {
       const raw = localStorage.getItem(k);
       if (raw) {
@@ -193,6 +246,16 @@ function loadStorage() {
       }
     }
   } catch (e) {}
+}
+
+// Расчет индивидуального пульса на тренировке по формуле Танака (208 - 0.7 * возраст)
+function getWorkoutMeta(p) {
+  const age = Math.max(10, Math.min(100, +p.age || 30));
+  const maxHr = Math.round(208 - 0.7 * age);
+  const wObj = WORKOUT_INTENSITIES.find(x => x.id === p.workoutIntensity) || WORKOUT_INTENSITIES[1];
+  const hrMin = Math.round(maxHr * wObj.hrPctMin);
+  const hrMax = Math.round(maxHr * wObj.hrPctMax);
+  return { ...wObj, maxHr, hrMin, hrMax };
 }
 
 function calcBMRForWeight(w, p) {
@@ -212,12 +275,17 @@ function calcTDEEForWeight(w, p) {
   const neat = Math.round(bmr * (+p.neatLevel || 0.12));
   const distKm = Math.max(0, +p.steps || 0) * ((p.height * 0.415) / 100000);
   const stepsKcal = Math.round(distKm * w * 0.62);
-  const singleWk = (Math.max(0, +p.workoutMins || 0) / 60) * w * 4.25;
-  const workoutKcal = p.workoutMode === 'today' ? Math.round(singleWk) : Math.round((singleWk * Math.min(7, Math.max(0, +p.workoutDays || 0))) / 7);
-  return { bmr, neat, distKm, stepsKcal, workoutKcal, tdee: bmr + neat + stepsKcal + workoutKcal };
+
+  // Расход на тренировку напрямую зависит от выбранного уровня интенсивности (3.0 / 4.5 / 6.5 ккал/кг/ч)
+  const wMeta = getWorkoutMeta(p);
+  const singleWk = (Math.max(0, +p.workoutMins || 0) / 60) * w * wMeta.metFactor;
+  const workoutKcal = p.workoutMode === 'today'
+    ? Math.round(singleWk)
+    : Math.round((singleWk * Math.min(7, Math.max(0, +p.workoutDays || 0))) / 7);
+
+  return { bmr, neat, distKm, stepsKcal, workoutKcal, singleWkKcal: Math.round(singleWk), wMeta, tdee: bmr + neat + stepsKcal + workoutKcal };
 }
 
-// НАУЧНО-ЛОГИЧЕСКОЕ ОКРУГЛЕНИЕ С ЗАЩИТОЙ ОТ ПОГРЕШНОСТИ ПЛАВАЮЩЕЙ ТОЧКИ JS
 function roundSmartInsulin(rawUnits, stepVal, context = 'normal') {
   if (!rawUnits || isNaN(rawUnits) || rawUnits <= 0) return 0;
   const step = (+stepVal === 1.0 || +stepVal === 0.1) ? +stepVal : 0.5;
@@ -391,16 +459,23 @@ function computeMetrics() {
   if (p.macroBase === 'current') { refWeight = p.weight; refLabel = 'текущего веса'; }
   else if (p.macroBase === 'lbm') { refWeight = lbmWeight; refLabel = 'сухой массы'; }
 
-  let normP = Math.round(refWeight * p.protGkg);
-  let normF = Math.round(refWeight * p.fatGkg);
+  // Влияние интенсивности тренировок на потребность в белке и гликогене (для всех людей)
+  const hasActiveWorkouts = (p.workoutMode === 'today' && p.workoutMins > 0) || (p.workoutDays >= 2 && p.workoutMins > 0);
+  const isHighLoad = hasActiveWorkouts && p.workoutIntensity === 'high';
+  const isMidLoad = hasActiveWorkouts && p.workoutIntensity === 'mid';
 
+  const minProtFactor = isHighLoad ? 1.55 : (isMidLoad ? 1.35 : 1.20);
   const maxProtG = Math.round((effectiveKcal * 0.40) / 4);
-  const minProtG = Math.round(refWeight * 1.2);
+  const minProtG = Math.round(refWeight * minProtFactor);
+
+  let normP = Math.round(refWeight * p.protGkg);
   normP = Math.max(minProtG, Math.min(maxProtG, normP));
 
   const minFatG = Math.round(refWeight * 0.65);
-  normF = Math.max(minFatG, normF);
+  let normF = Math.max(minFatG, Math.round(refWeight * p.fatGkg));
 
+  // Дополнительный буфер углеводов на восстановление гликогена при высокой/средней интенсивности тренировок
+  const workoutCarbBonus = (p.dietType === 'keto') ? 0 : (isHighLoad ? 20 : (isMidLoad ? 10 : 0));
   let normC = 150;
 
   if (p.diabetesType === 'none') {
@@ -409,11 +484,11 @@ function computeMetrics() {
       normF = Math.max(minFatG, Math.round((effectiveKcal - normP * 4 - normC * 4) / 9));
     } else if (p.dietType === 'lowcarb') {
       const rawC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-      normC = Math.max(50, Math.min(110, rawC));
+      normC = Math.max(50 + workoutCarbBonus, Math.min(115 + workoutCarbBonus, rawC));
       normF = Math.max(minFatG, Math.round((effectiveKcal - normP * 4 - normC * 4) / 9));
     } else {
       let rawC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
-      const minHealthyC = p.dietType === 'energy' ? 140 : 85;
+      const minHealthyC = (p.dietType === 'energy' ? 140 : 85) + workoutCarbBonus;
       if (rawC < minHealthyC) {
         normC = minHealthyC;
         const remForFat = effectiveKcal - normP * 4 - normC * 4;
@@ -434,17 +509,17 @@ function computeMetrics() {
       minCarbG = p.diabetesType === 'dm1' ? 80 : 25;
       maxCarbG = p.diabetesType === 'dm1' ? 110 : 40;
     } else if (p.dietType === 'lowcarb') {
-      minCarbG = p.diabetesType === 'dm1' ? 90 : 60;
-      maxCarbG = p.diabetesType === 'dm1' ? 120 : 95;
+      minCarbG = (p.diabetesType === 'dm1' ? 90 : 60) + Math.round(workoutCarbBonus * 0.5);
+      maxCarbG = (p.diabetesType === 'dm1' ? 120 : 95) + workoutCarbBonus;
     } else if (p.dietType === 'highprot') {
-      minCarbG = p.diabetesType === 'dm2' ? 75 : 110;
-      maxCarbG = p.diabetesType === 'dm2' ? 125 : 155;
+      minCarbG = (p.diabetesType === 'dm2' ? 75 : 110) + Math.round(workoutCarbBonus * 0.5);
+      maxCarbG = (p.diabetesType === 'dm2' ? 125 : 155) + workoutCarbBonus;
     } else if (p.dietType === 'energy') {
-      minCarbG = p.diabetesType === 'dm2' ? 100 : 140;
-      maxCarbG = p.diabetesType === 'dm2' ? 150 : 210;
+      minCarbG = (p.diabetesType === 'dm2' ? 100 : 140) + workoutCarbBonus;
+      maxCarbG = (p.diabetesType === 'dm2' ? 150 : 210) + workoutCarbBonus;
     } else {
-      minCarbG = p.diabetesType === 'dm2' ? 85 : 120;
-      maxCarbG = p.diabetesType === 'dm2' ? 135 : 175;
+      minCarbG = (p.diabetesType === 'dm2' ? 85 : 120) + Math.round(workoutCarbBonus * 0.5);
+      maxCarbG = (p.diabetesType === 'dm2' ? 135 : 175) + workoutCarbBonus;
     }
 
     const rawRemC = Math.round((effectiveKcal - normP * 4 - normF * 9) / 4);
@@ -477,10 +552,9 @@ function computeMetrics() {
   };
 }
 
-// Защита от ввода мг/дл в окне Гипо + точный весовой расчет протокола 15/15
 function computeHypoRescue(currBgVal, p) {
   let rawBg = parseFloat(String(currBgVal).replace(',', '.'));
-  if (!isNaN(rawBg) && rawBg > 25) rawBg = +(rawBg / 18).toFixed(1); // Автоконвертация из мг/дл
+  if (!isNaN(rawBg) && rawBg > 25) rawBg = +(rawBg / 18).toFixed(1);
   const bg = (!isNaN(rawBg) && rawBg > 0) ? Math.max(1.0, Math.min(10.0, rawBg)) : 3.3;
   const target = Math.max(5.2, p.targetBg || 5.6);
   const deficitMmol = Math.max(0.5, target - bg);
