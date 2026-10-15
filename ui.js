@@ -30,6 +30,7 @@ let aiTurnCounter = 0;
 let showDiabetesToast = false;
 let aiChatAnswer = '';
 let lastUserQuestion = '';
+const aiAnswerCache = new Map();
 
 function helpBtn(topicKey) {
   return `<span onclick="event.stopPropagation();showHelpTopic('${topicKey}')" class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-extrabold ml-1 cursor-pointer select-none shrink-0 shadow-sm" style="background:rgba(45,212,191,0.22);color:#2DD4BF;border:1px solid rgba(45,212,191,0.5);" title="Что это и как считать?">?</span>`;
@@ -63,84 +64,72 @@ function toggleAiMode() {
   openAiModal();
 }
 
-// Двухуровневый запрос к ИИ: 1) Свой ключ Gemini API, 2) Бесплатный облачный AI-фоллбэк без ключа
 async function callSmartAi(promptText, systemContext = '') {
+  const cacheKey = (systemContext + '|' + promptText).toLowerCase().trim();
+  if (aiAnswerCache.has(cacheKey)) return aiAnswerCache.get(cacheKey);
+
   const key = (localStorage.getItem('nutricalc_gemini_key') || '').trim();
-  if (key) {
-    try {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5500);
+
+  try {
+    if (key) {
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`, {
         method: 'POST',
+        signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: systemContext ? `${systemContext}\n\n${promptText}` : promptText }] }],
-          generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
+          contents: [{ parts: [{ text: systemContext ? `${systemContext}\nВопрос: ${promptText}` : promptText }] }],
+          generationConfig: { temperature: 0.6, maxOutputTokens: 250 }
         })
       });
       if (resp.ok) {
         const data = await resp.json();
         const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (txt && txt.trim().length > 10) return txt.trim();
+        if (txt && txt.trim().length > 10) {
+          clearTimeout(timer);
+          const clean = txt.trim();
+          aiAnswerCache.set(cacheKey, clean);
+          return clean;
+        }
       }
-    } catch (e) {}
-  }
+    }
 
-  // Бесплатный облачный AI (работает без ключа)
-  try {
+    const shortSys = systemContext || 'Ты клинический ментор DIAingo. Ответь на русском языке, коротко (2-4 предложения), научно и тепло. Без слова болезнь.';
     const resp2 = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
+      signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'openai',
+        model: 'openai-fast',
+        temperature: 0.6,
+        max_tokens: 250,
         messages: [
-          { role: 'system', content: systemContext || 'Ты заботливый клинический эксперт по диабету и питанию приложения DIAingo. Отвечай на русском языке, коротко (3-5 предложений), научно и понятно. Не используй слово болезнь.' },
+          { role: 'system', content: shortSys },
           { role: 'user', content: promptText }
         ]
       })
     });
+    clearTimeout(timer);
     if (resp2.ok) {
       const d2 = await resp2.json();
       const txt2 = d2?.choices?.[0]?.message?.content;
-      if (txt2 && txt2.trim().length > 10) return txt2.trim();
+      if (txt2 && txt2.trim().length > 10) {
+        const clean2 = txt2.trim();
+        aiAnswerCache.set(cacheKey, clean2);
+        return clean2;
+      }
     }
-  } catch (e) {}
-
+  } catch (e) {
+    clearTimeout(timer);
+  }
   return null;
 }
 
-// Богатая локальная база знаний на случай отсутствия интернета
-function getLocalExpertAnswer(q, p, m, dayPlan) {
+function hasInstantClinicalMatch(q) {
   const ql = q.toLowerCase();
-  if (ql.includes('что такое диабет') || (ql.includes('диабет') && (ql.includes('это') || ql.includes('тип') || ql.includes('отлич')))) {
-    return `<strong>💎 Что такое сахарный диабет:</strong><br>Это особое состояние обмена веществ, при котором глюкоза из пищи не может самостоятельно попасть в клетки без помощи инсулина (нашего «ключика»).<br>• <strong>СД 1 типа:</strong> поджелудочная железа не вырабатывает свой инсулин, поэтому мы вводим его извне (база держит фон, а болюс компенсирует еду).<br>• <strong>СД 2 типа:</strong> свой инсулин есть, но клетки хуже его чувствуют (инсулинорезистентность) — здесь помогают снижение веса, движение и контроль ГИ.`;
-  }
-  if (ql.includes('инсулин') && (ql.includes('что') || ql.includes('как работ') || ql.includes('зачем'))) {
-    return `<strong>💧 Как работает инсулин:</strong><br>Инсулин — это гормон-проводник, который открывает клетки для глюкозы и дает телу энергию. В терапии используют два вида:<br>1. <strong>Базальный (длинный/ночной):</strong> работает 24 часа и держит ровный сахар натощак (ваша норма ~${dayPlan.effectiveBasal} ЕД).<br>2. <strong>Болюсный (ультракороткий):</strong> колется перед едой на углеводы (по УК ~${p.icr}) и на снижение высокого сахара (по ФЧИ ~${dayPlan.effectiveIsf}).`;
-  }
-  if (ql.includes('утр') || ql.includes('зар') || ql.includes('тощак')) {
-    return `<strong>🌅 Почему растет сахар утром («утренняя заря»):</strong><br>С 4 до 8 утра организм выбрасывает гормоны пробуждения (кортизол, гормон роста), которые заставляют печень выделять глюкозу и снижают чувствительность к инсулину. Поэтому утренний УК выше дневного (~${+(p.icr*1.15).toFixed(2)} ЕД/ХЕ), а паузу перед завтраком делают чуть дольше.`;
-  }
-  if (ql.includes('пицц') || ql.includes('жир') || ql.includes('бургер') || ql.includes('шашлык') || ql.includes('стейк') || ql.includes('мяс') || ql.includes('бже') || ql.includes('белок') || ql.includes('белки')) {
-    return `<strong>🍕 Жиры, белки и «Эффект пиццы»:</strong><br>Жиры (от 25 г) обволакивают желудок и тормозят всасывание углеводов, а белки (от 30 г) через 2–4 часа превращаются в печени в глюкозу. Если уколоть весь инсулин сразу до жирной еды — можно словить гипу в первый час, а через 3 часа получить скачок сахара. Решение: делить укол на 2 волны (до еды и через 60–90 мин после).`;
-  }
-  if (ql.includes('гип') || ql.includes('низк') || ql.includes('падает') || ql.includes('тряс')) {
-    return `<strong>🆘 Что делать при низком сахаре (&lt; 4.0 ммоль/л):</strong><br>Действуйте по правилу 15/15: примите <strong>${computeHypoRescue(3.3, p).fastCarbGrams} г быстрых углеводов</strong> БЕЗ жира (сок, декстроза, теплая вода с сахаром) и перемерьте сахар через 15 минут. Шоколад, бананы и бутерброды при гипе не подходят — жиры задержат подъем сахара!`;
-  }
-  if (ql.includes('высок') || ql.includes('гипер') || ql.includes('сбить') || ql.includes('дпс')) {
-    return `<strong>📉 Как безопасно снизить высокий сахар (ДПС):</strong><br>Используйте ваш ФЧИ (~${dayPlan.effectiveIsf} ммоль/л на 1 ЕД): <code>(Текущий сахар − ${p.targetBg}) / ${dayPlan.effectiveIsf}</code>. Обязательно учитывайте активный инсулин (IOB) от прошлых уколов! Не подкалывайте новую ДПС чаще чем раз в 3 часа, чтобы не обрушить сахар.`;
-  }
-  if (ql.includes('спорт') || ql.includes('тренир') || ql.includes('шаг') || ql.includes('бег') || ql.includes('зал')) {
-    return `<strong>🏋️ Спорт и физическая активность:</strong><br>Кардио и долгая ходьба активно сжигают глюкозу и усиливают действие инсулина в 1.5–2 раза (риск гипы). Если тренировка идет на активном болюсе, уменьшите дозу инсулина на еду перед залом на 25–30% или съешьте 1 ХЕ медленных углеводов без подколки. Силовая тренировка, наоборот, может временно повысить сахар из-за адреналина.`;
-  }
-  if (ql.includes('алког') || ql.includes('вин') || ql.includes('пив')) {
-    return `<strong>🍷 Алкоголь и контроль сахара:</strong><br>Печень воспринимает алкоголь как токсин и пока расщепляет его, перестает выделять фоновую глюкозу в кровь. Это создает риск отсроченной ночной гипогликемии. Не колите инсулин на крепкий алкоголь и сухое вино, а перед сном съешьте 1 ХЕ сложных углеводов.`;
-  }
-  if (ql.includes('похуд') || ql.includes('вес') || ql.includes('калор') || ql.includes('дефицит')) {
-    return `<strong>⚖️ Снижение веса и КБЖУ:</strong><br>Ваш базовый обмен (BMR) — <strong>${m.bmr} ккал</strong>, общий расход с активностью (TDEE) — <strong>${m.tdee} ккал</strong>. Для плавного достижения цели (${p.targetWeight} кг) оптимальная норма — <strong>${m.effectiveKcal} ккал/сут</strong> (Белки: ${m.normP}г, Жиры: ${m.normF}г, Углеводы: ${m.normC}г). При снижении веса чувствительность к инсулину растет, поэтому УК и база со временем могут уменьшаться!`;
-  }
-  if (ql.includes('хе') || ql.includes('хлебн') || ql.includes('углевод')) {
-    return `<strong>🍞 Что такое ХЕ и сколько углеводов нужно:</strong><br>1 ХЕ = 12 г усваиваемых углеводов. Ваша суточная норма по профилю — <strong>${m.normC} г (${m.totalXE} ХЕ в день)</strong>. Старайтесь выбирать медленные углеводы с клетчаткой (гречка, овсянка, паста твердых сортов, бобовые, овощи) — они дают ровную линию сахара без пиков.`;
-  }
-  return `<strong>💡 Экспертный разбор по вашему вопросу («${q}»):</strong><br>В управлении гликемией и весом всё строится на балансе 3 факторов: точный подсчет углеводов (ваша норма — <strong>${m.normC} г / ${m.totalXE} ХЕ</strong> в сутки), правильно выставленный фон (ночная база ~<strong>${dayPlan.effectiveBasal} ЕД</strong>) и учет времени суток (УК утром ~${+(p.icr*1.15).toFixed(2)}, днем ~${p.icr}, вечером ~${+(p.icr*0.9).toFixed(2)}). Попробуйте уточнить вопрос: например, про <em>завтрак, спорт, жиры, базу или высокий сахар</em>!`;
+  const keywords = ['диабет', 'инсулин', 'утр', 'зар', 'тощак', 'пицц', 'жир', 'бургер', 'шашлык', 'стейк', 'мяс', 'бже', 'белок', 'белки', 'гип', 'низк', 'падает', 'тряс', 'высок', 'гипер', 'сбить', 'дпс', 'спорт', 'тренир', 'шаг', 'бег', 'зал', 'алког', 'вин', 'пив', 'похуд', 'вес', 'калор', 'дефицит', 'хе', 'хлебн', 'углевод'];
+  return keywords.some(k => ql.includes(k));
 }
 
 function setMealTime(slot) {
@@ -271,10 +260,9 @@ function buildWeightSvgChart(checkpoints) {
   return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-24 overflow-visible"><polyline fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" />${pts.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4.5" fill="var(--brand)" stroke="#fff" stroke-width="1.5" /><text x="${pt.x}" y="${pt.y - 8}" text-anchor="middle" fill="currentColor" font-size="9.5" font-weight="800">${pt.w}кг</text><text x="${pt.x}" y="${height - 3}" text-anchor="middle" fill="currentColor" opacity="0.7" font-size="8.5">${pt.date}</text>`).join('')}</svg>`;
 }
 
-// Короткие названия для карточек инсулина, чтобы слово "Ультракороткий" не вылезало за края (п.16)
 function getShortInsulinLabel(id) {
   if (id === 'ultrafast') return '⚡ Сверхбыстрый';
-  if (id === 'ultralong') return '🚀 Ультракорот.';
+  if (id === 'ultralong') return '🚀 Ультракороткий';
   return '⏱ Короткий';
 }
 
@@ -302,18 +290,18 @@ function renderApp() {
   const isOpen = (sec) => p.sectionsOpen[sec] !== false;
 
   document.getElementById('app').innerHTML = `
-    <!-- FIXED SINGLE-LINE HEADER WITHOUT OVERLAPPING SUBTITLE -->
+    <!-- HEADER WITH DIAingo LOGO -->
     <header class="sticky top-0 z-30 px-3 pt-2.5 pb-1.5">
       <div class="max-w-7xl mx-auto glass-card rounded-2xl px-3 py-2 flex items-center justify-between gap-2 shadow-lg border border-white/10">
-        <div class="flex items-center gap-2 min-w-0 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0 shrink-0">
           ${LOGO_SVG}
           <div class="font-extrabold text-base sm:text-lg tracking-tight leading-none whitespace-nowrap">
             <span>DIA</span><span style="color:#2DD4BF;">ingo</span>
           </div>
         </div>
         <div class="inline-flex items-center gap-1 p-1 rounded-xl theme-input shrink-0">
-          <button onclick="switchProfile('p1')" class="h-7 px-2.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p1'?'theme-grad text-white shadow':'opacity-75'}">♂ Профиль 1</button>
-          <button onclick="switchProfile('p2')" class="h-7 px-2.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p2'?'theme-grad text-white shadow':'opacity-75'}">♀ Профиль 2</button>
+          <button onclick="switchProfile('p1')" class="h-7 px-3 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p1'?'theme-grad text-white shadow':'opacity-75'}">♂ Профиль 1</button>
+          <button onclick="switchProfile('p2')" class="h-7 px-3 rounded-lg text-xs font-extrabold whitespace-nowrap transition ${appData.activeProfile==='p2'?'theme-grad text-white shadow':'opacity-75'}">♀ Профиль 2</button>
         </div>
       </div>
     </header>
@@ -494,7 +482,7 @@ function renderApp() {
           </div>
         ` : ''}
 
-        <!-- DIABETES BLOCK 1: INSULIN, PEN STEP, BASAL, ICR & ISF (FIXED CELL FIT) -->
+        <!-- DIABETES BLOCK 1: INSULIN, PEN STEP, BASAL, ICR & ISF (FIXED STACKED ROWS FOR INSULIN & STEP) -->
         <div class="glass-card rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-lg">
           <div class="flex items-center justify-between gap-2 cursor-pointer select-none" onclick="toggleSection('d1')">
             <h2 class="font-extrabold text-sm sm:text-base flex items-center gap-1.5 min-w-0"><span class="truncate">💧 1. Инсулин, База и УК</span><span class="text-xs opacity-60 shrink-0">${isOpen('d1')?'▴':'▾'}</span></h2>
@@ -502,40 +490,43 @@ function renderApp() {
           </div>
           ${isOpen('d1') ? `
             <div class="space-y-3.5 pt-1">
-              <!-- INSULIN GROUPS WITH CLEAN FITTING LABELS -->
-              <div class="space-y-1.5">
+              <!-- INSULIN GROUPS IN CLEAN STACKED FULL-WIDTH ROWS (п.16) -->
+              <div class="space-y-2">
                 <div class="text-xs font-bold opacity-85 flex items-center justify-between gap-2">
                   <span>Группа болюсного инсулина:</span>
                   <span onclick="showHelpTopic('insulins')" class="text-[11px] underline cursor-pointer font-bold whitespace-nowrap shrink-0" style="color:#2DD4BF;">Примеры препаратов ${helpBtn('insulins')}</span>
                 </div>
-                <div class="grid grid-cols-3 gap-1.5">
+                <div class="space-y-1.5">
                   ${INSULIN_TYPES.map(ins=>`
-                    <button onclick="setParam('insulinType','${ins.id}')" class="p-2.5 rounded-2xl text-center flex flex-col items-center justify-between transition ${p.insulinType===ins.id?'theme-grad text-white shadow-md':'theme-input'}">
-                      <div class="text-[11px] font-extrabold leading-tight whitespace-nowrap">${getShortInsulinLabel(ins.id)}</div>
-                      <div class="text-[10px] opacity-80 mt-1 font-mono-num whitespace-nowrap">~${ins.diaHours} ч</div>
+                    <button onclick="setParam('insulinType','${ins.id}')" class="w-full p-3 rounded-2xl text-left flex items-center justify-between gap-2 transition ${p.insulinType===ins.id?'theme-grad text-white shadow-md':'theme-input'}">
+                      <div>
+                        <div class="text-xs font-extrabold">${getShortInsulinLabel(ins.id)}</div>
+                        <div class="text-[10px] opacity-80 mt-0.5">${ins.desc}</div>
+                      </div>
+                      <span class="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-black/25 text-white shrink-0">Действие ~${ins.diaHours}ч</span>
                     </button>
                   `).join('')}
                 </div>
               </div>
 
-              <!-- PEN STEP SELECTOR WITH TWO-LINE CARDS SO TEXT NEVER OVERLAPS -->
+              <!-- PEN STEP SELECTOR IN CLEAN FULL-WIDTH ROWS (п.15, п.16) -->
               <div class="p-3 rounded-2xl theme-input space-y-2">
                 <div class="text-xs font-bold flex items-center justify-between gap-2">
-                  <span class="flex items-center">💉 Шаг ручки / помпы ${helpBtn('penStep')}</span>
+                  <span class="flex items-center">💉 Шаг шприц-ручки / помпы ${helpBtn('penStep')}</span>
                   <span class="font-mono-num text-[10px] opacity-75 whitespace-nowrap">Умное округление</span>
                 </div>
-                <div class="grid grid-cols-3 gap-1.5">
-                  <button onclick="setParam('insulinStep',1.0)" class="py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition ${p.insulinStep===1.0?'theme-grad text-white shadow':'theme-soft'}">
-                    <span class="text-xs font-mono-num font-extrabold">1.0 ЕД</span>
-                    <span class="text-[9px] opacity-80">Ручка</span>
+                <div class="space-y-1.5">
+                  <button onclick="setParam('insulinStep',1.0)" class="w-full py-2.5 px-3 rounded-xl text-left flex items-center justify-between transition ${p.insulinStep===1.0?'theme-grad text-white shadow':'theme-soft'}">
+                    <span class="text-xs font-mono-num font-extrabold">1.0 ЕД — Стандартная ручка</span>
+                    <span class="text-[10px] opacity-75">Шаг 1 ЕД</span>
                   </button>
-                  <button onclick="setParam('insulinStep',0.5)" class="py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition ${p.insulinStep===0.5?'theme-grad text-white shadow':'theme-soft'}">
-                    <span class="text-xs font-mono-num font-extrabold">0.5 ЕД</span>
-                    <span class="text-[9px] opacity-80">Джуниор</span>
+                  <button onclick="setParam('insulinStep',0.5)" class="w-full py-2.5 px-3 rounded-xl text-left flex items-center justify-between transition ${p.insulinStep===0.5?'theme-grad text-white shadow':'theme-soft'}">
+                    <span class="text-xs font-mono-num font-extrabold">0.5 ЕД — Джуниор / Шаг 0.5</span>
+                    <span class="text-[10px] opacity-75">Шаг 0.5 ЕД</span>
                   </button>
-                  <button onclick="setParam('insulinStep',0.1)" class="py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition ${p.insulinStep===0.1?'theme-grad text-white shadow':'theme-soft'}">
-                    <span class="text-xs font-mono-num font-extrabold">0.1 ЕД</span>
-                    <span class="text-[9px] opacity-80">Помпа</span>
+                  <button onclick="setParam('insulinStep',0.1)" class="w-full py-2.5 px-3 rounded-xl text-left flex items-center justify-between transition ${p.insulinStep===0.1?'theme-grad text-white shadow':'theme-soft'}">
+                    <span class="text-xs font-mono-num font-extrabold">0.1 ЕД — Инсулиновая помпа</span>
+                    <span class="text-[10px] opacity-75">Шаг 0.1 ЕД</span>
                   </button>
                 </div>
               </div>
@@ -831,7 +822,7 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- AI MENTOR MODAL WITH REAL WORKING AI CHAT -->
+    <!-- AI MENTOR MODAL WITH CHAT -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-8" style="border-color:var(--brand);">
         <div class="flex justify-between items-center sticky top-0 py-2.5 px-3.5 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-1" style="background: var(--card-bg);">
@@ -847,7 +838,6 @@ function renderApp() {
           </div>
         </div>
 
-        <!-- ASK AI MENTOR TEXT FIELD + QUICK CHIPS -->
         <div class="p-4 rounded-3xl theme-input space-y-2.5 border border-white/20">
           <div class="text-xs font-extrabold">💬 Задайте любой вопрос AI-ментору:</div>
           <div class="flex gap-1.5">
@@ -876,7 +866,7 @@ function renderApp() {
         <div class="p-4 rounded-3xl theme-input space-y-2 border border-white/15">
           <div class="font-extrabold text-xs flex items-center justify-between gap-2">
             <span>❤️ Слово тепла и поддержки для вас</span>
-            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-soft flex items-center justify-center cursor-pointer shadow-sm shrink-0">${aiModeEnabled ? IC_SPARK : IC_REFRESH}</button>
+            <button onclick="rotateSupport()" class="w-9 h-9 rounded-2xl theme-input flex items-center justify-center cursor-pointer shadow-sm shrink-0">${aiModeEnabled ? IC_SPARK : IC_REFRESH}</button>
           </div>
           <div class="text-xs leading-relaxed opacity-95 mt-1">${currentSupport}</div>
         </div>
@@ -929,7 +919,6 @@ function copyDoctorReport() {
   });
 }
 
-// ИСПРАВЛЕННЫЙ ОБРАБОТЧИК ВОПРОСОВ К AI-МЕНТОРУ (работает при любом вопросе!)
 async function askAiMentor(presetQuery) {
   const inp = document.getElementById('inp-ai-question');
   const q = (typeof presetQuery === 'string' && presetQuery.trim()) ? presetQuery.trim() : (inp ? inp.value.trim() : '');
@@ -942,7 +931,7 @@ async function askAiMentor(presetQuery) {
   if (aiModeEnabled) {
     isAiLoading = true;
     renderApp(); openAiModal();
-    const sys = `Ты — клинический AI-ментор приложения DIAingo. Профиль пользователя: ${p.gender==='male'?'мужчина':'женщина'}, вес ${p.weight}кг, цель ${p.targetWeight}кг, суточная норма ${m.effectiveKcal} ккал (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), УК:${p.icr}, ФЧИ:${dayPlan.effectiveIsf} ммоль/ЕД, ночная база:${dayPlan.effectiveBasal} ЕД. Отвечай прямо на заданный вопрос, тепло, понятно для новичка и научно точно (3-5 предложений). Не используй слово "болезнь".`;
+    const sys = `Ты — клинический AI-ментор приложения DIAingo. Профиль пользователя: ${p.gender==='male'?'мужчина':'женщина'}, вес ${p.weight}кг, цель ${p.targetWeight}кг, суточная норма ${m.effectiveKcal} ккал (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), УК:${p.icr}, ФЧИ:${dayPlan.effectiveIsf}, база:${dayPlan.effectiveBasal} ЕД. Ответь прямо на заданный вопрос, тепло, понятно для новичка и научно точно (3-5 предложений). Не используй слово "болезнь".`;
     const cloudAns = await callSmartAi(q, sys);
     isAiLoading = false;
     if (cloudAns) {
@@ -953,7 +942,6 @@ async function askAiMentor(presetQuery) {
     }
   }
 
-  // Если выключен режим AI или нет сети — отвечает расширенная клиническая база
   aiChatAnswer = getLocalExpertAnswer(q, p, m, dayPlan);
   lastUserQuestion = '';
   renderApp(); openAiModal();
