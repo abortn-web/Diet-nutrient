@@ -331,41 +331,47 @@ function roundSmartInsulin(rawUnits, stepVal, context = 'normal') {
 }
 
 function computeActiveIOB(p) {
-  const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
-  const diaMs = ins.diaHours * 3600 * 1000;
-  const now = Date.now();
-  let totalIob = 0;
-  const activeRecords = [];
+ // Текущий выбранный день в 3-дневном дневнике (1, 2 или 3) и состояние расчета
+let activeDiaryDay = 1;
+let diaryCalibrationVisible = false;
+let editingDiaryId = null;
 
-  (p.iobLog || []).forEach(item => {
-    const elapsedMs = now - item.ts;
-    if (elapsedMs >= 0 && elapsedMs < diaMs) {
-      const elapsedMin = elapsedMs / 60000;
-      const totalMin = ins.diaHours * 60;
-      let remFrac = 1.0;
-      if (elapsedMin > 15) {
-        remFrac = Math.max(0, 1 - (elapsedMin - 15) / (totalMin - 15));
-      }
-      const remUnits = +(item.units * remFrac).toFixed(2);
-      if (remUnits >= 0.05) {
-        totalIob += remUnits;
-        const leftSecTotal = Math.max(0, Math.round((diaMs - elapsedMs) / 1000));
-        const h = Math.floor(leftSecTotal / 3600);
-        const m = Math.floor((leftSecTotal % 3600) / 60);
-        const s = leftSecTotal % 60;
-        const leftText = h > 0 ? `${h}ч ${String(m).padStart(2, '0')}м` : `${m}м ${String(s).padStart(2, '0')}с`;
-        const pctLeft = Math.min(100, Math.round(remFrac * 100));
-        activeRecords.push({
-          ...item,
-          remUnits: +remUnits.toFixed(1),
-          leftText,
-          pctLeft
-        });
-      }
-    }
-  });
+const CURR_BG_HELP = {
+  title: '💧 Зачем вводить текущий сахар перед едой?',
+  html: `
+    <p>Это поле нужно для автоматического расчёта <strong>ДПС (дозы на коррекцию сахара)</strong> и точного времени паузы перед едой:</p>
+    <div class="p-3 rounded-2xl theme-input space-y-1.5 mt-2">
+      <div>📈 <strong>Если сахар выше целевого:</strong> калькулятор прибавит нужную дозу инсулина (по вашему ФЧИ) к уколу на еду и подскажет, на сколько минут увеличить паузу перед приемом пищи.</div>
+      <div>📉 <strong>Если сахар ниже целевого:</strong> калькулятор бережно уменьшит дозу болюса и отменит паузу, чтобы защитить вас от гипогликемии.</div>
+      <div>✨ <strong>Если сахар в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
+    </div>
+  `
+};
 
-  return { totalIob: +totalIob.toFixed(1), activeRecords, diaHours: ins.diaHours };
+const WORKOUT_DIABETES_HELP = {
+  title: '🏃 Как режим «Тренировка сегодня» меняет расчёт инсулина?',
+  html: `
+    <p>Эта кнопка синхронизирована с первой вкладкой («КБЖУ и План»). Когда она включена, приложение учитывает работу ваших мышц и защищает от спортивной гипогликемии:</p>
+    <div class="space-y-2 mt-2">
+      <div class="p-2.5 rounded-2xl theme-input">
+        <div class="font-extrabold text-emerald-300">1. Автоматическое снижение УК (по стандартам ISPAD / ADA):</div>
+        <div class="text-[11px] opacity-90 mt-0.5">Во время и в течение 4–6 часов после физической нагрузки мышцы поглощают глюкозу напрямую (через рецепторы GLUT-4), поэтому чувствительность к инсулину резко растёт:<br>• 🧘 <strong>Лёгкая тренировка:</strong> УК снижается на <strong>10% (×0.90)</strong>.<br>• 🏋️ <strong>Средняя тренировка:</strong> УК снижается на <strong>20% (×0.80)</strong>.<br>• 🔥 <strong>Высокая тренировка:</strong> УК снижается на <strong>25% (×0.75)</strong>, а пауза до еды сокращается.</div>
+      </div>
+      <div class="p-2.5 rounded-2xl theme-input">
+        <div class="font-extrabold text-sky-300">2. Кардио vs Силовая / Интенсив (Важное отличие!):</div>
+        <div class="text-[11px] opacity-90 mt-0.5">• <strong>Аэробная нагрузка (ходьба, бег трусцой, плавание, пульс до 135 уд/мин):</strong> плавно и быстро снижает сахар прямо во время занятия.<br>• <strong>Тяжелая силовая / Кроссфит / Спринты (пульс &gt; 145 уд/мин):</strong> из-за выброса адреналина и лактата сахар во время тренировки может временно <strong>вырасти на 2–3 ммоль/л</strong>! Не скалывайте этот пик полной ДПС — через 1–2 часа после зала мышцы начнут активно забирать глюкозу, и сахар пойдет вниз сам.</div>
+      </div>
+      <div class="p-2.5 rounded-2xl theme-soft">
+        <div class="font-extrabold">🛡 Главные правила безопасности:</div>
+        <div class="text-[11px] opacity-90 mt-0.5">• Не начинайте тренировку при сахаре <strong>ниже 5.5 ммоль/л</strong> (съешьте 1 ХЕ перед стартом) или <strong>выше 13.5 ммоль/л</strong>.<br>• Всегда держите под рукой быстрые углеводы (сок / декстрозу).<br>• После вечерней тренировки контролируйте ночной сахар — мышцы пополняют гликоген всю ночь!</div>
+      </div>
+    </div>
+  `
+};
+
+function currentHHMM() {
+  const d = new Date();
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
 function logInsulinInjection(units) {
@@ -375,10 +381,35 @@ function logInsulinInjection(units) {
     return;
   }
   const p = getProf();
-  const d = new Date();
-  const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = currentHHMM();
   p.iobLog.unshift({ ts: Date.now(), units: +u.toFixed(1), timeStr });
   if (p.iobLog.length > 10) p.iobLog = p.iobLog.slice(0, 10);
+
+  // Автоматическая фиксация приема пищи и укола в активный день 3-дневного дневника
+  const slotLabels = { morning: 'Завтрак', lunch: 'Обед', evening: 'Ужин', night: 'Ночь/Перекус' };
+  const mealName = slotLabels[mealTimeSlot] || 'Прием пищи';
+  const pG = +mealBolus.p || 0;
+  const fG = +mealBolus.f || 0;
+  const cG = +mealBolus.c || 0;
+  const xe = +(cG / 12).toFixed(1);
+  const bg = (mealBolus.currBg !== '' && !isNaN(parseFloat(mealBolus.currBg))) ? parseFloat(mealBolus.currBg) : null;
+
+  p.diary3d.unshift({
+    id: Date.now(),
+    day: activeDiaryDay,
+    time: timeStr,
+    type: 'meal',
+    p: pG,
+    f: fG,
+    c: cG,
+    xe: xe,
+    bg: bg,
+    insulin: +u.toFixed(1),
+    title: `🍽 ${mealName}: Б:${pG}г Ж:${fG}г У:${cG}г (${xe} ХЕ)`,
+    notes: `ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'}`
+  });
+  if (p.diary3d.length > 60) p.diary3d = p.diary3d.slice(0, 60);
+
   saveStorage();
   renderApp();
 }
@@ -393,6 +424,20 @@ function clearIobLog() {
 function toggleSection(secKey) {
   const p = getProf();
   p.sectionsOpen[secKey] = p.sectionsOpen[secKey] === false ? true : false;
+  saveStorage();
+  renderApp();
+}
+
+function toggleWorkoutTodayMode() {
+  const p = getProf();
+  if (p.workoutMode === 'today') {
+    p.workoutMode = 'avg';
+  } else {
+    p.workoutMode = 'today';
+    if (!p.workoutMins || p.workoutMins <= 0) p.workoutMins = 60;
+    if (!p.workoutDays || p.workoutDays <= 0) p.workoutDays = 3;
+  }
+  mealBolus.customEdited = false;
   saveStorage();
   renderApp();
 }
@@ -488,7 +533,6 @@ function computeMetrics() {
   if (p.macroBase === 'current') { refWeight = p.weight; refLabel = 'текущего веса'; }
   else if (p.macroBase === 'lbm') { refWeight = lbmWeight; refLabel = 'сухой массы'; }
 
-  // Влияние интенсивности тренировок на потребность в белке и гликогене (для всех людей)
   const hasActiveWorkouts = (p.workoutMode === 'today' && p.workoutMins > 0) || (p.workoutDays >= 2 && p.workoutMins > 0);
   const isHighLoad = hasActiveWorkouts && p.workoutIntensity === 'high';
   const isMidLoad = hasActiveWorkouts && p.workoutIntensity === 'mid';
@@ -503,7 +547,6 @@ function computeMetrics() {
   const minFatG = Math.round(refWeight * 0.65);
   let normF = Math.max(minFatG, Math.round(refWeight * p.fatGkg));
 
-  // Дополнительный буфер углеводов на восстановление гликогена при высокой/средней интенсивности тренировок
   const workoutCarbBonus = (p.dietType === 'keto') ? 0 : (isHighLoad ? 20 : (isMidLoad ? 10 : 0));
   let normC = 150;
 
@@ -717,6 +760,7 @@ function switchProfile(pk) {
   appData.activeProfile = pk;
   mealBolus.initialized = false;
   mealBolus.customEdited = false;
+  editingDiaryId = null;
   saveStorage();
   renderApp();
 }
@@ -730,36 +774,6 @@ function applySmartMacros(protG, fatG) {
   renderApp();
 }
 
-setInterval(() => {
-  try {
-    const p = getProf();
-    if (!p.iobLog || p.iobLog.length === 0) return;
-    const iobData = computeActiveIOB(p);
-    const badge = document.getElementById('live-iob-units');
-    const sub = document.getElementById('live-iob-sub');
-    if (badge && iobData.activeRecords.length > 0) {
-      badge.textContent = `${iobData.totalIob} ЕД`;
-      if (sub) {
-        sub.textContent = `Укол ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}`;
-      }
-    } else if (badge && iobData.totalIob === 0) {
-      renderApp();
-    }
-  } catch (e) {}
-}, 1000);
-// === ПАТЧ: НЕДОСТАЮЩИЕ ФУНКЦИИ РАСЧЕТА УКОЛА И ГРАФИКА ===
-const CURR_BG_HELP = {
-  title: '💧 Зачем вводить текущий сахар перед едой?',
-  html: `
-    <p>Это поле нужно для автоматического расчёта <strong>ДПС (дозы на коррекцию сахара)</strong> и точного времени паузы перед едой:</p>
-    <div class="p-3 rounded-2xl theme-input space-y-1.5 mt-2">
-      <div>📈 <strong>Если сахар выше целевого:</strong> калькулятор прибавит нужную дозу инсулина (по вашему ФЧИ) к уколу на еду и подскажет, на сколько минут увеличить паузу перед приемом пищи.</div>
-      <div>📉 <strong>Если сахар ниже целевого:</strong> калькулятор бережно уменьшит дозу болюса и отменит паузу, чтобы защитить вас от гипогликемии.</div>
-      <div>✨ <strong>Если сахар в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
-    </div>
-  `
-};
-
 function blurOnEnter(e) {
   if (e.key === 'Enter') e.target.blur();
 }
@@ -795,246 +809,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   else if (mealTimeSlot === 'evening') timeMult = 0.90;
   else if (mealTimeSlot === 'night') timeMult = 0.95;
 
-  const effIcr = +(p.icr * timeMult).toFixed(2);
-  const rawCarbU = +(xe * effIcr).toFixed(2);
-  const bjeFactor = (fGrams >= 30 && cGrams >= 25) ? 0.55 : 0.50;
-  const rawBjeU = bje >= 1.0 ? +(bje * effIcr * bjeFactor).toFixed(2) : 0;
-
-  const isf = (dayPlan && dayPlan.effectiveIsf > 0) ? dayPlan.effectiveIsf : 2.5;
-  let rawDps = 0, safeDps = 0, iobSubtracted = 0, hyperResistMult = 1.0, isDpsCapped = false;
-
-  const hasBg = mealBolus.currBg !== '' && !isNaN(parseFloat(mealBolus.currBg));
-  const bgVal = hasBg ? parseFloat(mealBolus.currBg) : null;
-  const isHypoNow = hasBg && bgVal < 4.2;
-  const isHighBg = hasBg && bgVal > p.targetBg + 0.4;
-  const isSevereHyper = hasBg && bgVal >= 13.0;
-
-  let roundCtx = (mealTimeSlot === 'evening' || mealTimeSlot === 'night') ? 'hypo_risk' : 'normal';
-  if (hasBg && bgVal < 4.8) roundCtx = 'hypo_risk';
-  else if (hasBg && bgVal >= 6.8) roundCtx = 'hyper';
-
-  const maxSafeSingleDps = Math.max(4.0, Math.min(7.0, +((dayPlan ? dayPlan.totalDailyDose : 35) * 0.18).toFixed(1)));
-
-  if (hasBg && bgVal > 0) {
-    const diffBg = bgVal - p.targetBg;
-    if (bgVal >= 13.5) hyperResistMult = 1.20;
-    else if (bgVal >= 11.0) hyperResistMult = 1.12;
-
-    rawDps = +((diffBg / isf) * hyperResistMult).toFixed(2);
-
-    if (rawDps > 0) {
-      const useSub = (typeof subtractIobFromDps !== 'undefined') ? subtractIobFromDps : false;
-      const activeIob = (useSub && iobData) ? iobData.totalIob : 0;
-      safeDps = Math.max(0, +(rawDps - activeIob).toFixed(2));
-      iobSubtracted = +(rawDps - safeDps).toFixed(1);
-      if (safeDps > maxSafeSingleDps) {
-        safeDps = maxSafeSingleDps;
-        isDpsCapped = true;
-      }
-    } else if (diffBg < -0.3) {
-      safeDps = +rawDps.toFixed(2);
-    }
-  }
-
-  const fatToCarbRatio = cGrams > 0 ? (fGrams / cGrams) : 1.0;
-  const isPizzaEffect = !ins.coversBJE && fGrams >= 28 && cGrams >= 24 && fatToCarbRatio >= 0.35 && (!hasBg || bgVal < 9.0);
-  const delayedCarbShare = isPizzaEffect ? (fGrams >= 40 ? 0.30 : 0.25) : 0;
-  const rawDelayedCarb = +(rawCarbU * delayedCarbShare).toFixed(2);
-  const rawUpfrontCarb = +(rawCarbU - rawDelayedCarb).toFixed(2);
-
-  const splitWaves = (rawBjeU >= 0.35 || rawDelayedCarb >= 0.35) && !ins.coversBJE && !isZeroFood;
-
-  const upfrontCarbUnits = roundSmartInsulin(rawUpfrontCarb, p.insulinStep, roundCtx);
-  const delayedCarbUnits = roundSmartInsulin(rawDelayedCarb, p.insulinStep, roundCtx);
-  const bjeUnits = roundSmartInsulin(rawBjeU, p.insulinStep, roundCtx);
-  const dpsRounded = safeDps >= 0
-    ? roundSmartInsulin(safeDps, p.insulinStep, 'hyper')
-    : -roundSmartInsulin(Math.abs(safeDps), p.insulinStep, 'normal');
-
-  const basePreUnits = splitWaves ? upfrontCarbUnits : +(upfrontCarbUnits + bjeUnits).toFixed(1);
-  const preUnits = (isHypoNow && isZeroFood) ? 0 : Math.max(0, +(basePreUnits + dpsRounded).toFixed(1));
-  const postUnits = splitWaves ? +(bjeUnits + delayedCarbUnits).toFixed(1) : 0;
-  const totalUnits = +(preUnits + postUnits).toFixed(1);
-  const waveHours = bje < 1 ? 0 : (bje < 2 ? 3 : (bje < 3 ? 4 : (fGrams >= 35 ? 6 : 5)));
-
-  let waitMin = ins.baseWait;
-  if (mealBolus.gi === 'low') waitMin -= (ins.id === 'ultrafast' ? 4 : 6);
-  else if (mealBolus.gi === 'high') waitMin += (ins.id === 'ultrafast' ? 5 : 7);
-
-  if (mealTimeSlot === 'morning') waitMin += 3;
-  else if (mealTimeSlot === 'evening' || mealTimeSlot === 'night') waitMin -= 2;
-
-  if (cGrams >= 60 && fatToCarbRatio < 0.30 && mealBolus.gi !== 'low') {
-    waitMin += 3;
-  }
-
-  let extraHyperWait = 0;
-  if (hasBg && bgVal > 6.8) {
-    const excessMmol = bgVal - 6.5;
-    const minPerMmol = ins.id === 'ultrafast' ? 2.0 : (ins.id === 'ultralong' ? 3.2 : 4.0);
-    extraHyperWait = Math.min(30, Math.round(excessMmol * minPerMmol));
-    waitMin += extraHyperWait;
-  }
-
-  if (!hasBg || bgVal < 8.5) {
-    if (fGrams >= 35 && fatToCarbRatio >= 0.45) waitMin -= 8;
-    else if (fGrams >= 25 && fatToCarbRatio >= 0.35) waitMin -= 4;
-  }
-
-  let preHeaderTitle = `1️⃣ ПЕРЕД ЕДОЙ (УК ~${effIcr})`;
-  let dynamicWaitText = ins.preMin;
-
-  if (isHypoNow) {
-    preHeaderTitle = `1️⃣ ПОСЛЕ КУПИРОВАНИЯ ГИПЫ (УК ~${effIcr})`;
-    dynamicWaitText = '🚨 СНАЧАЛА купируйте низкий сахар! Укол только ПОСЛЕ начала еды и подъема ГК';
-  } else if (isZeroFood && isHighBg) {
-    preHeaderTitle = `1️⃣ ЧИСТАЯ КОРРЕКЦИЯ ДПС`;
-    dynamicWaitText = '💉 Укол сейчас (без еды). Контрольный замер сахара через 2 часа';
-  } else if (isSevereHyper) {
-    dynamicWaitText = `🚨 Сахар высокий (${bgVal})! Уколите ${preUnits} ЕД сейчас и выждите паузу ~${Math.max(25, waitMin)}–${Math.max(30, waitMin + 10)} мин ДО еды`;
-  } else if (hasBg && bgVal >= 8.5) {
-    dynamicWaitText = `⏳ Увеличенная пауза ~${Math.max(12, waitMin)}–${Math.max(16, waitMin + 4)} мин ДО еды (учтен высокий сахар ${bgVal} ммоль/л)`;
-  } else if (cGrams === 0 && (pGrams > 0 || fGrams > 0)) {
-    preHeaderTitle = `1️⃣ БЕЗ УГЛЕВОДОВ (УК ~${effIcr})`;
-    dynamicWaitText = preUnits > 0 ? 'В начале еды (только коррекция ДПС)' : 'Перед едой укол не требуется (0 г углеводов)';
-  } else if (waitMin <= 0) {
-    preHeaderTitle = `1️⃣ В НАЧАЛЕ / ВО ВРЕМЯ ЕДЫ (УК ~${effIcr})`;
-    dynamicWaitText = mealBolus.gi === 'low'
-      ? 'Колите в середине или сразу после еды (медленные углеводы с низким ГИ)'
-      : 'Колите прямо в начале еды без паузы (высокая доля жиров замедлит всасывание)';
-  } else if (waitMin <= 4) {
-    dynamicWaitText = `За 3–5 мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
-  } else {
-    dynamicWaitText = `Пауза ~${waitMin}–${waitMin + 4} мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
-  }
-
-  let postTimingText = 'не требуется';
-  let postExplainTiming = 'через 90–120 мин';
-  const isProteinDominant = pGrams >= 30 && !isPizzaEffect;
-
-  if (splitWaves) {
-    if (isPizzaEffect) {
-      postTimingText = 'через 60–75 мин ПОСЛЕ еды (на задержанные жиром угл. + БЖЕ)';
-      postExplainTiming = 'через 60–75 мин';
-    } else if (isProteinDominant) {
-      postTimingText = ins.id === 'ultrafast'
-        ? 'через 100–120 мин (1.5–2 ч) ПОСЛЕ еды — к началу белкового выброса'
-        : 'через 90–120 мин (1.5–2 ч) ПОСЛЕ еды — к началу белкового выброса';
-      postExplainTiming = ins.id === 'ultrafast' ? 'через 100–120 мин (1.5–2 ч)' : 'через 90–120 мин (1.5–2 ч)';
-    } else {
-      postTimingText = 'через 75–90 мин ПОСЛЕ еды (на жировую волну БЖЕ)';
-      postExplainTiming = 'через 75–90 мин';
-    }
-  }
-
-  const kineticAlerts = [];
-  if (isHypoNow) {
-    kineticAlerts.push(`🚨 <strong>Гипогликемия (${bgVal} ммоль/л):</strong> Болюс на еду уменьшен на <strong>${Math.abs(dpsRounded)} ЕД</strong>. Сначала примите быстрые углеводы (кнопка «Гипо» внизу экрана), дождитесь подъема ГК выше 5.0 ммоль/л и только затем колите уменьшенную дозу.`);
-  } else if (isSevereHyper) {
-    kineticAlerts.push(`🔥 <strong>Высокая гипергликемия (${bgVal} ммоль/л):</strong> При сахаре ≥ 13 ммоль/л возникает инсулинорезистентность (учтен коэф. ×${hyperResistMult}). В 1-й укол включена ДПС <strong>+${dpsRounded} ЕД</strong>${isDpsCapped ? ' (ограничена безопасным разовым пределом — остаток сколите через 3 часа)' : ''}. Сделайте паузу ${Math.max(25, waitMin)} мин перед едой!`);
-  } else if (isHighBg) {
-    kineticAlerts.push(`📈 <strong>Повышенный сахар перед едой (${bgVal} ммоль/л):</strong> К болюсу на еду добавлена коррекция (ДПС) <strong>+${dpsRounded} ЕД</strong> для возврата к цели ${p.targetBg} ммоль/л${extraHyperWait > 0 ? `, а пауза до еды увеличена на +${extraHyperWait} мин` : ''}.`);
-  }
-
-  if (isPizzaEffect) {
-    kineticAlerts.push(`🍕 <strong>Эффект жирной пищи (${fGrams}г жиров на ${cGrams}г угл.):</strong> Высокая доля жиров затормозит всасывание углеводов. Чтобы избежать гипы в 1-й час, <strong>${delayedCarbUnits} ЕД</strong> из углеводной дозы перенесено во 2-й укол (${postExplainTiming} после еды).`);
-  }
-
-  if (pGrams >= 30 && bjeUnits > 0) {
-    kineticAlerts.push(`🥩 <strong>Белковый «дострел» (${pGrams}г белка + ${fGrams}г жиров = ${bje} БЖЕ):</strong> Белки и жиры усваиваются 4–5 часов, а через 1.5–2 часа печень начнет превращать часть аминокислот в глюкозу (глюконеогенез). Поэтому 2-й укол (<strong>${bjeUnits} ЕД</strong> на БЖЕ) ставится <strong>${postExplainTiming} после еды</strong>, чтобы его пик точно совпал с белковым подъемом сахара.`);
-  }
-
-  return {
-    ins, xe, fpKcal, bje, upfrontCarbUnits, delayedCarbUnits, bjeUnits,
-    totalUnits, preUnits, postUnits, splitWaves, waveHours, effIcr, isf, hasBg, bgVal,
-    rawDps: +rawDps.toFixed(2), safeDps: +safeDps.toFixed(2), dpsRounded,
-    iobSubtracted, hyperResistMult, preHeaderTitle, dynamicWaitText, postTimingText, kineticAlerts, isHighBg, isHypoNow
-  };
-}
-// === ПАТЧ: ФУНКЦИИ РАСЧЕТА УКОЛА С УЧЕТОМ ТРЕНИРОВКИ СЕГОДНЯ И ПУЛЬСА ===
-const CURR_BG_HELP = {
-  title: '💧 Зачем вводить текущий сахар перед едой?',
-  html: `
-    <p>Это поле нужно для автоматического расчёта <strong>ДПС (дозы на коррекцию сахара)</strong> и точного времени паузы перед едой:</p>
-    <div class="p-3 rounded-2xl theme-input space-y-1.5 mt-2">
-      <div>📈 <strong>Если сахар выше целевого:</strong> калькулятор прибавит нужную дозу инсулина (по вашему ФЧИ) к уколу на еду и подскажет, на сколько минут увеличить паузу перед приемом пищи.</div>
-      <div>📉 <strong>Если сахар ниже целевого:</strong> калькулятор бережно уменьшит дозу болюса и отменит паузу, чтобы защитить вас от гипогликемии.</div>
-      <div>✨ <strong>Если сахар в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
-    </div>
-  `
-};
-
-const WORKOUT_DIABETES_HELP = {
-  title: '🏃 Как режим «Тренировка сегодня» меняет расчёт инсулина?',
-  html: `
-    <p>Эта кнопка синхронизирована с первой вкладкой («КБЖУ и План»). Когда она включена, приложение учитывает работу ваших мышц и защищает от спортивной гипогликемии:</p>
-    <div class="space-y-2 mt-2">
-      <div class="p-2.5 rounded-2xl theme-input">
-        <div class="font-extrabold text-emerald-300">1. Автоматическое снижение УК (по стандартам ISPAD / ADA):</div>
-        <div class="text-[11px] opacity-90 mt-0.5">Во время и в течение 4–6 часов после физической нагрузки мышцы поглощают глюкозу напрямую (через рецепторы GLUT-4), поэтому чувствительность к инсулину резко растёт:<br>• 🧘 <strong>Лёгкая тренировка:</strong> УК снижается на <strong>10% (×0.90)</strong>.<br>• 🏋️ <strong>Средняя тренировка:</strong> УК снижается на <strong>20% (×0.80)</strong>.<br>• 🔥 <strong>Высокая тренировка:</strong> УК снижается на <strong>25% (×0.75)</strong>, а пауза до еды сокращается.</div>
-      </div>
-      <div class="p-2.5 rounded-2xl theme-input">
-        <div class="font-extrabold text-sky-300">2. Кардио vs Силовая / Интенсив (Важное отличие!):</div>
-        <div class="text-[11px] opacity-90 mt-0.5">• <strong>Аэробная нагрузка (ходьба, бег трусцой, плавание, пульс до 135 уд/мин):</strong> плавно и быстро снижает сахар прямо во время занятия.<br>• <strong>Тяжелая силовая / Кроссфит / Спринты (пульс &gt; 145 уд/мин):</strong> из-за выброса адреналина и лактата сахар во время тренировки может временно <strong>вырасти на 2–3 ммоль/л</strong>! Не скалывайте этот пик полной ДПС — через 1–2 часа после зала мышцы начнут активно забирать глюкозу, и сахар пойдет вниз сам.</div>
-      </div>
-      <div class="p-2.5 rounded-2xl theme-soft">
-        <div class="font-extrabold">🛡 Главные правила безопасности:</div>
-        <div class="text-[11px] opacity-90 mt-0.5">• Не начинайте тренировку при сахаре <strong>ниже 5.5 ммоль/л</strong> (съешьте 1 ХЕ перед стартом) или <strong>выше 13.5 ммоль/л</strong>.<br>• Всегда держите под рукой быстрые углеводы (сок / декстрозу).<br>• После вечерней тренировки контролируйте ночной сахар — мышцы пополняют гликоген всю ночь!</div>
-      </div>
-    </div>
-  `
-};
-
-function toggleWorkoutTodayMode() {
-  const p = getProf();
-  if (p.workoutMode === 'today') {
-    p.workoutMode = 'avg';
-  } else {
-    p.workoutMode = 'today';
-    if (!p.workoutMins || p.workoutMins <= 0) p.workoutMins = 60;
-    if (!p.workoutDays || p.workoutDays <= 0) p.workoutDays = 3;
-  }
-  mealBolus.customEdited = false;
-  saveStorage();
-  renderApp();
-}
-
-function blurOnEnter(e) {
-  if (e.key === 'Enter') e.target.blur();
-}
-
-function getShortInsulinLabel(id) {
-  if (id === 'ultrafast') return '⚡ Сверхбыстрый инсулин';
-  if (id === 'ultralong') return '🚀 Ультракороткий инсулин';
-  return '⏱ Короткий (Регуляр)';
-}
-
-function buildWeightSvgChart(checkpoints) {
-  const wVals = checkpoints.map(c => c.w);
-  const minW = Math.min(...wVals) - 1.5, maxW = Math.max(...wVals) + 1.5;
-  const range = Math.max(2, maxW - minW), width = 320, height = 95, padX = 28, padY = 20;
-  const pts = checkpoints.map((c, idx) => ({
-    ...c,
-    x: Math.round(padX + (idx / (checkpoints.length - 1)) * (width - padX * 2)),
-    y: Math.round(height - padY - ((c.w - minW) / range) * (height - padY * 2))
-  }));
-  return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-24 overflow-visible"><polyline fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" />${pts.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4.5" fill="var(--brand)" stroke="#fff" stroke-width="1.5" /><text x="${pt.x}" y="${pt.y - 8}" text-anchor="middle" fill="currentColor" font-size="9.5" font-weight="800">${pt.w}кг</text><text x="${pt.x}" y="${height - 3}" text-anchor="middle" fill="currentColor" opacity="0.7" font-size="8.5">${pt.date}</text>`).join('')}</svg>`;
-}
-
-function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
-  const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
-  const xe = +(cGrams / 12).toFixed(1);
-  const fpKcal = Math.round(pGrams * 4 + fGrams * 9);
-  const bje = +(fpKcal / 100).toFixed(1);
-  const isZeroFood = pGrams === 0 && fGrams === 0 && cGrams === 0;
-
-  let timeMult = 1.0;
-  if (mealTimeSlot === 'morning') timeMult = 1.15;
-  else if (mealTimeSlot === 'lunch') timeMult = 1.00;
-  else if (mealTimeSlot === 'evening') timeMult = 0.90;
-  else if (mealTimeSlot === 'night') timeMult = 0.95;
-
-  // Учет режима "Тренировка сегодня" и выбранной интенсивности (пульсовой зоны)
   const wMeta = getWorkoutMeta(p);
   const isWorkoutToday = p.workoutMode === 'today' && p.workoutMins > 0;
   let workoutIcrMult = 1.0;
@@ -1059,7 +833,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const isHighBg = hasBg && bgVal > p.targetBg + 0.4;
   const isSevereHyper = hasBg && bgVal >= 13.0;
 
-  // В день тренировки включаем консервативный порог округления (hypo_risk), если сахар не высокий
   let roundCtx = (mealTimeSlot === 'evening' || mealTimeSlot === 'night' || isWorkoutToday) ? 'hypo_risk' : 'normal';
   if (hasBg && bgVal < 4.8) roundCtx = 'hypo_risk';
   else if (hasBg && bgVal >= 6.8) roundCtx = 'hyper';
@@ -1071,7 +844,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     if (bgVal >= 13.5) hyperResistMult = 1.20;
     else if (bgVal >= 11.0) hyperResistMult = 1.12;
 
-    // В день тренировки ДПС работает на 15% сильнее, поэтому смягчаем положительную ДПС
     const workoutDpsFactor = (isWorkoutToday && diffBg > 0) ? 0.85 : 1.0;
     rawDps = +((diffBg / isf) * hyperResistMult * workoutDpsFactor).toFixed(2);
 
@@ -1121,7 +893,6 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     waitMin += 3;
   }
 
-  // Сокращение паузы в день тренировки
   if (isWorkoutToday) {
     waitMin -= workoutWaitCut;
   }
@@ -1217,3 +988,301 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
     kineticAlerts, isHighBg, isHypoNow, isWorkoutToday, workoutIcrMult
   };
 }
+
+// === МОДУЛЬ 3-ДНЕВНОГО ДНЕВНИКА, РЕДАКТИРОВАНИЯ И НАУЧНОЙ КАЛИБРОВКИ ===
+function parseHourFromTimeStr(tStr) {
+  if (!tStr || typeof tStr !== 'string') return 12;
+  const parts = tStr.trim().split(':');
+  const h = parseInt(parts[0], 10);
+  return (!isNaN(h) && h >= 0 && h <= 23) ? h : 12;
+}
+
+function logDiaryEvent(type, title, bgVal, insVal, noteText, dayNum, customTime, macrosObj) {
+  const p = getProf();
+  const timeStr = (customTime && customTime.trim()) ? customTime.trim() : currentHHMM();
+  let cleanBg = String(bgVal !== undefined && bgVal !== null ? bgVal : '').replace(',', '.').trim();
+  let bg = (cleanBg !== '' && !isNaN(parseFloat(cleanBg))) ? parseFloat(cleanBg) : null;
+  if (bg !== null && bg > 35) bg = +(bg / 18).toFixed(1);
+
+  let cleanIns = String(insVal !== undefined && insVal !== null ? insVal : '').replace(',', '.').trim();
+  const insulin = (cleanIns !== '' && !isNaN(parseFloat(cleanIns))) ? Math.max(0, +parseFloat(cleanIns).toFixed(1)) : 0;
+
+  const pG = macrosObj && macrosObj.p !== undefined ? +macrosObj.p : 0;
+  const fG = macrosObj && macrosObj.f !== undefined ? +macrosObj.f : 0;
+  const cG = macrosObj && macrosObj.c !== undefined ? +macrosObj.c : 0;
+  const xe = +(cG / 12).toFixed(1);
+
+  p.diary3d.unshift({
+    id: Date.now() + Math.floor(Math.random() * 100),
+    day: parseInt(dayNum, 10) || activeDiaryDay || 1,
+    time: timeStr,
+    type: type, // 'meal' | 'hypo' | 'hyper' | 'basal'
+    p: pG,
+    f: fG,
+    c: cG,
+    xe: xe,
+    bg: bg,
+    insulin: insulin,
+    title: title,
+    notes: noteText || ''
+  });
+  if (p.diary3d.length > 60) p.diary3d = p.diary3d.slice(0, 60);
+  saveStorage();
+  renderApp();
+}
+
+// Запись в дневник напрямую из формы, предзаполненной данными из КБЖУ-калькулятора
+function addPulledMealToDiary() {
+  const dayEl = document.getElementById('diary-inp-day');
+  const timeEl = document.getElementById('diary-inp-time');
+  const typeEl = document.getElementById('diary-inp-type');
+  const pEl = document.getElementById('diary-inp-p');
+  const fEl = document.getElementById('diary-inp-f');
+  const cEl = document.getElementById('diary-inp-c');
+  const bgEl = document.getElementById('diary-inp-bg');
+  const insEl = document.getElementById('diary-inp-ins');
+
+  const dNum = dayEl ? parseInt(dayEl.value, 10) || activeDiaryDay : activeDiaryDay;
+  const tStr = timeEl && timeEl.value ? timeEl.value : currentHHMM();
+  const evType = typeEl ? typeEl.value : 'meal';
+  const pG = pEl ? Math.max(0, Math.round(parseFloat(String(pEl.value).replace(',', '.')) || 0)) : mealBolus.p;
+  const fG = fEl ? Math.max(0, Math.round(parseFloat(String(fEl.value).replace(',', '.')) || 0)) : mealBolus.f;
+  const cG = cEl ? Math.max(0, Math.round(parseFloat(String(cEl.value).replace(',', '.')) || 0)) : mealBolus.c;
+  const xe = +(cG / 12).toFixed(1);
+  const bgVal = bgEl ? bgEl.value : mealBolus.currBg;
+  const insVal = insEl ? insEl.value : 0;
+
+  let title = `🍽 Приём пищи: Б:${pG}г Ж:${fG}г У:${cG}г (${xe} ХЕ)`;
+  let note = 'Добавлено из формы дневника';
+  if (evType === 'hypo') {
+    title = `🆘 Гипогликемия${cG > 0 ? ` (купировано: ${cG}г угл / ${xe} ХЕ)` : ''}`;
+    note = 'Зафиксирован низкий сахар';
+  } else if (evType === 'hyper') {
+    title = `📈 Гипергликемия / ДПС`;
+    note = 'Зафиксирован высокий сахар';
+  } else if (evType === 'basal') {
+    title = `🌙 Введение базального (ночного) инсулина`;
+    note = 'Фоновый инсулин';
+  }
+
+  logDiaryEvent(evType, title, bgVal, insVal, note, dNum, tStr, { p: pG, f: fG, c: cG });
+}
+
+function startEditDiaryItem(id) {
+  editingDiaryId = editingDiaryId === id ? null : id;
+  renderApp();
+}
+
+function saveEditedDiaryItem(id) {
+  const p = getProf();
+  const item = (p.diary3d || []).find(x => x.id === id);
+  if (!item) return;
+
+  const dayEl = document.getElementById(`edit-day-${id}`);
+  const timeEl = document.getElementById(`edit-time-${id}`);
+  const typeEl = document.getElementById(`edit-type-${id}`);
+  const bgEl = document.getElementById(`edit-bg-${id}`);
+  const insEl = document.getElementById(`edit-ins-${id}`);
+  const pEl = document.getElementById(`edit-p-${id}`);
+  const fEl = document.getElementById(`edit-f-${id}`);
+  const cEl = document.getElementById(`edit-c-${id}`);
+
+  if (dayEl) item.day = parseInt(dayEl.value, 10) || 1;
+  if (timeEl && timeEl.value) item.time = timeEl.value;
+  if (typeEl) item.type = typeEl.value;
+
+  if (bgEl) {
+    const cleanBg = String(bgEl.value).replace(',', '.').trim();
+    item.bg = (cleanBg !== '' && !isNaN(parseFloat(cleanBg))) ? parseFloat(cleanBg) : null;
+  }
+  if (insEl) {
+    const cleanIns = String(insEl.value).replace(',', '.').trim();
+    item.insulin = (cleanIns !== '' && !isNaN(parseFloat(cleanIns))) ? Math.max(0, +parseFloat(cleanIns).toFixed(1)) : 0;
+  }
+  if (pEl) item.p = Math.max(0, Math.round(parseFloat(String(pEl.value).replace(',', '.')) || 0));
+  if (fEl) item.f = Math.max(0, Math.round(parseFloat(String(fEl.value).replace(',', '.')) || 0));
+  if (cEl) {
+    item.c = Math.max(0, Math.round(parseFloat(String(cEl.value).replace(',', '.')) || 0));
+    item.xe = +(item.c / 12).toFixed(1);
+  }
+
+  if (item.type === 'meal') {
+    item.title = `🍽 Приём пищи: Б:${item.p||0}г Ж:${item.f||0}г У:${item.c||0}г (${item.xe||0} ХЕ)`;
+  } else if (item.type === 'hypo') {
+    item.title = `🆘 Гипогликемия${item.c > 0 ? ` (${item.c}г угл)` : ''}`;
+  } else if (item.type === 'hyper') {
+    item.title = `📈 Гипергликемия / ДПС`;
+  } else if (item.type === 'basal') {
+    item.title = `🌙 Базальный инсулин`;
+  }
+
+  editingDiaryId = null;
+  saveStorage();
+  renderApp();
+}
+
+function deleteDiaryItem(id) {
+  const p = getProf();
+  p.diary3d = (p.diary3d || []).filter(x => x.id !== id);
+  if (editingDiaryId === id) editingDiaryId = null;
+  saveStorage();
+  renderApp();
+}
+
+function clearAllDiary3d() {
+  if (!confirm('Очистить все записи 3-дневного дневника?')) return;
+  const p = getProf();
+  p.diary3d = [];
+  diaryCalibrationVisible = false;
+  editingDiaryId = null;
+  saveStorage();
+  renderApp();
+}
+
+// НАУЧНЫЙ АНАЛИЗАТОР 3 ДНЕЙ (ADA / ISPAD / ATTD) С УЧЕТОМ ТРЕНИРОВОК НА СЛЕДУЮЩИЕ 3 ДНЯ
+function analyze3dDiaryAndRecalibrate() {
+  const p = getProf();
+  const m = computeMetrics();
+  const dayPlan = computeDailyInsulinPlan(m, p);
+  const logs = p.diary3d || [];
+  const ins = dayPlan.ins;
+
+  let fastingHypo = 0, dayHypo = 0;
+  let fastingHyper = 0, dayHyper = 0;
+  let totalBolusRecorded = 0;
+  let totalCarbsRecorded = 0;
+  const daysSet = new Set();
+
+  logs.forEach(item => {
+    const hr = parseHourFromTimeStr(item.time);
+    const isNightOrFasting = (hr >= 0 && hr <= 8) || hr >= 23;
+    daysSet.add(item.day || 1);
+
+    if (item.type !== 'basal' && item.insulin > 0) {
+      totalBolusRecorded += item.insulin;
+    }
+    if (item.c && item.c > 0 && item.type === 'meal') {
+      totalCarbsRecorded += item.c;
+    }
+
+    const isHypo = item.type === 'hypo' || (item.bg !== null && item.bg < 4.0);
+    const isHyper = item.type === 'hyper' || (item.bg !== null && item.bg >= 9.5);
+
+    if (isHypo) {
+      if (isNightOrFasting) fastingHypo++;
+      else dayHypo++;
+    }
+    if (isHyper) {
+      if (isNightOrFasting) fastingHyper++;
+      else dayHyper++;
+    }
+  });
+
+  const activeDays = Math.max(1, daysSet.size);
+  const avgDailyBolus = totalBolusRecorded > 0 ? +(totalBolusRecorded / activeDays).toFixed(1) : dayPlan.totalBolusDay;
+  const currentBasal = dayPlan.effectiveBasal;
+  const currentIcr = p.icr;
+
+  let basalMult = 1.0;
+  let icrMult = 1.0;
+  const notes = [];
+
+  notes.push(`📊 <strong>Статистика за ${activeDays} дн. (${logs.length} зап.):</strong> средний болюс ~${avgDailyBolus} ЕД/сут, ночных/утренних гип: ${fastingHypo}, дневных гип: ${dayHypo}, эпизодов гипер: ${fastingHyper + dayHyper}.`);
+
+  // 1. Титрация БАЗЫ по ночным и утренним (тощаковым) паттернам + правилу 20-30% при гипах
+  if (fastingHypo >= 1 || (fastingHypo + dayHypo) >= 3) {
+    basalMult = fastingHypo >= 2 ? 0.86 : 0.90;
+    notes.push(`🚨 <strong>Коррекция базы вниз (-${Math.round((1 - basalMult) * 100)}%):</strong> зафиксированы ночные/утренние или частые гипогликемии. По протоколу безопасности ADA первоочередная мера — снижение базального фона.`);
+  } else if (fastingHyper >= 2 && fastingHypo === 0) {
+    basalMult = 1.10;
+    notes.push(`📈 <strong>Коррекция базы вверх (+10%):</strong> повторяющийся высокий сахар ночью или утром натощак без гипогликемий указывает на нехватку ночного фона.`);
+  } else {
+    notes.push(`✅ <strong>Базовый фон до учета спорта:</strong> ночной и тощаковый профиль без критических перекосов.`);
+  }
+
+  // 2. Титрация УК по дневным (постпрандиальным) гипо/гипер и реальному СДИ (Правило 500/450)
+  if (dayHypo >= 2) {
+    icrMult = 0.88; // Уменьшаем УК (колем меньше ЕД на 1 ХЕ!)
+    notes.push(`⚠️ <strong>Снижение УК на -12%:</strong> зафиксированы дневные гипогликемии после еды — пищевой болюс избыточен.`);
+  } else if (dayHyper >= 2 && dayHypo === 0) {
+    icrMult = 1.10; // Увеличиваем УК (колем больше ЕД на 1 ХЕ)
+    notes.push(`🍽 <strong>Усиление УК на +10%:</strong> частые подъемы сахара днем после еды и подколки ДПС говорят о нехватке пищевого коэффициента.`);
+  }
+
+  let recBasalBeforeSport = Math.max(2, Math.round(currentBasal * basalMult * 2) / 2);
+  const estTdd = +(avgDailyBolus + recBasalBeforeSport).toFixed(1);
+  const rule500TargetIcr = +((12 * Math.max(8, estTdd)) / (ins.id === 'short' ? 450 : 500)).toFixed(2);
+
+  // Мягкое сближение текущего УК (с учетом поправки на гипы/гипер) и расчетного по Правилу 500
+  let recIcrBeforeSport = +(((currentIcr * icrMult) * 0.75 + rule500TargetIcr * 0.25)).toFixed(2);
+  let recIsfBeforeSport = +(ins.isfRule / Math.max(8, estTdd)).toFixed(1);
+
+  // 3. Коррекция на ПЛАНИРУЕМЫЕ ТРЕНИРОВКИ В СЛЕДУЮЩИЕ 3 ДНЯ
+  const tw = p.next3dWorkout || { planned: false, intensity: 'mid', daysCount: 2 };
+  let finalBasal = recBasalBeforeSport;
+  let finalIcr = recIcrBeforeSport;
+  let finalIsf = recIsfBeforeSport;
+
+  if (tw.planned) {
+    const freqFactor = tw.daysCount >= 3 ? 1.0 : (tw.daysCount === 2 ? 0.75 : 0.5);
+    const baseSportCut = tw.intensity === 'high' ? 0.14 : (tw.intensity === 'mid' ? 0.09 : 0.05);
+    const icrSportCut = tw.intensity === 'high' ? 0.15 : (tw.intensity === 'mid' ? 0.10 : 0.06);
+
+    const effBaseMult = 1 - +(baseSportCut * freqFactor).toFixed(3);
+    const effIcrMult = 1 - +(icrSportCut * freqFactor).toFixed(3);
+
+    finalBasal = Math.max(2, +(recBasalBeforeSport * effBaseMult).toFixed(1));
+    finalIcr = Math.max(0.2, +(recIcrBeforeSport * effIcrMult).toFixed(2));
+    const sportTdd = +(avgDailyBolus * effIcrMult + finalBasal).toFixed(1);
+    finalIsf = +(ins.isfRule / Math.max(8, sportTdd)).toFixed(1);
+
+    const wName = tw.intensity === 'high' ? '🔥 Высокая' : (tw.intensity === 'mid' ? '🏋️ Средняя' : '🧘 Лёгкая');
+    notes.push(`🏃 <strong>Поправка на спорт в следующие 3 дня (${wName}, ${tw.daysCount} дн. из 3):</strong> из-за пополнения гликогена мышцами база дополнительно снижена до <strong>${finalBasal} ЕД</strong> (-${Math.round((1 - effBaseMult) * 100)}%), УК снижен до <strong>${finalIcr} ЕД/ХЕ</strong>, а чувствительность ФЧИ выросла до <strong>${finalIsf} ммоль/ЕД</strong>.`);
+  } else {
+    notes.push(`🛋 <strong>План на следующие 3 дня — без тренировок:</strong> коэффициенты рассчитаны для стандартного бытового режима.`);
+  }
+
+  return {
+    recBasal: finalBasal,
+    recIcr: finalIcr,
+    recIsf: finalIsf,
+    recMorningIcr: +(finalIcr * 1.15).toFixed(2),
+    recLunchIcr: finalIcr,
+    recEveningIcr: +(finalIcr * 0.90).toFixed(2),
+    recBasalBeforeSport,
+    recIcrBeforeSport,
+    hypoCount: fastingHypo + dayHypo,
+    hyperCount: fastingHyper + dayHyper,
+    activeDays,
+    avgDailyBolus,
+    notes
+  };
+}
+
+function applyDiaryCalibration(newBasal, newIcr, newIsf) {
+  const p = getProf();
+  p.basalDose = parseFloat(newBasal) || p.basalDose;
+  p.icr = parseFloat(newIcr) || p.icr;
+  if (newIsf && parseFloat(newIsf) > 0) p.customIsf = parseFloat(newIsf);
+  saveStorage();
+  renderApp();
+  alert(`✅ Новые параметры успешно применены в профиль:\n• База: ${p.basalDose} ЕД\n• Базовый УК: ${p.icr} ЕД/ХЕ\n• ФЧИ: ${p.customIsf} ммоль/ЕД`);
+}
+
+setInterval(() => {
+  try {
+    const p = getProf();
+    if (!p.iobLog || p.iobLog.length === 0) return;
+    const iobData = computeActiveIOB(p);
+    const badge = document.getElementById('live-iob-units');
+    const sub = document.getElementById('live-iob-sub');
+    if (badge && iobData.activeRecords.length > 0) {
+      badge.textContent = `${iobData.totalIob} ЕД`;
+      if (sub) {
+        sub.textContent = `Укол ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}`;
+      }
+    } else if (badge && iobData.totalIob === 0) {
+      renderApp();
+    }
+  } catch (e) {}
+}, 1000);
