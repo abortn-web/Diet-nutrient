@@ -1,3 +1,4 @@
+// === ЧАСТЬ 1 ФАЙЛА app.js (НАЧАЛО) ===
 window.WORKOUT_INTENSITIES = [
   {
     id: 'low',
@@ -29,30 +30,14 @@ window.WORKOUT_INTENSITIES = [
 ];
 var WORKOUT_INTENSITIES = window.WORKOUT_INTENSITIES;
 
-let appData = {
-  activeProfile: 'p1',
-  profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES))
-};
-
-let activeTab = 'calc'; // 'calc' | 'diabetes' | 'diary'
-let mealTimeSlot = 'lunch';
-let mealBolus = {
-  p: 0,
-  f: 0,
-  c: 0,
-  gi: 'mid',
-  currBg: '',
-  initialized: false,
-  customEdited: false
-};
-
-const INSULIN_TYPES = [
+window.INSULIN_TYPES = [
   { id: 'ultrafast', name: '⚡ Сверхбыстрый', desc: 'Пик через 45–60 мин', brands: 'Фиасп (Fiasp), Люмжев (Lyumjev)', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
   { id: 'ultralong', name: '🚀 Ультракороткий', desc: 'Пик через 60–90 мин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт', preMin: 'За 10–15 мин ДО еды', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
   { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
+var INSULIN_TYPES = window.INSULIN_TYPES;
 
-const DIABETES_STORIES = [
+window.DIABETES_STORIES = [
   { name: '⚖️ Тур Хейердал', desc: 'Великий норвежский путешественник и ученый. Пересекал океаны на плоту «Кон-Тики» и доказал, что диабет — это лишь особенность, а не преграда для открытий.' },
   { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С диабетом с 6 лет дает стадионные концерты и ведет активный яркий образ жизни.' },
   { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах, показав силу характера и точного контроля.' },
@@ -62,8 +47,9 @@ const DIABETES_STORIES = [
   { name: '🏎️ Чарли Кимболл', desc: 'Пилот гоночной серии IndyCar. Первый гонщик с диабетом, одержавший победу в элитной серии на скоростях свыше 350 км/ч.' },
   { name: '🎤 Ник Джонас', desc: 'Всемирно известный музыкант и актер. С 13 лет открыто рассказывает о своем образе жизни с инсулиновой помпой и CGM-мониторингом.' }
 ];
+var DIABETES_STORIES = window.DIABETES_STORIES;
 
-const DIABETES_SUPPORT_PHRASES = [
+window.DIABETES_SUPPORT_PHRASES = [
   '☕️ Диабет — это не болезнь, а особый образ жизни, который учит нас глубоко чувствовать свое тело, заботиться о себе и жить осознанно. Вы имеете полное право иногда уставать от этого ритма. Но помните: вы справляетесь просто великолепно! 🌟',
   '❤️ Помните, что диабет — это не диагноз и не ограничение, а особый образ жизни, требующий внимания и чуткости к себе. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек! ☕️',
   '💪 Каждый замер сахара, каждая пауза перед едой и каждый просчет ХЕ — это не бремя, а проявление вашей осознанности и большой любви к себе. Вы — главный капитан своего корабля! ⛵️',
@@ -73,144 +59,63 @@ const DIABETES_SUPPORT_PHRASES = [
   '🧭 Знаете, в чем ваша суперсила? Вы управляете сложнейшей биохимической системой своего организма каждый день. Вы — личный пилот лайнера, и даже если случается турбулентность, вы мастерски держите штурвал! ✈️',
   '🎁 Цифры на экране мониторинга или глюкометра — это просто навигационные данные, а не оценка вас как личности. Вы ценны, любимы и прекрасны при любых показателях! 💖'
 ];
+var DIABETES_SUPPORT_PHRASES = window.DIABETES_SUPPORT_PHRASES;
 
-const HELP_TOPICS = {
+window.HELP_TOPICS = {
   neat: {
     title: '🛋 Что такое бытовой образ жизни (NEAT)?',
-    html: `
-      <p><strong>NEAT (Non-Exercise Activity Thermogenesis)</strong> — это энергия, которую ваше тело тратит в течение дня на обычную бытовую и рабочую суету <strong>без учёта шагов и спорта</strong> (жестикуляция, поддержание позы, домашние дела, работа руками, термический эффект пищи).</p>
-      <div class="space-y-2 mt-2">
-        <div class="p-2.5 rounded-2xl theme-input">
-          <div class="font-extrabold text-sky-300">💻 Сидячий (+12% к базовому обмену)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> офисная работа за компьютером, удаленка из дома, программист, бухгалтер, водитель, студент на лекциях. Большую часть дня вы проводите сидя, а бытовая нагрузка минимальна.</div>
-        </div>
-        <div class="p-2.5 rounded-2xl theme-input">
-          <div class="font-extrabold text-emerald-300">🚶 Умеренный (+18% к базовому обмену)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> преподаватель, врач, продавец-консультант, парикмахер, работа на ногах в течение части дня, активные игры с детьми, ежедневная готовка и уборка по дому.</div>
-        </div>
-        <div class="p-2.5 rounded-2xl theme-input">
-          <div class="font-extrabold text-amber-300">🔨 Активный (+25% к базовому обмену)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> работа в постоянном движении или физический труд (тренер, курьер, официант, строитель, работник склада/производства, работа на участке).</div>
-        </div>
-      </div>
-      <p class="mt-2 text-[11px] opacity-85">💡 <em>Почему проценты именно такие (+12..+25%)?</em> Потому что ваши <strong>шаги</strong> и <strong>тренировки</strong> калькулятор считает отдельно с точностью до километра и минуты, чтобы не начислять калории дважды!</p>
-    `
+    html: `<p><strong>NEAT (Non-Exercise Activity Thermogenesis)</strong> — это энергия, которую ваше тело тратит в течение дня на обычную бытовую и рабочую суету <strong>без учёта шагов и спорта</strong> (жестикуляция, поддержание позы, домашние дела, работа руками).</p><div class="space-y-2 mt-2"><div class="p-2.5 rounded-2xl theme-input"><div class="font-extrabold text-sky-300">💻 Сидячий (+12% к базовому обмену)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> офисная работа за компьютером, удаленка из дома, программист, бухгалтер, водитель, студент.</div></div><div class="p-2.5 rounded-2xl theme-input"><div class="font-extrabold text-emerald-300">🚶 Умеренный (+18% к базовому обмену)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> преподаватель, врач, продавец-консультант, работа на ногах часть дня, активные игры с детьми, ежедневная готовка и уборка.</div></div><div class="p-2.5 rounded-2xl theme-input"><div class="font-extrabold text-amber-300">🔨 Активный (+25% к базовому обмену)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Примеры:</strong> постоянное движение или физический труд (тренер, курьер, официант, строитель, работник склада).</div></div></div><p class="mt-2 text-[11px] opacity-85">💡 Ваши <strong>шаги</strong> и <strong>тренировки</strong> считаются отдельно с точностью до километра и минуты, чтобы не начислять калории дважды!</p>`
   },
   xe: {
     title: '🍞 Что такое 1 ХЕ и скорость углеводов',
-    html: `
-      <p><strong>1 ХЕ (Хлебная Единица) = 12 граммов</strong> чистых усваиваемых углеводов (без учета клетчатки). Без инсулина 1 ХЕ поднимает сахар крови в среднем на <strong>1.8–2.2 ммоль/л</strong>.</p>
-      <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-2">
-        <div class="font-extrabold text-rose-300">🔴 Быстрые углеводы (Высокий ГИ ≥ 70) — подъем за 5–15 мин:</div>
-        <div class="text-[11px] opacity-90">Фруктовый сок (100 мл = 1 ХЕ), обычная Кола, сахар/мед (1 ст.л. = 1 ХЕ), декстроза, белый хлеб, картофельное пюре, спелый банан, манка.</div>
-      </div>
-      <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5">
-        <div class="font-extrabold text-amber-300">🟡 Средние углеводы (Средний ГИ 50–69) — усвоение за 20–40 мин:</div>
-        <div class="text-[11px] opacity-90">Ржаной/цельнозерновой хлеб, овсянка долгой варки, бурый рис, отварной картофель в мундире, яблоки, груши, ягоды, молоко/кефир.</div>
-      </div>
-      <div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5">
-        <div class="font-extrabold text-emerald-300">🟢 Медленные углеводы (Низкий ГИ &lt; 50) — плавный подъем 1–3 часа:</div>
-        <div class="text-[11px] opacity-90">Гречка (50 г вареной = 1 ХЕ), паста из твердых сортов пшеницы (al dente), чечевица, нут, фасоль, киноа, перловка, зеленые овощи, горький шоколад.</div>
-      </div>
-    `
+    html: `<p><strong>1 ХЕ (Хлебная Единица) = 12 граммов</strong> чистых усваиваемых углеводов. Без инсулина 1 ХЕ поднимает сахар крови в среднем на <strong>1.8–2.2 ммоль/л</strong>.</p><div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-2"><div class="font-extrabold text-rose-300">🔴 Быстрые углеводы (Высокий ГИ ≥ 70) — подъем за 5–15 мин:</div><div class="text-[11px] opacity-90">Фруктовый сок (100 мл = 1 ХЕ), обычная Кола, сахар/мед, декстроза, белый хлеб, картофельное пюре, спелый банан.</div></div><div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5"><div class="font-extrabold text-amber-300">🟡 Средние углеводы (Средний ГИ 50–69) — усвоение за 20–40 мин:</div><div class="text-[11px] opacity-90">Ржаной хлеб, овсянка долгой варки, бурый рис, картофель в мундире, яблоки, груши, ягоды, молоко/кефир.</div></div><div class="p-2.5 rounded-2xl theme-input space-y-1.5 mt-1.5"><div class="font-extrabold text-emerald-300">🟢 Медленные углеводы (Низкий ГИ &lt; 50) — плавный подъем 1–3 часа:</div><div class="text-[11px] opacity-90">Гречка, паста из твердых сортов пшеницы (al dente), чечевица, нут, фасоль, киноа, перловка, зеленые овощи.</div></div>`
   },
   insulins: {
     title: '💧 Группы инсулинов и примеры препаратов',
-    html: `
-      <p>Болюсные (пищевые) инсулины делятся по скорости начала работы и длительности действия (DIA):</p>
-      <div class="space-y-2 mt-2">
-        <div class="p-2.5 rounded-2xl theme-input">
-          <div class="font-extrabold">⚡ Сверхбыстрые (активны 3–3.5 часа)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Фиасп (Fiasp), Люмжев (Lyumjev).<br>Колются за 0–5 мин до еды или прямо в начале приема пищи.</div>
-        </div>
-        <div class="p-2.5 rounded-2xl theme-input">
-          <div class="font-extrabold">🚀 Ультракороткие (активны 4 часа)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт.<br>Требуют паузы 10–15 мин перед едой со средним ГИ.</div>
-        </div>
-        <div class="p-2.5 rounded-2xl theme-input">
-          <div class="font-extrabold">⏱ Короткие / Регуляр (активны 5–6 часов)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Актрапид, Хумулин Регуляр, Биосулин Р.<br>Пауза 25–30 мин до еды; длинный «хвост» в один укол перекрывает БЖЕ.</div>
-        </div>
-        <div class="p-2.5 rounded-2xl theme-soft">
-          <div class="font-extrabold">🌙 Базальные (Фоновые / Ночные)</div>
-          <div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Тресиба (Деглудек), Туджео / Лантус (Гларгин), Левемир (Детемир). Держат ровный сахар натощак и ночью.</div>
-        </div>
-      </div>
-    `
+    html: `<p>Болюсные (пищевые) инсулины делятся по скорости начала работы и длительности действия (DIA):</p><div class="space-y-2 mt-2"><div class="p-2.5 rounded-2xl theme-input"><div class="font-extrabold">⚡ Сверхбыстрые (активны 3–3.5 часа)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Фиасп (Fiasp), Люмжев (Lyumjev). Колются за 0–5 мин до еды.</div></div><div class="p-2.5 rounded-2xl theme-input"><div class="font-extrabold">🚀 Ультракороткие (активны 4 часа)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт. Пауза 10–15 мин до еды.</div></div><div class="p-2.5 rounded-2xl theme-input"><div class="font-extrabold">⏱ Короткие / Регуляр (активны 5–6 часов)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Актрапид, Хумулин Регуляр, Биосулин Р. Пауза 25–30 мин до еды; длинный хвост перекрывает БЖЕ.</div></div><div class="p-2.5 rounded-2xl theme-soft"><div class="font-extrabold">🌙 Базальные (Фоновые / Ночные)</div><div class="text-[11px] opacity-90 mt-0.5"><strong>Препараты:</strong> Тресиба, Туджео, Лантус, Левемир. Держат ровный сахар натощак и ночью.</div></div></div>`
   },
   icr: {
     title: '🧮 Что такое УК и как его считать (Правило 500)',
-    html: `
-      <p><strong>УК (Углеводный коэффициент)</strong> показывает, сколько единиц (ЕД) инсулина нужно на усвоение <strong>1 ХЕ (12 г углеводов)</strong>.</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">📐 Научная формула расчета (Правило 500 / 450):</div>
-        <div class="text-[11px] opacity-90">1. Найдите свою <strong>СДИ (Суточную дозу инсулина)</strong> = весь болюс за день + вся база (ночной инсулин).<br>2. Разделите <strong>500</strong> (для ультракоротких) или <strong>450</strong> (для коротких) на СДИ — вы получите количество граммов углеводов на 1 ЕД.<br>3. В пересчете на ХЕ: <strong>УК = (12 × СДИ) / 500</strong>.</div>
-      </div>
-      <p class="mt-2 text-[11px] opacity-85">⚠️ Утром гормоны снижают чувствительность к инсулину (УК выше на ~15%), а вечером чувствительность выше (УК ниже на ~10%).</p>
-    `
+    html: `<p><strong>УК (Углеводный коэффициент)</strong> показывает, сколько единиц (ЕД) инсулина нужно на усвоение <strong>1 ХЕ (12 г углеводов)</strong>.</p><div class="p-3 rounded-2xl theme-input mt-2 space-y-1"><div class="font-extrabold">📐 Научная формула расчета (Правило 500 / 450):</div><div class="text-[11px] opacity-90">1. Найдите свою <strong>СДИ (Суточную дозу инсулина)</strong> = весь болюс за день + вся база.<br>2. В пересчете на ХЕ: <strong>УК = (12 × СДИ) / 500</strong> (для коротких инсулинов делится на 450).</div></div>`
   },
   isf: {
     title: '📉 Что такое ФЧИ и Правило 100 (1800)',
-    html: `
-      <p><strong>ФЧИ (Фактор чувствительности к инсулину)</strong> показывает, на сколько <strong>ммоль/л</strong> ровно <strong>1 ЕД</strong> инсулина снижает повышенный сахар крови.</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">📐 Научная формула (Правило 100 для ммоль/л):</div>
-        <div class="text-[11px] opacity-90">• Для ультракоротких инсулинов: <strong>ФЧИ = 100 / СДИ</strong> (где СДИ — сумма базы и болюса за сутки).<br>• Для коротких инсулинов: <strong>ФЧИ = 83 / СДИ</strong>.<br><em>Пример: при СДИ = 40 ЕД, 100 / 40 = 2.5 ммоль/л на 1 ЕД.</em></div>
-      </div>
-    `
+    html: `<p><strong>ФЧИ (Фактор чувствительности к инсулину)</strong> показывает, на сколько <strong>ммоль/л</strong> ровно <strong>1 ЕД</strong> инсулина снижает повышенный сахар крови.</p><div class="p-3 rounded-2xl theme-input mt-2 space-y-1"><div class="font-extrabold">📐 Научная формула (Правило 100):</div><div class="text-[11px] opacity-90">• Для ультракоротких инсулинов: <strong>ФЧИ = 100 / СДИ</strong>.<br>• Для коротких инсулинов: <strong>ФЧИ = 83 / СДИ</strong>.</div></div>`
   },
   targetBg: {
     title: '🎯 Целевой сахар и мягкий диапазон',
-    html: `
-      <p><strong>Целевой сахар</strong> — это уровень глюкозы крови, к которому калькулятор рассчитывает коррекцию (ДПС).</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5">
-        <div class="font-extrabold text-emerald-300">🛡 Мягкий безопасный диапазон (ADA / ISPAD):</div>
-        <div class="text-[11px] opacity-90">• Натощак и перед едой: <strong>5.0 – 6.5 ммоль/л</strong> (оптимальная цель — <strong>5.5–5.8 ммоль/л</strong>).<br>• Через 2 часа после еды: <strong>до 7.8–8.5 ммоль/л</strong>.<br>• Перед сном и ночью: <strong>5.8 – 7.0 ммоль/л</strong> (для защиты от ночной гипогликемии).</div>
-      </div>
-    `
+    html: `<p><strong>Целевой сахар</strong> — это уровень глюкозы крови, к которому калькулятор рассчитывает коррекцию (ДПС).</p><div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5"><div class="font-extrabold text-emerald-300">🛡 Безопасный диапазон (ADA / ISPAD):</div><div class="text-[11px] opacity-90">• Натощак и перед едой: <strong>5.0 – 6.5 ммоль/л</strong>.<br>• Через 2 часа после еды: <strong>до 7.8–8.5 ммоль/л</strong>.<br>• Перед сном и ночью: <strong>5.8 – 7.0 ммоль/л</strong>.</div></div>`
   },
   basal: {
     title: '🌙 Базальный (ночной) инсулин и компенсация',
-    html: `
-      <p><strong>Базальный инсулин (База)</strong> удерживает ровный сахар натощак, во сне и между приемами пищи, компенсируя фоновую выработку глюкозы печенью.</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">⚖️ Как база влияет на расчёты:</div>
-        <div class="text-[11px] opacity-90">1. В норме база составляет <strong>40–50% от всей суточной дозы (СДИ)</strong>.<br>2. Доза базы напрямую входит в расчет вашего <strong>ФЧИ (100 / СДИ)</strong> и ориентира <strong>УК (Правило 500)</strong>.</div>
-      </div>
-    `
+    html: `<p><strong>Базальный инсулин (База)</strong> удерживает ровный сахар натощак, во сне и между приемами пищи. В норме база составляет <strong>40–50% от всей суточной дозы (СДИ)</strong> и напрямую входит в расчет ФЧИ и УК.</p>`
   },
   bje: {
     title: '🥩🍕 Что такое БЖЕ и «Эффект пиццы»',
-    html: `
-      <p><strong>1 БЖЕ (Белково-Жировая Единица) = 100 ккал</strong> из белков и жиров: <code>(Белки×4 + Жиры×9) / 100</code>.</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5">
-        <div class="font-extrabold">Почему жиры и белки важны:</div>
-        <div class="text-[11px] opacity-90">• <strong>Жиры (от 25–28 г)</strong> тормозят всасывание углеводов в желудке.<br>• <strong>Белки (от 30 г)</strong> через 1.5–2 часа запускают глюконеогенез в печени и дают поздний подъем сахара.<br>• По <strong>Варшавскому протоколу ISPAD</strong> на 1 БЖЕ требуется ~50% от УК во 2-й укол после еды.</div>
-      </div>
-    `
+    html: `<p><strong>1 БЖЕ (Белково-Жировая Единица) = 100 ккал</strong> из белков и жиров: <code>(Белки×4 + Жиры×9) / 100</code>. Жиры (от 25–28 г) тормозят всасывание углеводов, а белки (от 30 г) через 1.5–2 часа запускают глюконеогенез в печени. По Варшавскому протоколу ISPAD на 1 БЖЕ требуется ~50% от УК во 2-й укол после еды.</p>`
   },
   penStep: {
     title: '💉 Научно-логическое округление по шагу ручки',
-    html: `
-      <p>Обычное математическое округление опасно: округлить дозу вверх при нормальном или низковатом сахаре — значит повысить риск гипогликемии.</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1">
-        <div class="font-extrabold">🧠 Алгоритм округления DIAingo:</div>
-        <div class="text-[11px] opacity-90">• Поддерживается шаг <strong>1.0 ЕД</strong> (ручка), <strong>0.5 ЕД</strong> (Джуниор) и <strong>0.1 ЕД</strong> (помпа).<br>• В покое и вечером дробный остаток до 60–70% шага округляется <strong>консервативно вниз</strong>.<br>• При повышенном сахаре (&gt; 6.8 ммоль/л) порог смещается для полной отработки ДПС.</div>
-      </div>
-    `
+    html: `<p>Поддерживается шаг <strong>1.0 ЕД</strong>, <strong>0.5 ЕД</strong> и <strong>0.1 ЕД</strong>. В покое, вечером и в дни тренировок дробный остаток до 60–70% шага округляется вниз для защиты от гипогликемии, а при высоком сахаре (&gt; 6.8 ммоль/л) — вверх для полной отработки ДПС.</p>`
   },
   diary3d: {
     title: '📓 Как работает 3-дневная калибровка терапии?',
-    html: `
-      <p>Одноразовый замер сахара не отражает всей картины. В клинической эндокринологии (протоколы <strong>ADA / ISPAD / ATTD</strong>) титрация базального инсулина и коэффициентов проводится по данным за <strong>72 часа (3 полных дня)</strong>.</p>
-      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5 text-[11px]">
-        <div>1️⃣ <strong>Сбор данных:</strong> фиксируйте приёмы пищи, уколы, эпизоды «Гипо» и «Гипер» (они подтягиваются автоматически со временем).</div>
-        <div>2️⃣ <strong>Анализ паттернов:</strong> алгоритм отделяет фоновые сдвиги (ночь/утро натощак — зона ответственности <strong>Базы</strong>) от постпрандиальных отклонений (через 1–3 ч после еды — зона ответственности <strong>УК</strong> и <strong>ФЧИ</strong>).</div>
-        <div>3️⃣ <strong>Прогноз тренировок на 3 дня вперёд:</strong> если в следующие 3 дня планируются тренировки, мышечный захват глюкозы (GLUT-4) и пополнение гликогена повысят чувствительность к инсулину на 24–48 ч, поэтому система превентивно скорректирует Базу и УК.</div>
-      </div>
-    `
+    html: `<p>По клиническим протоколам <strong>ADA / ISPAD / ATTD</strong> титрация базального инсулина и коэффициентов проводится по данным за <strong>72 часа (3 дня)</strong>:</p><div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5 text-[11px]"><div>1️⃣ <strong>Сбор данных:</strong> фиксируйте приёмы пищи, уколы, эпизоды «Гипо» и «Гипер» со временем.</div><div>2️⃣ <strong>Анализ паттернов:</strong> алгоритм отделяет ночные/тощаковые сдвиги (зона <strong>Базы</strong>) от дневных отклонений после еды (зона <strong>УК</strong> и <strong>ФЧИ</strong>).</div><div>3️⃣ <strong>Прогноз тренировок на 3 дня вперёд:</strong> планируемые тренировки повышают чувствительность мышц к инсулину на 24–48 ч, поэтому система превентивно корректирует Базу и УК.</div></div>`
   }
 };
+var HELP_TOPICS = window.HELP_TOPICS;
+
+let appData = {
+  activeProfile: 'p1',
+  profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES))
+};
+
+let activeTab = 'calc';
+let mealTimeSlot = 'lunch';
+let mealBolus = { p: 0, f: 0, c: 0, gi: 'mid', currBg: '', initialized: false, customEdited: false };
+let activeDiaryDay = 1;
+let diaryCalibrationVisible = false;
+let editingDiaryId = null;
 
 function normalizeSingleProfile(p) {
   if (!p) return;
@@ -242,12 +147,12 @@ function getProf() {
 }
 
 function saveStorage() {
-  try { localStorage.setItem('diaingo_v17', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('diaingo_v18', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const keys = ['diaingo_v17', 'diaingo_v16', 'diaingo_v15', 'diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10'];
+    const keys = ['diaingo_v18', 'diaingo_v17', 'diaingo_v16', 'diaingo_v15', 'diaingo_v14', 'nutriingo_v12'];
     for (const k of keys) {
       const raw = localStorage.getItem(k);
       if (raw) {
@@ -289,13 +194,11 @@ function calcTDEEForWeight(w, p) {
   const neat = Math.round(bmr * (+p.neatLevel || 0.12));
   const distKm = Math.max(0, +p.steps || 0) * ((p.height * 0.415) / 100000);
   const stepsKcal = Math.round(distKm * w * 0.62);
-
   const wMeta = getWorkoutMeta(p);
   const singleWk = (Math.max(0, +p.workoutMins || 0) / 60) * w * wMeta.metFactor;
   const workoutKcal = p.workoutMode === 'today'
     ? Math.round(singleWk)
     : Math.round((singleWk * Math.min(7, Math.max(0, +p.workoutDays || 0))) / 7);
-
   return { bmr, neat, distKm, stepsKcal, workoutKcal, singleWkKcal: Math.round(singleWk), wMeta, tdee: bmr + neat + stepsKcal + workoutKcal };
 }
 
@@ -305,53 +208,75 @@ function roundSmartInsulin(rawUnits, stepVal, context = 'normal') {
   const quotient = rawUnits / step;
   const intPart = Math.floor(quotient + 1e-7);
   const frac = Math.max(0, quotient - intPart);
-
   let upThreshold = 0.58;
   if (context === 'hypo_risk') upThreshold = 0.70;
   else if (context === 'hyper') upThreshold = 0.42;
-
   const stepsCount = (frac + 1e-7) >= upThreshold ? intPart + 1 : intPart;
   return +(stepsCount * step).toFixed(1);
 }
 
 function computeActiveIOB(p) {
- // Текущий выбранный день в 3-дневном дневнике (1, 2 или 3) и состояние расчета
-let activeDiaryDay = 1;
-let diaryCalibrationVisible = false;
-let editingDiaryId = null;
-
-const CURR_BG_HELP = {
-  title: '💧 Зачем вводить текущий сахар перед едой?',
+  const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
+  const diaMs = ins.diaHours * 3600 * 1000;
+  const now = Date.now();
+  let totalIob = 0;
+  const activeRecords = [];
+  (p.iobLog || []).forEach(item => {
+    const elapsedMs = now - item.ts;
+    if (elapsedMs >= 0 && elapsedMs < diaMs) {
+      const elapsedMin = elapsedMs / 60000;
+      const totalMin = ins.diaHours * 60;
+      let remFrac = 1.0;
+      if (elapsedMin > 15) remFrac = Math.max(0, 1 - (elapsedMin - 15) / (totalMin - 15));
+      const remUnits = +(item.units * remFrac).toFixed(2);
+      if (remUnits >= 0.05) {
+        totalIob += remUnits;
+        const leftSecTotal = Math.max(0, Math.round((diaMs - elapsedMs) / 1000));
+        const h = Math.floor(leftSecTotal / 3600);
+        const m = Math.floor((leftSecTotal % 3600) / 60);
+        const s = leftSecTotal % 60;
+        const leftText = h > 0 ? `${h}ч ${String(m).padStart(2, '0')}м` : `${m}м ${String(s).padStart(2, '0')}с`;
+        activeRecords.push({ ...item, remUnits: +remUnits.toFixed(1), leftText, pctLeft: Math.min(100, Math.round(remFrac * 100)) });
+      }
+    }
+  });
+  return { totalIob: +totalIob.toFixed(1), activeRecords, diaHours: ins.diaHours };
+}
+// === ЧАСТЬ 2А ФАЙЛА app.js ===
+window.CURR_BG_HELP = {
+  title: '💧 Зачем вводить текущий показатель перед едой?',
   html: `
-    <p>Это поле нужно для автоматического расчёта <strong>ДПС (дозы на коррекцию сахара)</strong> и точного времени паузы перед едой:</p>
+    <p>Это поле нужно для автоматического расчёта <strong>ДПС (коррекции)</strong> и точного времени паузы перед едой:</p>
     <div class="p-3 rounded-2xl theme-input space-y-1.5 mt-2">
-      <div>📈 <strong>Если сахар выше целевого:</strong> калькулятор прибавит нужную дозу инсулина (по вашему ФЧИ) к уколу на еду и подскажет, на сколько минут увеличить паузу перед приемом пищи.</div>
-      <div>📉 <strong>Если сахар ниже целевого:</strong> калькулятор бережно уменьшит дозу болюса и отменит паузу, чтобы защитить вас от гипогликемии.</div>
-      <div>✨ <strong>Если сахар в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
+      <div>📈 <strong>Если выше целевого:</strong> калькулятор прибавит нужную коррекцию (по вашему ФЧИ) к болюсу на еду и подскажет, на сколько минут увеличить паузу.</div>
+      <div>📉 <strong>Если ниже целевого:</strong> калькулятор бережно уменьшит расчет и отменит паузу.</div>
+      <div>✨ <strong>Если в норме:</strong> поле можно оставить пустым — расчёт пойдёт ровно по КБЖУ.</div>
     </div>
   `
 };
+var CURR_BG_HELP = window.CURR_BG_HELP;
 
-const WORKOUT_DIABETES_HELP = {
-  title: '🏃 Как режим «Тренировка сегодня» меняет расчёт инсулина?',
+window.WORKOUT_DIABETES_HELP = {
+  title: '🏃 Как режим «Тренировка сегодня» меняет расчёт?',
   html: `
-    <p>Эта кнопка синхронизирована с первой вкладкой («КБЖУ и План»). Когда она включена, приложение учитывает работу ваших мышц и защищает от спортивной гипогликемии:</p>
+    <p>Эта кнопка синхронизирована с первой вкладкой («КБЖУ и План»). Когда она включена, приложение учитывает работу ваших мышц:</p>
     <div class="space-y-2 mt-2">
       <div class="p-2.5 rounded-2xl theme-input">
-        <div class="font-extrabold text-emerald-300">1. Автоматическое снижение УК (по стандартам ISPAD / ADA):</div>
-        <div class="text-[11px] opacity-90 mt-0.5">Во время и в течение 4–6 часов после физической нагрузки мышцы поглощают глюкозу напрямую (через рецепторы GLUT-4), поэтому чувствительность к инсулину резко растёт:<br>• 🧘 <strong>Лёгкая тренировка:</strong> УК снижается на <strong>10% (×0.90)</strong>.<br>• 🏋️ <strong>Средняя тренировка:</strong> УК снижается на <strong>20% (×0.80)</strong>.<br>• 🔥 <strong>Высокая тренировка:</strong> УК снижается на <strong>25% (×0.75)</strong>, а пауза до еды сокращается.</div>
+        <div class="font-extrabold text-emerald-300">1. Автоматическое снижение УК (ISPAD / ADA):</div>
+        <div class="text-[11px] opacity-90 mt-0.5">Во время и после физической нагрузки мышцы поглощают глюкозу напрямую (через рецепторы GLUT-4), поэтому чувствительность растёт:<br>• 🧘 <strong>Лёгкая тренировка:</strong> УК снижается на <strong>10% (×0.90)</strong>.<br>• 🏋️ <strong>Средняя тренировка:</strong> УК снижается на <strong>20% (×0.80)</strong>.<br>• 🔥 <strong>Высокая тренировка:</strong> УК снижается на <strong>25% (×0.75)</strong>, а пауза до еды сокращается.</div>
       </div>
       <div class="p-2.5 rounded-2xl theme-input">
-        <div class="font-extrabold text-sky-300">2. Кардио vs Силовая / Интенсив (Важное отличие!):</div>
-        <div class="text-[11px] opacity-90 mt-0.5">• <strong>Аэробная нагрузка (ходьба, бег трусцой, плавание, пульс до 135 уд/мин):</strong> плавно и быстро снижает сахар прямо во время занятия.<br>• <strong>Тяжелая силовая / Кроссфит / Спринты (пульс &gt; 145 уд/мин):</strong> из-за выброса адреналина и лактата сахар во время тренировки может временно <strong>вырасти на 2–3 ммоль/л</strong>! Не скалывайте этот пик полной ДПС — через 1–2 часа после зала мышцы начнут активно забирать глюкозу, и сахар пойдет вниз сам.</div>
+        <div class="font-extrabold text-sky-300">2. Кардио vs Силовая / Интенсив:</div>
+        <div class="text-[11px] opacity-90 mt-0.5">• <strong>Аэробная нагрузка (пульс до 135 уд/мин):</strong> плавно снижает показатели прямо во время занятия.<br>• <strong>Тяжелая силовая / Кроссфит (пульс &gt; 145 уд/мин):</strong> из-за выброса адреналина показатель может временно подрасти на 2–3 ммоль/л, а через 1–2 часа после зала пойти вниз.</div>
       </div>
       <div class="p-2.5 rounded-2xl theme-soft">
-        <div class="font-extrabold">🛡 Главные правила безопасности:</div>
-        <div class="text-[11px] opacity-90 mt-0.5">• Не начинайте тренировку при сахаре <strong>ниже 5.5 ммоль/л</strong> (съешьте 1 ХЕ перед стартом) или <strong>выше 13.5 ммоль/л</strong>.<br>• Всегда держите под рукой быстрые углеводы (сок / декстрозу).<br>• После вечерней тренировки контролируйте ночной сахар — мышцы пополняют гликоген всю ночь!</div>
+        <div class="font-extrabold">🛡 Правила безопасности:</div>
+        <div class="text-[11px] opacity-90 mt-0.5">• Не начинайте тренировку при показателе <strong>ниже 5.5 ммоль/л</strong> (съешьте 1 ХЕ перед стартом) или <strong>выше 13.5 ммоль/л</strong>.<br>• Всегда держите под рукой быстрые углеводы.</div>
       </div>
     </div>
   `
 };
+var WORKOUT_DIABETES_HELP = window.WORKOUT_DIABETES_HELP;
 
 function currentHHMM() {
   const d = new Date();
@@ -361,7 +286,7 @@ function currentHHMM() {
 function logInsulinInjection(units) {
   const u = parseFloat(units);
   if (!u || u <= 0) {
-    alert('⚠️ Доза равна 0 ЕД. Введите углеводы или текущий сахар для расчета укола.');
+    alert('⚠️ Значение равно 0 ЕД. Введите углеводы или текущий показатель для расчета.');
     return;
   }
   const p = getProf();
@@ -369,7 +294,6 @@ function logInsulinInjection(units) {
   p.iobLog.unshift({ ts: Date.now(), units: +u.toFixed(1), timeStr });
   if (p.iobLog.length > 10) p.iobLog = p.iobLog.slice(0, 10);
 
-  // Автоматическая фиксация приема пищи и укола в активный день 3-дневного дневника
   const slotLabels = { morning: 'Завтрак', lunch: 'Обед', evening: 'Ужин', night: 'Ночь/Перекус' };
   const mealName = slotLabels[mealTimeSlot] || 'Прием пищи';
   const pG = +mealBolus.p || 0;
@@ -463,10 +387,10 @@ function computeDailyInsulinPlan(m, p) {
   let basalNote = `Оптимальный баланс: база составляет ${basalPct}% от СДИ (${totalDailyDose} ЕД).`;
   if (basalPct > 56) {
     basalStatus = 'high';
-    basalNote = `⚠️ Доля базы высокая (${basalPct}% от СДИ). Возможны провалы сахара натощак и ночью — осторожнее с ДПС!`;
+    basalNote = `⚠️ Доля базы высокая (${basalPct}% от СДИ). Следите за показателями натощак и ночью.`;
   } else if (basalPct < 33) {
     basalStatus = 'low';
-    basalNote = `ℹ️ Доля базы низкая (${basalPct}% от СДИ). Если сахар растет натощак, часть болюса уходит на покрытие фона.`;
+    basalNote = `ℹ️ Доля базы низкая (${basalPct}% от СДИ). Часть болюса может уходить на покрытие фона.`;
   }
 
   const autoIsf = +(ins.isfRule / Math.max(8, totalDailyDose)).toFixed(1);
@@ -650,7 +574,7 @@ function formatDateOffset(days) {
 function selectDietType(typeId) {
   const p = getProf();
   if (p.diabetesType === 'dm1' && typeId === 'keto') {
-    alert('⚠️ При СД 1 типа строгое Кето не рекомендуется из-за риска кетоацидоза. Выбран безопасный низкоуглеводный режим (Low-Carb).');
+    alert('⚠️ При СД 1 типа строгое Кето не рекомендуется. Выбран безопасный низкоуглеводный режим (Low-Carb).');
     typeId = 'lowcarb';
   }
   const dt = DIET_TYPES.find(x => x.id === typeId);
@@ -714,7 +638,6 @@ function setMealBolus(k, v) {
 function parseSmartFoodText(rawText) {
   if (!rawText || !rawText.trim()) return false;
   const txt = rawText.toLowerCase().replace(/,/g, '.');
-
   const pMatch = txt.match(/(?:бел[а-я]*|б|prot[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
   const fMatch = txt.match(/(?:жир[а-я]*|ж|fat[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
   const cMatch = txt.match(/(?:угл[а-я]*|у|carb[a-z]*)\s*[:=-]?\s*(\d+(?:\.\d+)?)/i);
@@ -779,7 +702,7 @@ function buildWeightSvgChart(checkpoints) {
   }));
   return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-24 overflow-visible"><polyline fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" />${pts.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4.5" fill="var(--brand)" stroke="#fff" stroke-width="1.5" /><text x="${pt.x}" y="${pt.y - 8}" text-anchor="middle" fill="currentColor" font-size="9.5" font-weight="800">${pt.w}кг</text><text x="${pt.x}" y="${height - 3}" text-anchor="middle" fill="currentColor" opacity="0.7" font-size="8.5">${pt.date}</text>`).join('')}</svg>`;
 }
-
+// === ЧАСТЬ 2Б ФАЙЛА app.js (КОНЕЦ ФАЙЛА) ===
 function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const ins = INSULIN_TYPES.find(x => x.id === p.insulinType) || INSULIN_TYPES[1];
   const xe = +(cGrams / 12).toFixed(1);
@@ -898,25 +821,25 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   let dynamicWaitText = ins.preMin;
 
   if (isHypoNow) {
-    preHeaderTitle = `1️⃣ ПОСЛЕ КУПИРОВАНИЯ ГИПЫ (УК ~${effIcr})`;
-    dynamicWaitText = '🚨 СНАЧАЛА купируйте низкий сахар! Укол только ПОСЛЕ начала еды и подъема ГК';
+    preHeaderTitle = `1️⃣ ПОСЛЕ КУПИРОВАНИЯ (УК ~${effIcr})`;
+    dynamicWaitText = '🚨 СНАЧАЛА купируйте низкий показатель! Болюс только ПОСЛЕ начала еды';
   } else if (isZeroFood && isHighBg) {
     preHeaderTitle = `1️⃣ ЧИСТАЯ КОРРЕКЦИЯ ДПС`;
-    dynamicWaitText = '💉 Укол сейчас (без еды). Контрольный замер сахара через 2 часа';
+    dynamicWaitText = '💧 Сейчас (без еды). Контрольный замер через 2 часа';
   } else if (isSevereHyper) {
-    dynamicWaitText = `🚨 Сахар высокий (${bgVal})! Уколите ${preUnits} ЕД сейчас и выждите паузу ~${Math.max(25, waitMin)}–${Math.max(30, waitMin + 10)} мин ДО еды`;
+    dynamicWaitText = `🚨 Показатель высокий (${bgVal})! Пауза ~${Math.max(25, waitMin)}–${Math.max(30, waitMin + 10)} мин ДО еды`;
   } else if (hasBg && bgVal >= 8.5) {
-    dynamicWaitText = `⏳ Увеличенная пауза ~${Math.max(12, waitMin)}–${Math.max(16, waitMin + 4)} мин ДО еды (учтен высокий сахар ${bgVal} ммоль/л)`;
+    dynamicWaitText = `⏳ Увеличенная пауза ~${Math.max(12, waitMin)}–${Math.max(16, waitMin + 4)} мин ДО еды (учтен показатель ${bgVal} ммоль/л)`;
   } else if (cGrams === 0 && (pGrams > 0 || fGrams > 0)) {
     preHeaderTitle = `1️⃣ БЕЗ УГЛЕВОДОВ (УК ~${effIcr})`;
-    dynamicWaitText = preUnits > 0 ? 'В начале еды (только коррекция ДПС)' : 'Перед едой укол не требуется (0 г углеводов)';
+    dynamicWaitText = preUnits > 0 ? 'В начале еды (только коррекция ДПС)' : 'Перед едой не требуется (0 г углеводов)';
   } else if (waitMin <= 0) {
     preHeaderTitle = `1️⃣ В НАЧАЛЕ / ВО ВРЕМЯ ЕДЫ (УК ~${effIcr})`;
     dynamicWaitText = isWorkoutToday
-      ? 'Колите прямо в начале или середине еды без паузы (защита от гипы в день тренировки)'
+      ? 'Прямо в начале или середине еды без паузы (защита в день тренировки)'
       : (mealBolus.gi === 'low'
-        ? 'Колите в середине или сразу после еды (медленные углеводы с низким ГИ)'
-        : 'Колите прямо в начале еды без паузы (высокая доля жиров замедлит всасывание)');
+        ? 'В середине или сразу после еды (медленные углеводы с низким ГИ)'
+        : 'Прямо в начале еды без паузы (высокая доля жиров замедлит всасывание)');
   } else if (waitMin <= 4) {
     dynamicWaitText = `За 3–5 мин ДО еды (ГИ: ${mealBolus.gi === 'low' ? 'низкий' : mealBolus.gi === 'high' ? 'высокий' : 'средний'})`;
   } else {
@@ -945,23 +868,23 @@ function computeMealBolusWithTime(pGrams, fGrams, cGrams, p, dayPlan, iobData) {
   const kineticAlerts = [];
   if (isWorkoutToday) {
     const cutPct = Math.round((1 - workoutIcrMult) * 100);
-    kineticAlerts.push(`🏃 <strong>Режим «Тренировка сегодня» (${wMeta.name}, ЧСС ${wMeta.hrMin}–${wMeta.hrMax} уд/мин):</strong> Рабочий УК автоматически снижен на <strong>-${cutPct}% (до ${effIcr})</strong>, а пауза сокращена, чтобы мышцы не обрушили сахар во время и после нагрузки.`);
+    kineticAlerts.push(`🏃 <strong>Режим «Тренировка сегодня» (${wMeta.name}, ЧСС ${wMeta.hrMin}–${wMeta.hrMax} уд/мин):</strong> Рабочий УК автоматически снижен на <strong>-${cutPct}% (до ${effIcr})</strong>, а пауза сокращена.`);
   }
 
   if (isHypoNow) {
-    kineticAlerts.push(`🚨 <strong>Гипогликемия (${bgVal} ммоль/л):</strong> Болюс на еду уменьшен на <strong>${Math.abs(dpsRounded)} ЕД</strong>. Сначала примите быстрые углеводы (кнопка «Гипо» внизу экрана), дождитесь подъема ГК выше 5.0 ммоль/л и только затем колите уменьшенную дозу.`);
+    kineticAlerts.push(`🚨 <strong>Низкий показатель (${bgVal} ммоль/л):</strong> Расчет уменьшен на <strong>${Math.abs(dpsRounded)} ЕД</strong>. Сначала примите быстрые углеводы (кнопка «Гипо» внизу экрана) и дождитесь подъема выше 5.0 ммоль/л.`);
   } else if (isSevereHyper) {
-    kineticAlerts.push(`🔥 <strong>Высокая гипергликемия (${bgVal} ммоль/л):</strong> При сахаре ≥ 13 ммоль/л возникает инсулинорезистентность (учтен коэф. ×${hyperResistMult}). В 1-й укол включена ДПС <strong>+${dpsRounded} ЕД</strong>${isDpsCapped ? ' (ограничена безопасным разовым пределом — остаток сколите через 3 часа)' : ''}. ${isWorkoutToday ? '⚠️ <strong>При таком сахаре тренировку начинать нельзя!</strong> Сначала снизьте ГК ниже 10 ммоль/л.' : `Сделайте паузу ${Math.max(25, waitMin)} мин перед едой!`}`);
+    kineticAlerts.push(`🔥 <strong>Высокая гипергликемия (${bgVal} ммоль/л):</strong> При ≥ 13 ммоль/л учтен коэф. резистентности ×${hyperResistMult}. Включена ДПС <strong>+${dpsRounded} ЕД</strong>${isDpsCapped ? ' (ограничена безопасным разовым пределом)' : ''}. ${isWorkoutToday ? '⚠️ <strong>При таком уровне тренировку начинать нельзя!</strong>' : `Пауза ${Math.max(25, waitMin)} мин перед едой.`}`);
   } else if (isHighBg) {
-    kineticAlerts.push(`📈 <strong>Повышенный сахар перед едой (${bgVal} ммоль/л):</strong> К болюсу на еду добавлена коррекция (ДПС) <strong>+${dpsRounded} ЕД</strong> для возврата к цели ${p.targetBg} ммоль/л${extraHyperWait > 0 ? `, а пауза до еды увеличена на +${extraHyperWait} мин` : ''}.`);
+    kineticAlerts.push(`📈 <strong>Повышенный показатель перед едой (${bgVal} ммоль/л):</strong> Добавлена коррекция (ДПС) <strong>+${dpsRounded} ЕД</strong> к цели ${p.targetBg} ммоль/л${extraHyperWait > 0 ? `, пауза увеличена на +${extraHyperWait} мин` : ''}.`);
   }
 
   if (isPizzaEffect) {
-    kineticAlerts.push(`🍕 <strong>Эффект жирной пищи (${fGrams}г жиров на ${cGrams}г угл.):</strong> Высокая доля жиров затормозит всасывание углеводов. Чтобы избежать гипы в 1-й час, <strong>${delayedCarbUnits} ЕД</strong> из углеводной дозы перенесено во 2-й укол (${postExplainTiming} после еды).`);
+    kineticAlerts.push(`🍕 <strong>Эффект жирной пищи (${fGrams}г жиров на ${cGrams}г угл.):</strong> Жиры замедлят всасывание углеводов. <strong>${delayedCarbUnits} ЕД</strong> перенесено во 2-ю волну (${postExplainTiming} после еды).`);
   }
 
   if (pGrams >= 30 && bjeUnits > 0) {
-    kineticAlerts.push(`🥩 <strong>Белковый «дострел» (${pGrams}г белка + ${fGrams}г жиров = ${bje} БЖЕ):</strong> Белки и жиры усваиваются 4–5 часов, а через 1.5–2 часа печень начнет превращать часть аминокислот в глюкозу (глюконеогенез). Поэтому 2-й укол (<strong>${bjeUnits} ЕД</strong> на БЖЕ) ставится <strong>${postExplainTiming} после еды</strong>, чтобы его пик точно совпал с белковым подъемом сахара.`);
+    kineticAlerts.push(`🥩 <strong>Белково-жировой учет (${pGrams}г белка + ${fGrams}г жиров = ${bje} БЖЕ):</strong> Через 1.5–2 часа начнется глюконеогенез. 2-я волна (<strong>${bjeUnits} ЕД</strong> на БЖЕ) указана <strong>${postExplainTiming} после еды</strong>.`);
   }
 
   return {
@@ -1000,7 +923,7 @@ function logDiaryEvent(type, title, bgVal, insVal, noteText, dayNum, customTime,
     id: Date.now() + Math.floor(Math.random() * 100),
     day: parseInt(dayNum, 10) || activeDiaryDay || 1,
     time: timeStr,
-    type: type, // 'meal' | 'hypo' | 'hyper' | 'basal'
+    type: type,
     p: pG,
     f: fG,
     c: cG,
@@ -1015,7 +938,6 @@ function logDiaryEvent(type, title, bgVal, insVal, noteText, dayNum, customTime,
   renderApp();
 }
 
-// Запись в дневник напрямую из формы, предзаполненной данными из КБЖУ-калькулятора
 function addPulledMealToDiary() {
   const dayEl = document.getElementById('diary-inp-day');
   const timeEl = document.getElementById('diary-inp-time');
@@ -1040,12 +962,12 @@ function addPulledMealToDiary() {
   let note = 'Добавлено из формы дневника';
   if (evType === 'hypo') {
     title = `🆘 Гипогликемия${cG > 0 ? ` (купировано: ${cG}г угл / ${xe} ХЕ)` : ''}`;
-    note = 'Зафиксирован низкий сахар';
+    note = 'Зафиксирован низкий показатель';
   } else if (evType === 'hyper') {
     title = `📈 Гипергликемия / ДПС`;
-    note = 'Зафиксирован высокий сахар';
+    note = 'Зафиксирован высокий показатель';
   } else if (evType === 'basal') {
-    title = `🌙 Введение базального (ночного) инсулина`;
+    title = `🌙 Базальный (ночной) инсулин`;
     note = 'Фоновый инсулин';
   }
 
@@ -1123,7 +1045,6 @@ function clearAllDiary3d() {
   renderApp();
 }
 
-// НАУЧНЫЙ АНАЛИЗАТОР 3 ДНЕЙ (ADA / ISPAD / ATTD) С УЧЕТОМ ТРЕНИРОВОК НА СЛЕДУЮЩИЕ 3 ДНЯ
 function analyze3dDiaryAndRecalibrate() {
   const p = getProf();
   const m = computeMetrics();
@@ -1134,7 +1055,6 @@ function analyze3dDiaryAndRecalibrate() {
   let fastingHypo = 0, dayHypo = 0;
   let fastingHyper = 0, dayHyper = 0;
   let totalBolusRecorded = 0;
-  let totalCarbsRecorded = 0;
   const daysSet = new Set();
 
   logs.forEach(item => {
@@ -1144,9 +1064,6 @@ function analyze3dDiaryAndRecalibrate() {
 
     if (item.type !== 'basal' && item.insulin > 0) {
       totalBolusRecorded += item.insulin;
-    }
-    if (item.c && item.c > 0 && item.type === 'meal') {
-      totalCarbsRecorded += item.c;
     }
 
     const isHypo = item.type === 'hypo' || (item.bg !== null && item.bg < 4.0);
@@ -1173,35 +1090,31 @@ function analyze3dDiaryAndRecalibrate() {
 
   notes.push(`📊 <strong>Статистика за ${activeDays} дн. (${logs.length} зап.):</strong> средний болюс ~${avgDailyBolus} ЕД/сут, ночных/утренних гип: ${fastingHypo}, дневных гип: ${dayHypo}, эпизодов гипер: ${fastingHyper + dayHyper}.`);
 
-  // 1. Титрация БАЗЫ по ночным и утренним (тощаковым) паттернам + правилу 20-30% при гипах
   if (fastingHypo >= 1 || (fastingHypo + dayHypo) >= 3) {
     basalMult = fastingHypo >= 2 ? 0.86 : 0.90;
-    notes.push(`🚨 <strong>Коррекция базы вниз (-${Math.round((1 - basalMult) * 100)}%):</strong> зафиксированы ночные/утренние или частые гипогликемии. По протоколу безопасности ADA первоочередная мера — снижение базального фона.`);
+    notes.push(`🚨 <strong>Коррекция базы вниз (-${Math.round((1 - basalMult) * 100)}%):</strong> зафиксированы ночные/утренние или частые гипогликемии. По протоколу ADA снижаем базовый фон.`);
   } else if (fastingHyper >= 2 && fastingHypo === 0) {
     basalMult = 1.10;
-    notes.push(`📈 <strong>Коррекция базы вверх (+10%):</strong> повторяющийся высокий сахар ночью или утром натощак без гипогликемий указывает на нехватку ночного фона.`);
+    notes.push(`📈 <strong>Коррекция базы вверх (+10%):</strong> повторяющийся высокий показатель ночью или утром натощак без гип указывает на нехватку фона.`);
   } else {
-    notes.push(`✅ <strong>Базовый фон до учета спорта:</strong> ночной и тощаковый профиль без критических перекосов.`);
+    notes.push(`✅ <strong>Базовый фон до учета спорта:</strong> ночной и тощаковый профиль сбалансирован.`);
   }
 
-  // 2. Титрация УК по дневным (постпрандиальным) гипо/гипер и реальному СДИ (Правило 500/450)
   if (dayHypo >= 2) {
-    icrMult = 0.88; // Уменьшаем УК (колем меньше ЕД на 1 ХЕ!)
-    notes.push(`⚠️ <strong>Снижение УК на -12%:</strong> зафиксированы дневные гипогликемии после еды — пищевой болюс избыточен.`);
+    icrMult = 0.88;
+    notes.push(`⚠️ <strong>Снижение УК на -12%:</strong> зафиксированы дневные гипогликемии после еды — пищевой болюс снижен.`);
   } else if (dayHyper >= 2 && dayHypo === 0) {
-    icrMult = 1.10; // Увеличиваем УК (колем больше ЕД на 1 ХЕ)
-    notes.push(`🍽 <strong>Усиление УК на +10%:</strong> частые подъемы сахара днем после еды и подколки ДПС говорят о нехватке пищевого коэффициента.`);
+    icrMult = 1.10;
+    notes.push(`🍽 <strong>Усиление УК на +10%:</strong> частые подъемы днем после еды и ДПС указывают на нехватку пищевого коэффициента.`);
   }
 
   let recBasalBeforeSport = Math.max(2, Math.round(currentBasal * basalMult * 2) / 2);
   const estTdd = +(avgDailyBolus + recBasalBeforeSport).toFixed(1);
   const rule500TargetIcr = +((12 * Math.max(8, estTdd)) / (ins.id === 'short' ? 450 : 500)).toFixed(2);
 
-  // Мягкое сближение текущего УК (с учетом поправки на гипы/гипер) и расчетного по Правилу 500
   let recIcrBeforeSport = +(((currentIcr * icrMult) * 0.75 + rule500TargetIcr * 0.25)).toFixed(2);
   let recIsfBeforeSport = +(ins.isfRule / Math.max(8, estTdd)).toFixed(1);
 
-  // 3. Коррекция на ПЛАНИРУЕМЫЕ ТРЕНИРОВКИ В СЛЕДУЮЩИЕ 3 ДНЯ
   const tw = p.next3dWorkout || { planned: false, intensity: 'mid', daysCount: 2 };
   let finalBasal = recBasalBeforeSport;
   let finalIcr = recIcrBeforeSport;
@@ -1221,9 +1134,9 @@ function analyze3dDiaryAndRecalibrate() {
     finalIsf = +(ins.isfRule / Math.max(8, sportTdd)).toFixed(1);
 
     const wName = tw.intensity === 'high' ? '🔥 Высокая' : (tw.intensity === 'mid' ? '🏋️ Средняя' : '🧘 Лёгкая');
-    notes.push(`🏃 <strong>Поправка на спорт в следующие 3 дня (${wName}, ${tw.daysCount} дн. из 3):</strong> из-за пополнения гликогена мышцами база дополнительно снижена до <strong>${finalBasal} ЕД</strong> (-${Math.round((1 - effBaseMult) * 100)}%), УК снижен до <strong>${finalIcr} ЕД/ХЕ</strong>, а чувствительность ФЧИ выросла до <strong>${finalIsf} ммоль/ЕД</strong>.`);
+    notes.push(`🏃 <strong>Поправка на спорт в следующие 3 дня (${wName}, ${tw.daysCount} дн. из 3):</strong> из-за пополнения гликогена мышцами база снижена до <strong>${finalBasal} ЕД</strong> (-${Math.round((1 - effBaseMult) * 100)}%), УК — до <strong>${finalIcr} ЕД/ХЕ</strong>, ФЧИ — <strong>${finalIsf} ммоль/ЕД</strong>.`);
   } else {
-    notes.push(`🛋 <strong>План на следующие 3 дня — без тренировок:</strong> коэффициенты рассчитаны для стандартного бытового режима.`);
+    notes.push(`🛋 <strong>План на следующие 3 дня — без тренировок:</strong> коэффициенты рассчитаны для спокойного режима.`);
   }
 
   return {
@@ -1250,7 +1163,7 @@ function applyDiaryCalibration(newBasal, newIcr, newIsf) {
   if (newIsf && parseFloat(newIsf) > 0) p.customIsf = parseFloat(newIsf);
   saveStorage();
   renderApp();
-  alert(`✅ Новые параметры успешно применены в профиль:\n• База: ${p.basalDose} ЕД\n• Базовый УК: ${p.icr} ЕД/ХЕ\n• ФЧИ: ${p.customIsf} ммоль/ЕД`);
+  alert(`✅ Новые параметры применены в профиль:\n• База: ${p.basalDose} ЕД\n• Базовый УК: ${p.icr} ЕД/ХЕ\n• ФЧИ: ${p.customIsf} ммоль/ЕД`);
 }
 
 setInterval(() => {
@@ -1263,7 +1176,7 @@ setInterval(() => {
     if (badge && iobData.activeRecords.length > 0) {
       badge.textContent = `${iobData.totalIob} ЕД`;
       if (sub) {
-        sub.textContent = `Укол ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}`;
+        sub.textContent = `Болюс ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}`;
       }
     } else if (badge && iobData.totalIob === 0) {
       renderApp();
