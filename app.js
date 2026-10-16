@@ -1,57 +1,4 @@
-const WORKOUT_INTENSITIES = [
-  {
-    id: 'low',
-    name: 'Легкая',
-    metFactor: 3.0,
-    hrPctMin: 0.55,
-    hrPctMax: 0.65,
-    shortDesc: 'Йога, пилатес, стретчинг, ЛФК',
-    examples: 'Йога, пилатес, стретчинг, суставная гимнастика, спокойное плавание, настольный теннис, неспешный велопрогулочный темп.'
-  },
-  {
-    id: 'mid',
-    name: 'Средняя',
-    metFactor: 4.5,
-    hrPctMin: 0.65,
-    hrPctMax: 0.76,
-    shortDesc: 'Силовая в зале, фитнес, кардио',
-    examples: 'Классическая силовая тренировка в тренажерном зале (с отдыхом 1.5–2 мин между подходами), групповой фитнес, эллипс, бодрое плавание, сноуборд/горные лыжи.'
-  },
-  {
-    id: 'high',
-    name: 'Высокая',
-    metFactor: 6.5,
-    hrPctMin: 0.76,
-    hrPctMax: 0.88,
-    shortDesc: 'Кроссфит, HIIT, бег, спарринги',
-    examples: 'Интенсивный кроссфит, круговые и интервальные тренировки (HIIT/Табата), бег в темпе, бокс/единоборства, футбол/баскетбол, тяжелый силовой день ног/спины с коротким отдыхом.'
-  }
-];
-let appData = {
-  activeProfile: 'p1',
-  profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES))
-};
-
-let activeTab = 'calc';
-let mealTimeSlot = 'lunch';
-let mealBolus = {
-  p: 0,
-  f: 0,
-  c: 0,
-  gi: 'mid',
-  currBg: '',
-  initialized: false,
-  customEdited: false
-};
-
-const INSULIN_TYPES = [
-  { id: 'ultrafast', name: '⚡ Сверхбыстрый', desc: 'Пик через 45–60 мин', brands: 'Фиасп (Fiasp), Люмжев (Lyumjev)', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
-  { id: 'ultralong', name: '🚀 Ультракороткий', desc: 'Пик через 60–90 мин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт', preMin: 'За 10–15 мин ДО еды', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
-  { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
-];
-
-// Уровни интенсивности тренировок (влияют на TDEE и распределение КБЖУ для всех профилей)
-const WORKOUT_INTENSITIES = [
+window.WORKOUT_INTENSITIES = [
   {
     id: 'low',
     name: '🧘 Лёгкая',
@@ -79,6 +26,30 @@ const WORKOUT_INTENSITIES = [
     shortDesc: 'Кроссфит, HIIT, бег, спарринги',
     examples: 'Интенсивный кроссфит, круговые и интервальные тренировки (HIIT/Табата), бег в темпе, бокс/единоборства, футбол/баскетбол, тяжелый силовой день ног/спины с коротким отдыхом.'
   }
+];
+var WORKOUT_INTENSITIES = window.WORKOUT_INTENSITIES;
+
+let appData = {
+  activeProfile: 'p1',
+  profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES))
+};
+
+let activeTab = 'calc'; // 'calc' | 'diabetes' | 'diary'
+let mealTimeSlot = 'lunch';
+let mealBolus = {
+  p: 0,
+  f: 0,
+  c: 0,
+  gi: 'mid',
+  currBg: '',
+  initialized: false,
+  customEdited: false
+};
+
+const INSULIN_TYPES = [
+  { id: 'ultrafast', name: '⚡ Сверхбыстрый', desc: 'Пик через 45–60 мин', brands: 'Фиасп (Fiasp), Люмжев (Lyumjev)', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'ultralong', name: '🚀 Ультракороткий', desc: 'Пик через 60–90 мин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт', preMin: 'За 10–15 мин ДО еды', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 укол (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
 ];
 
 const DIABETES_STORIES = [
@@ -227,6 +198,17 @@ const HELP_TOPICS = {
         <div class="text-[11px] opacity-90">• Поддерживается шаг <strong>1.0 ЕД</strong> (ручка), <strong>0.5 ЕД</strong> (Джуниор) и <strong>0.1 ЕД</strong> (помпа).<br>• В покое и вечером дробный остаток до 60–70% шага округляется <strong>консервативно вниз</strong>.<br>• При повышенном сахаре (&gt; 6.8 ммоль/л) порог смещается для полной отработки ДПС.</div>
       </div>
     `
+  },
+  diary3d: {
+    title: '📓 Как работает 3-дневная калибровка терапии?',
+    html: `
+      <p>Одноразовый замер сахара не отражает всей картины. В клинической эндокринологии (протоколы <strong>ADA / ISPAD / ATTD</strong>) титрация базального инсулина и коэффициентов проводится по данным за <strong>72 часа (3 полных дня)</strong>.</p>
+      <div class="p-3 rounded-2xl theme-input mt-2 space-y-1.5 text-[11px]">
+        <div>1️⃣ <strong>Сбор данных:</strong> фиксируйте приёмы пищи, уколы, эпизоды «Гипо» и «Гипер» (они подтягиваются автоматически со временем).</div>
+        <div>2️⃣ <strong>Анализ паттернов:</strong> алгоритм отделяет фоновые сдвиги (ночь/утро натощак — зона ответственности <strong>Базы</strong>) от постпрандиальных отклонений (через 1–3 ч после еды — зона ответственности <strong>УК</strong> и <strong>ФЧИ</strong>).</div>
+        <div>3️⃣ <strong>Прогноз тренировок на 3 дня вперёд:</strong> если в следующие 3 дня планируются тренировки, мышечный захват глюкозы (GLUT-4) и пополнение гликогена повысят чувствительность к инсулину на 24–48 ч, поэтому система превентивно скорректирует Базу и УК.</div>
+      </div>
+    `
   }
 };
 
@@ -243,6 +225,10 @@ function normalizeSingleProfile(p) {
   if (typeof p.customIsf === 'undefined' || isNaN(p.customIsf)) p.customIsf = 0;
   if (typeof p.basalDose === 'undefined' || isNaN(p.basalDose)) p.basalDose = 0;
   if (!Array.isArray(p.iobLog)) p.iobLog = [];
+  if (!Array.isArray(p.diary3d)) p.diary3d = [];
+  if (!p.next3dWorkout || typeof p.next3dWorkout !== 'object') {
+    p.next3dWorkout = { planned: false, intensity: 'mid', daysCount: 2, mins: 60 };
+  }
   if (!p.sectionsOpen || typeof p.sectionsOpen !== 'object') {
     p.sectionsOpen = { p1: true, p2: true, p3: true, d1: true, d2: true, d3: true };
   }
@@ -256,12 +242,12 @@ function getProf() {
 }
 
 function saveStorage() {
-  try { localStorage.setItem('diaingo_v16', JSON.stringify(appData)); } catch (e) {}
+  try { localStorage.setItem('diaingo_v17', JSON.stringify(appData)); } catch (e) {}
 }
 
 function loadStorage() {
   try {
-    const keys = ['diaingo_v16', 'diaingo_v15', 'diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10'];
+    const keys = ['diaingo_v17', 'diaingo_v16', 'diaingo_v15', 'diaingo_v14', 'nutriingo_v12', 'nutriingo_v11', 'nutriingo_v10'];
     for (const k of keys) {
       const raw = localStorage.getItem(k);
       if (raw) {
@@ -277,7 +263,6 @@ function loadStorage() {
   } catch (e) {}
 }
 
-// Расчет индивидуального пульса на тренировке по формуле Танака (208 - 0.7 * возраст)
 function getWorkoutMeta(p) {
   const age = Math.max(10, Math.min(100, +p.age || 30));
   const maxHr = Math.round(208 - 0.7 * age);
@@ -305,7 +290,6 @@ function calcTDEEForWeight(w, p) {
   const distKm = Math.max(0, +p.steps || 0) * ((p.height * 0.415) / 100000);
   const stepsKcal = Math.round(distKm * w * 0.62);
 
-  // Расход на тренировку напрямую зависит от выбранного уровня интенсивности (3.0 / 4.5 / 6.5 ккал/кг/ч)
   const wMeta = getWorkoutMeta(p);
   const singleWk = (Math.max(0, +p.workoutMins || 0) / 60) * w * wMeta.metFactor;
   const workoutKcal = p.workoutMode === 'today'
