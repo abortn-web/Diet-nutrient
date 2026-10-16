@@ -1,3 +1,4 @@
+// === ЧАСТЬ 1 ФАЙЛА ui.js (НАЧАЛО) ===
 window.WORKOUT_INTENSITIES = window.WORKOUT_INTENSITIES || [
   {
     id: 'low',
@@ -29,6 +30,37 @@ window.WORKOUT_INTENSITIES = window.WORKOUT_INTENSITIES || [
 ];
 var WORKOUT_INTENSITIES = window.WORKOUT_INTENSITIES;
 
+window.INSULIN_TYPES = window.INSULIN_TYPES || [
+  { id: 'ultrafast', name: '⚡ Сверхбыстрый', desc: 'Пик через 45–60 мин', brands: 'Фиасп (Fiasp), Люмжев (Lyumjev)', preMin: 'За 0–5 мин до еды', baseWait: 3, diaHours: 3.5, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'ultralong', name: '🚀 Ультракороткий', desc: 'Пик через 60–90 мин', brands: 'НовоРапид, Хумалог, Апидра, РинФаст, Росинсулин Аспарт', preMin: 'За 10–15 мин ДО еды', baseWait: 12, diaHours: 4.0, isfRule: 100, postTiming: 'через 60–90 мин ПОСЛЕ еды', coversBJE: false },
+  { id: 'short', name: '⏱ Короткий (Регуляр)', desc: 'Пик через 2–3 часа', brands: 'Актрапид, Хумулин Регуляр, Биосулин Р, Инсуман Рапид', preMin: 'За 25–30 мин ДО еды', baseWait: 25, diaHours: 5.5, isfRule: 83, postTiming: 'входит в 1 болюс (хвост до 6 ч перекрывает БЖЕ)', coversBJE: true }
+];
+var INSULIN_TYPES = window.INSULIN_TYPES;
+
+window.DIABETES_STORIES = window.DIABETES_STORIES || [
+  { name: '⚖️ Тур Хейердал', desc: 'Великий норвежский путешественник и ученый. Пересекал океаны на плоту «Кон-Тики» и доказал, что диабет — это лишь особенность, а не преграда для открытий.' },
+  { name: '🎸 Брет Майклс', desc: 'Легендарный рокер, фронтмен группы Poison. С диабетом с 6 лет дает стадионные концерты и ведет активный яркий образ жизни.' },
+  { name: '🥇 Гэри Холл-младший', desc: 'Американский пловец, 10-кратный олимпийский чемпион. Завоевывал золотые медали на Олимпиадах, показав силу характера и точного контроля.' },
+  { name: '🎬 Холли Берри', desc: 'Обладательница премии «Оскар». С 22 лет живет в осознанном режиме контроля гликемии, снимается в блокбастерах и вдохновляет миллионы.' },
+  { name: '🎾 Александр Зверев', desc: 'Олимпийский чемпион по теннису и мировая звезда корта. Выигрывает пятисетовые матчи на турнирах Большого шлема с диабетом 1 типа.' },
+  { name: '🏔️ Уилл Кросс', desc: 'Альпинист, покоривший высочайшие вершины всех семи континентов планеты (включая Эверест) и оба полюса Земли.' },
+  { name: '🏎️ Чарли Кимболл', desc: 'Пилот гоночной серии IndyCar. Первый гонщик с диабетом, одержавший победу в элитной серии на скоростях свыше 350 км/ч.' },
+  { name: '🎤 Ник Джонас', desc: 'Всемирно известный музыкант и актер. С 13 лет открыто рассказывает о своем образе жизни с помпой и CGM-мониторингом.' }
+];
+var DIABETES_STORIES = window.DIABETES_STORIES;
+
+window.DIABETES_SUPPORT_PHRASES = window.DIABETES_SUPPORT_PHRASES || [
+  '☕️ Диабет — это не болезнь, а особый образ жизни, который учит нас глубоко чувствовать свое тело, заботиться о себе и жить осознанно. Вы имеете полное право иногда уставать от этого ритма. Но помните: вы справляетесь просто великолепно! 🌟',
+  '❤️ Помните, что диабет — это не диагноз и не ограничение, а особый образ жизни, требующий внимания и чуткости к себе. Если сегодня было тяжело — отпустите этот день. Завтра будет новый старт. Вы сильный человек! ☕️',
+  '💪 Каждый замер, каждая пауза перед едой и каждый просчет ХЕ — это не бремя, а проявление вашей осознанности и большой любви к себе. Вы — главный капитан своего корабля! ⛵️',
+  '☀️ Вы сильнее, чем думаете. Да, диабет — это особый образ жизни со своими правилами, но каждый раз, когда вы находите баланс и делаете выбор в пользу своего здоровья — побеждаете именно вы. Гордитесь собой! 🛡️',
+  '✨ Никакие особенности обмена веществ не способны ограничить вашу мечту, вашу радость и ваши цели. Вы управляете своей жизнью. Разрешите себе иногда расслабиться — вы заслуживаете самого теплого отдыха. 🧸',
+  '🌊 Бывают дни, когда показатели идут вверх и вниз без видимых причин, и это выматывает. Это нормально — чувствовать усталость. Главное — не винить себя, вы делаете колоссальную работу каждый день! 💙',
+  '🧭 Знаете, в чем ваша суперсила? Вы управляете сложнейшей биохимической системой своего организма каждый день. Вы — личный пилот лайнера, и даже если случается турбулентность, вы мастерски держите штурвал! ✈️',
+  '🎁 Цифры на экране мониторинга — это просто навигационные данные, а не оценка вас как личности. Вы ценны, любимы и прекрасны при любых показателях! 💖'
+];
+var DIABETES_SUPPORT_PHRASES = window.DIABETES_SUPPORT_PHRASES;
+
 const WEIGHT_GRID = [45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120];
 const HEIGHT_GRID = [150, 155, 160, 165, 169, 172, 175, 178, 180, 185, 190, 195];
 const AGE_GRID = [20, 25, 28, 30, 32, 35, 38, 40, 45, 50];
@@ -40,7 +72,7 @@ const ICR_GRID = [0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5];
 
 let breakthroughsList = [
   { yr: '2026', title: '🧬 Биоинженерные островковые клетки (VX-264)', desc: 'Новое поколение инкапсулированных бета-клеток в защитной мембране вырабатывает собственный инсулин без иммуносупрессии.' },
-  { yr: '2026', title: '💧 «Умный» глюкозо-чувствительный инсулин (NNC2215)', desc: 'Инсулин с молекулярным переключателем: активируется при росте сахара и «засыпает» при снижении, защищая от гипогликемии.' },
+  { yr: '2026', title: '💧 «Умный» глюкозо-чувствительный инсулин (NNC2215)', desc: 'Молекулярный переключатель активируется при росте глюкозы и «засыпает» при снижении, защищая от гипогликемии.' },
   { yr: '2026', title: '🤖 Замкнутый контур с ИИ-прогнозированием', desc: 'Системы автодозирования учитывают пульс, шаги и БЖЕ, предотвращая скачки гликемии еще до их начала.' }
 ];
 
@@ -55,19 +87,19 @@ function getWorkoutIntensityHelpObj() {
   return {
     title: '⚡ Интенсивность и пульсовые зоны тренировки',
     html: `
-      <p>Интенсивность тренировки определяет, сколько дополнительных калорий расходует ваше тело и насколько сильно нагружается сердечно-сосудистая система:</p>
+      <p>Интенсивность тренировки определяет расход калорий и влияние физической нагрузки на обмен веществ:</p>
       <div class="space-y-2 mt-2">
         <div class="p-2.5 rounded-2xl theme-input">
           <div class="font-extrabold text-sky-300">🧘 Лёгкая нагрузка (ЧСС ~55–65% от макс.)</div>
-          <div class="text-[11px] opacity-90 mt-0.5">${list[0]?.examples || ''}<br><em>Эффект:</em> восстановление, развитие выносливости, плавное снижение сахара крови (УК -10%).</div>
+          <div class="text-[11px] opacity-90 mt-0.5">${list[0]?.examples || ''}<br><em>Эффект:</em> восстановление, плавное снижение показателей (УК -10%).</div>
         </div>
         <div class="p-2.5 rounded-2xl theme-input">
           <div class="font-extrabold text-emerald-300">🏋️ Средняя нагрузка (ЧСС ~65–76% от макс.)</div>
-          <div class="text-[11px] opacity-90 mt-0.5">${list[1]?.examples || ''}<br><em>Эффект:</em> силовой тонус, укрепление мышц, заметный рост чувствительности к инсулину (УК -20%).</div>
+          <div class="text-[11px] opacity-90 mt-0.5">${list[1]?.examples || ''}<br><em>Эффект:</em> силовой тонус, укрепление мышц, рост чувствительности тканей (УК -20%).</div>
         </div>
         <div class="p-2.5 rounded-2xl theme-input">
           <div class="font-extrabold text-amber-300">🔥 Высокая нагрузка (ЧСС ~76–88% от макс.)</div>
-          <div class="text-[11px] opacity-90 mt-0.5">${list[2]?.examples || ''}<br><em>Эффект:</em> максимальный расход калорий и гликогена, повышенная потребность в белке и защита от отсроченной гипогликемии (УК -25%).</div>
+          <div class="text-[11px] opacity-90 mt-0.5">${list[2]?.examples || ''}<br><em>Эффект:</em> максимальный расход калорий и гликогена, повышенная потребность в белке (УК -25%).</div>
         </div>
       </div>
     `
@@ -97,7 +129,7 @@ function helpBtn(topicKey) {
 
 function showHelpTopic(key) {
   let item = null;
-  if (key === 'neat') item = HELP_TOPICS.neat;
+  if (key === 'neat' && typeof HELP_TOPICS !== 'undefined') item = HELP_TOPICS.neat;
   else if (key === 'workoutIntensity') item = getWorkoutIntensityHelpObj();
   else if (key === 'workoutDiabetes' && typeof WORKOUT_DIABETES_HELP !== 'undefined') item = WORKOUT_DIABETES_HELP;
   else if (key === 'currBg' && typeof CURR_BG_HELP !== 'undefined') item = CURR_BG_HELP;
@@ -293,52 +325,24 @@ async function callSmartAi(promptText, systemContext = '') {
 function getInstantMentorAnswer(q, p, m, dayPlan) {
   const ql = q.toLowerCase().replace(/ё/g, 'е');
 
-  if (ql.includes('гипер') || ql.includes('высок') || ql.includes('сбить') || ql.includes('дпс') || ql.includes('скач') || ql.includes('прыг') || ql.includes('большой сахар')) {
+  if (ql.includes('гипер') || ql.includes('высок') || ql.includes('сбить') || ql.includes('дпс') || ql.includes('скач') || ql.includes('прыг')) {
     return {
       matched: true,
-      html: `<strong>📈 Что такое гипергликемия и как снизить высокий сахар:</strong><br><strong>Гипергликемия</strong> — это повышение уровня глюкозы в крови выше целевой нормы (обычно <strong>выше 7.0 ммоль/л натощак</strong> или <strong>выше 8.5–9.0 ммоль/л после еды</strong>).<br>• <strong>Почему возникает:</strong> нехватка болюсного или базального инсулина, промах с подсчетом ХЕ, малая пауза перед быстрыми углеводами или стресс.<br>• <strong>Как безопасно сколоть (ДПС):</strong> используйте ваш ФЧИ (~${dayPlan.effectiveIsf} ммоль/л на 1 ЕД): <code>(Текущий ГК − ${p.targetBg}) / ${dayPlan.effectiveIsf}</code>. При сахаре ≥ 11 ммоль/л пейте больше воды и не делайте повторных подколок чаще чем раз в 3 часа!`
+      html: `<strong>📈 Что такое гипергликемия и коррекция (ДПС):</strong><br>Повышение уровня глюкозы выше целевой нормы. Для плавного возврата к цели используйте ваш ФЧИ (~${dayPlan.effectiveIsf} ммоль/л на 1 ЕД): <code>(Текущий ГК − ${p.targetBg}) / ${dayPlan.effectiveIsf}</code>. Пейте больше воды и избегайте наложения болюсов чаще чем раз в 3 часа.`
     };
   }
 
   if (ql.includes('гипо') || /\bгип(а|ы|е|у|ой)\b/.test(ql) || ql.includes('низк') || ql.includes('падает') || ql.includes('упал') || ql.includes('тряс')) {
     return {
       matched: true,
-      html: `<strong>🆘 Что такое гипогликемия (низкий сахар &lt; 4.0 ммоль/л):</strong><br><strong>Гипогликемия</strong> — это падение уровня сахара в крови ниже <strong>3.9 ммоль/л</strong>, когда мозгу не хватает быстрой энергии (появляется дрожь, потливость, голод, слабость).<br>• <strong>Правило 15/15:</strong> немедленно примите <strong>${computeHypoRescue(3.3, p).fastCarbGrams} г быстрых углеводов</strong> БЕЗ жира (сок, декстроза, теплая вода с сахаром) и перемерьте сахар через 15 минут. Шоколад, мороженое и бутерброды при гипе не подходят — жиры задержат подъем сахара!`
+      html: `<strong>🆘 Что такое гипогликемия (&lt; 4.0 ммоль/л):</strong><br>По правилу 15/15 примите <strong>${computeHypoRescue(3.3, p).fastCarbGrams} г быстрых углеводов</strong> без жира (сок, декстроза, теплая вода с сахаром) и сделайте контрольный замер через 15 минут.`
     };
   }
 
   if (ql.includes('дневник') || ql.includes('калибр') || ql.includes('3 дн') || ql.includes('три дн')) {
     return {
       matched: true,
-      html: `<strong>📓 Как работает 3-дневная калибровка терапии:</strong><br>Фиксируйте еду, уколы, «Гипо» и «Гипер» в течение 3 дней. Алгоритм разделит ночные/утренние сахара (зона ответственности <strong>Базы</strong>) и дневные пики/провалы после еды (зона <strong>УК</strong> и <strong>ФЧИ</strong>), а также учтет ваш план тренировок на следующие 3 дня.`
-    };
-  }
-
-  if (ql.includes('что такое диабет') || (ql.includes('диабет') && (ql.includes('это') || ql.includes('тип') || ql.includes('отлич') || ql.includes('почем')))) {
-    return {
-      matched: true,
-      html: `<strong>💎 Что такое сахарный диабет:</strong><br>Это состояние обмена веществ, при котором глюкоза из пищи не может самостоятельно попасть в клетки без инсулина.<br>• <strong>СД 1 типа:</strong> поджелудочная не вырабатывает свой инсулин, поэтому мы вводим базу (~${dayPlan.effectiveBasal} ЕД) и болюс на еду (по УК ~${p.icr}).<br>• <strong>СД 2 типа:</strong> свой инсулин есть, но клетки хуже его чувствуют — здесь помогают контроль калорий (${m.effectiveKcal} ккал), движение и низкий ГИ.`
-    };
-  }
-
-  if (ql.includes('инсулин') || ql.includes('болюс') || ql.includes('база') || ql.includes('базал') || ql.includes('укол') || ql.includes('пауз')) {
-    return {
-      matched: true,
-      html: `<strong>💧 Как работает инсулин и паузы:</strong><br>• <strong>Базальный (ночной):</strong> держит ровный сахар натощак и между едой (ваша расчетная норма ~${dayPlan.effectiveBasal} ЕД).<br>• <strong>Болюсный (пищевой):</strong> компенсирует углеводы (УК ~${p.icr}) и снижает повышенный сахар (1 ЕД снижает на ~${dayPlan.effectiveIsf} ммоль/л). Перед быстрыми углеводами нужна пауза 10–15 мин, а при жирной еде укол делят на 2 части.`
-    };
-  }
-
-  if (ql.includes('утр') || ql.includes('зар') || ql.includes('тощак') || ql.includes('ноч')) {
-    return {
-      matched: true,
-      html: `<strong>🌅 Почему растет сахар утром («утренняя заря»):</strong><br>С 4 до 8 утра организм выбрасывает гормоны пробуждения (кортизол, гормон роста), которые снижают чувствительность к инсулину. Поэтому утренний УК в DIAingo автоматически увеличен на ×1.15 (до <strong>${+(p.icr*1.15).toFixed(2)} ЕД/ХЕ</strong>), а вечером снижен на ×0.90 (до <strong>${+(p.icr*0.9).toFixed(2)} ЕД/ХЕ</strong>).`
-    };
-  }
-
-  if (ql.includes('пицц') || ql.includes('жир') || ql.includes('бургер') || ql.includes('шашлык') || ql.includes('стейк') || ql.includes('мяс') || ql.includes('бже') || ql.includes('белок') || ql.includes('белки') || ql.includes('рыб') || ql.includes('сыр') || ql.includes('пельмен') || ql.includes('плов') || ql.includes('суши') || ql.includes('ролл')) {
-    return {
-      matched: true,
-      html: `<strong>🍕 Жиры, белки и сложные блюда (БЖЕ):</strong><br>Жиры (от 25 г) тормозят всасывание углеводов, а белки (от 30 г) через 2–4 часа превращаются в печени в глюкозу. Если уколоть весь инсулин сразу до еды — можно словить гипу в 1-й час, а через 3 часа получить скачок сахара. Решение: делите болюс на 2 волны (до еды и через 60–120 мин после).`
+      html: `<strong>📓 Как работает 3-дневная калибровка:</strong><br>Фиксируйте еду, болюсы, «Гипо» и «Гипер» в течение 3 дней. Алгоритм разделит ночные/тощаковые показатели (зона <strong>Базы</strong>) и дневные после еды (зона <strong>УК</strong> и <strong>ФЧИ</strong>), а также учтет план тренировок на следующие 3 дня.`
     };
   }
 
@@ -346,34 +350,20 @@ function getInstantMentorAnswer(q, p, m, dayPlan) {
     const wm = getWorkoutMeta(p);
     return {
       matched: true,
-      html: `<strong>🏋️ Спорт, пульс и защита от гипы:</strong><br>Ваша выбранная нагрузка — <strong>${wm.name} (пульс ${wm.hrMin}–${wm.hrMax} уд/мин)</strong>. Во время и после тренировки мышцы забирают глюкозу напрямую без инсулина. Включите кнопку <strong>«⚡ Тренировка сегодня»</strong> в расчете еды — она автоматически снизит ваш УК на 10–25% и сократит паузу!`
+      html: `<strong>🏋️ Спорт, пульс и защита от гипы:</strong><br>Ваша нагрузка — <strong>${wm.name} (пульс ${wm.hrMin}–${wm.hrMax} уд/мин)</strong>. Включите кнопку <strong>«⚡ Тренировка сегодня»</strong> в расчете еды — она автоматически снизит рабочий УК на 10–25% и сократит паузу.`
     };
   }
 
-  if (ql.includes('алког') || ql.includes('вин') || ql.includes('пив') || ql.includes('праздн')) {
+  if (ql.includes('пицц') || ql.includes('жир') || ql.includes('бургер') || ql.includes('шашлык') || ql.includes('стейк') || ql.includes('мяс') || ql.includes('бже') || ql.includes('белок')) {
     return {
       matched: true,
-      html: `<strong>🍷 Алкоголь и контроль гликемии:</strong><br>Пока печень расщепляет алкоголь, она блокирует фоновый выброс гликогена в кровь — это создает риск отсроченной ночной гипогликемии. Не колите инсулин на крепкий алкоголь и сухое вино, а перед сном съешьте 1 ХЕ сложных углеводов.`
-    };
-  }
-
-  if (ql.includes('похуд') || ql.includes('вес') || ql.includes('калор') || ql.includes('дефицит') || ql.includes('сушк') || ql.includes('диет')) {
-    return {
-      matched: true,
-      html: `<strong>⚖️ Снижение веса и КБЖУ:</strong><br>Ваш базовый обмен (BMR) — <strong>${m.bmr} ккал</strong>, расход с активностью (TDEE) — <strong>${m.tdee} ккал</strong>. Для достижения цели (${p.targetWeight} кг) безопасная норма — <strong>${m.effectiveKcal} ккал/сут</strong> (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г). При снижении веса чувствительность к инсулину растет, поэтому проверяйте УК и базу!`
-    };
-  }
-
-  if (ql.includes('хе') || ql.includes('хлебн') || ql.includes('углевод') || ql.includes('фчи') || ql.includes('ук') || ql.includes('коэф') || ql.includes('гликемич')) {
-    return {
-      matched: true,
-      html: `<strong>🍞 ХЕ, УК и ФЧИ по вашему профилю:</strong><br>• <strong>1 ХЕ = 12 г углеводов</strong> (ваша суточная норма — ${m.normC} г = ${m.totalXE} ХЕ).<br>• <strong>УК (Углеводный коэффициент):</strong> ${p.icr} ЕД на 1 ХЕ.<br>• <strong>ФЧИ (Чувствительность):</strong> 1 ЕД инсулина снижает сахар на <strong>${dayPlan.effectiveIsf} ммоль/л</strong>.`
+      html: `<strong>🍕 Жиры, белки и сложные блюда (БЖЕ):</strong><br>Жиры (от 25 г) тормозят всасывание углеводов, а белки (от 30 г) через 2–4 часа дают отсроченный подъем. Делите болюс на 2 волны (до еды и через 60–120 мин после).`
     };
   }
 
   return {
     matched: false,
-    html: `<strong>💡 Ориентир DIAingo по вашему вопросу («${q}»):</strong><br>Ваша суточная норма — <strong>${m.effectiveKcal} ккал</strong> (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), чувствительность ФЧИ — <strong>1 ЕД = -${dayPlan.effectiveIsf} ммоль/л</strong>, ночная база — <strong>~${dayPlan.effectiveBasal} ЕД</strong>.`
+    html: `<strong>💡 Ориентир DIAingo по вашему вопросу («${q}»):</strong><br>Ваша суточная норма — <strong>${m.effectiveKcal} ккал</strong> (Б:${m.normP}г, Ж:${m.normF}г, У:${m.normC}г / ${m.totalXE} ХЕ), ФЧИ — <strong>1 ЕД = -${dayPlan.effectiveIsf} ммоль/л</strong>, база — <strong>~${dayPlan.effectiveBasal} ЕД</strong>.`
   };
 }
 
@@ -407,7 +397,6 @@ function computeHyperRescue(currBgVal, p, dayPlan, iobData) {
 }
 
 function openHyperModal() {
-  const p = getProf();
   if (mealBolus.currBg !== '' && parseFloat(mealBolus.currBg) >= 7.5) {
     hyperBgInput = parseFloat(mealBolus.currBg);
   }
@@ -445,6 +434,7 @@ function logHypoFromModal(fastCarbsG) {
   if (m) m.classList.add('hidden');
   alert(`✅ Эпизод гипогликемии (${bg} ммоль/л, +${cG}г быстрых угл. в ${tStr}) сохранен в День ${activeDiaryDay} дневника!`);
 }
+// === ЧАСТЬ 2 ФАЙЛА ui.js (КОНЕЦ) ===
 function renderApp() {
   const p = getProf(), m = computeMetrics();
   document.documentElement.setAttribute('data-gender', p.gender);
@@ -480,7 +470,7 @@ function renderApp() {
   const nowTimeVal = currentHHMM();
 
   document.getElementById('app').innerHTML = `
-    <!-- HEADER WITH DIAingo LOGO -->
+    <!-- HEADER -->
     <header class="sticky top-0 z-30 px-3 pt-2.5 pb-1.5">
       <div class="max-w-7xl mx-auto glass-card rounded-2xl px-3 py-2 flex items-center justify-between gap-2 shadow-lg border border-white/10">
         <div class="flex items-center gap-2.5 min-w-0 shrink-0">
@@ -654,7 +644,6 @@ function renderApp() {
 
       <!-- TAB 2: DIABETES CALCULATOR -->
       <section class="lg:col-span-6 space-y-4 ${activeTab==='diary' ? 'hidden' : (activeTab==='calc' ? 'hidden lg:block' : '')}">
-        <!-- BUTTON FROM DIABETES SECTION TO 3-DAY DIARY & CALIBRATION TAB -->
         <div class="p-3.5 rounded-3xl border-2 shadow-lg flex items-center justify-between gap-2.5" style="border-color:#2DD4BF;background:var(--brand-soft);">
           <div class="min-w-0">
             <div class="text-xs font-extrabold flex items-center gap-1">📓 3-дневный Дневник и Калибровка ${helpBtn('diary3d')}</div>
@@ -668,7 +657,7 @@ function renderApp() {
             <div class="flex items-center justify-between gap-2">
               <div>
                 <div class="text-xs font-extrabold flex items-center gap-1.5">⏳ Активный инсулин (IOB): <span id="live-iob-units" class="font-mono-num text-base" style="color:#2DD4BF;">${iobData.totalIob} ЕД</span></div>
-                <div id="live-iob-sub" class="text-[10px] opacity-90 font-mono-num mt-0.5">Укол ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}</div>
+                <div id="live-iob-sub" class="text-[10px] opacity-90 font-mono-num mt-0.5">Болюс ${iobData.activeRecords[0].units} ЕД в ${iobData.activeRecords[0].timeStr} · осталось ${iobData.activeRecords[0].leftText}</div>
               </div>
               <button onclick="clearIobLog()" class="px-3 py-1.5 rounded-xl theme-input text-[11px] font-bold shrink-0">Сброс</button>
             </div>
@@ -815,13 +804,13 @@ function renderApp() {
               <div class="space-y-2 text-xs">
                 <div class="p-3 rounded-2xl border transition ${bolus.isHighBg ? 'border-amber-400/70 bg-amber-500/10' : (bolus.isHypoNow ? 'border-rose-500/80 bg-rose-500/15' : 'theme-soft border-white/15')}">
                   <div class="flex justify-between items-center gap-2">
-                    <div class="min-w-0"><div class="font-bold flex items-center">💧 Текущий сахар: ${helpBtn('currBg')}</div><div class="text-[10px] opacity-80 whitespace-nowrap">Цель: ${p.targetBg} · ФЧИ: ${bolus.isf} ммоль/ЕД</div></div>
+                    <div class="min-w-0"><div class="font-bold flex items-center">💧 Текущий показатель: ${helpBtn('currBg')}</div><div class="text-[10px] opacity-80 whitespace-nowrap">Цель: ${p.targetBg} · ФЧИ: ${bolus.isf} ммоль/ЕД</div></div>
                     <div class="flex items-center gap-1.5 shrink-0">
                       <input type="text" inputmode="decimal" placeholder="${p.targetBg}" value="${mealBolus.currBg}" onchange="setMealBolus('currBg',this.value)" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold rounded-xl theme-input text-sm">
                       <span class="font-bold text-[11px] whitespace-nowrap">ммоль/л</span>
                     </div>
                   </div>
-                  ${bolus.hasBg ? `<div class="mt-2 pt-1.5 border-t border-white/15 text-[11px] flex justify-between items-center"><span>Коррекция на сахар (ДПС):</span><span class="font-mono-num font-extrabold">${bolus.dpsRounded > 0 ? '+' : ''}${bolus.dpsRounded} ЕД</span></div>` : ''}
+                  ${bolus.hasBg ? `<div class="mt-2 pt-1.5 border-t border-white/15 text-[11px] flex justify-between items-center"><span>Коррекция (ДПС):</span><span class="font-mono-num font-extrabold">${bolus.dpsRounded > 0 ? '+' : ''}${bolus.dpsRounded} ЕД</span></div>` : ''}
                 </div>
 
                 <div class="p-3 rounded-2xl theme-input flex justify-between items-center"><span class="font-bold">Белки:</span><div class="flex items-center gap-1.5"><button onclick="setMealBolus('p',Math.max(0,mealBolus.p-5))" class="w-8 h-8 rounded-xl theme-soft font-bold">-</button><input type="text" value="${mealBolus.p}" onchange="setMealBolus('p',this.value)" onkeydown="blurOnEnter(event)" class="w-16 h-8 text-center font-mono-num font-bold rounded-xl theme-soft text-sm"><button onclick="setMealBolus('p',mealBolus.p+5)" class="w-8 h-8 rounded-xl theme-soft font-bold">+</button><span class="font-bold text-[11px]">г</span></div></div>
@@ -847,25 +836,24 @@ function renderApp() {
               ${bolus.kineticAlerts.length > 0 ? `<div class="p-3.5 rounded-2xl theme-soft space-y-2 text-[11px] leading-relaxed border border-white/20">${bolus.kineticAlerts.map(a => `<div>${a}</div>`).join('')}</div>` : ''}
 
               <button onclick="logInsulinInjection(${bolus.totalUnits})" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs shadow flex items-center justify-center gap-1.5 cursor-pointer">
-                <span>⏱</span><span>Зафиксировать приём и укол ${bolus.totalUnits} ЕД (IOB + Дневник День ${activeDiaryDay})</span>
+                <span>⏱</span><span>Зафиксировать приём и болюс ${bolus.totalUnits} ЕД (IOB + Дневник День ${activeDiaryDay})</span>
               </button>
             </div>
           ` : ''}
         </div>
       </section>
 
-      <!-- TAB 3: 3-DAY DIARY, AUTO-PULL FROM CALCULATOR, EDITING & SCIENTIFIC CALIBRATION -->
+      <!-- TAB 3: 3-DAY DIARY -->
       <section class="lg:col-span-12 space-y-4 ${activeTab!=='diary'?'hidden':''}">
         <div class="glass-card rounded-3xl p-4 sm:p-6 space-y-4 shadow-xl border-2" style="border-color:#2DD4BF;">
           <div class="flex justify-between items-center gap-2 flex-wrap">
             <div>
               <h2 class="font-extrabold text-base sm:text-lg flex items-center gap-1.5"><span>📓 3-дневный Дневник и Калибровка терапии</span> ${helpBtn('diary3d')}</h2>
-              <div class="text-xs opacity-80 mt-0.5">Фиксация еды, инсулина, гипо и гипер по времени за 3 дня с научным расчетом базы и коэффициентов.</div>
+              <div class="text-xs opacity-80 mt-0.5">Фиксация приемов пищи, болюсов, «Гипо» и «Гипер» со временем за 3 дня с научным расчетом базы и УК.</div>
             </div>
             <button onclick="activeTab='diabetes';renderApp();" class="h-9 px-3.5 rounded-xl theme-soft text-xs font-extrabold">← Назад в Диабет</button>
           </div>
 
-          <!-- DAY SELECTOR (DAY 1, DAY 2, DAY 3) -->
           <div class="grid grid-cols-3 gap-2 p-1 rounded-2xl theme-input">
             ${[1, 2, 3].map(d => {
               const cnt = allDiaryLogs.filter(x => (x.day || 1) === d).length;
@@ -873,10 +861,9 @@ function renderApp() {
             }).join('')}
           </div>
 
-          <!-- AUTO-PULLED FORM FROM KCAL/INSULIN CALCULATOR WITH MANUAL EDITING -->
           <div class="p-4 rounded-2xl theme-input space-y-3 border border-white/15">
             <div class="flex justify-between items-center gap-2">
-              <div class="text-xs font-extrabold">➕ Добавить запись в День ${activeDiaryDay} (данные подтянуты из калькулятора еды, можно менять):</div>
+              <div class="text-xs font-extrabold">➕ Добавить запись в День ${activeDiaryDay} (подтянуто из калькулятора еды, можно менять):</div>
               <span class="text-[10px] font-mono-num opacity-75">Авто-подстановка</span>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -902,7 +889,7 @@ function renderApp() {
                 </select>
               </div>
               <div>
-                <div class="text-[10px] opacity-75 mb-1">💧 Сахар (ммоль/л):</div>
+                <div class="text-[10px] opacity-75 mb-1">💧 Показатель (ммоль/л):</div>
                 <input type="text" inputmode="decimal" id="diary-inp-bg" value="${mealBolus.currBg !== '' ? mealBolus.currBg : p.targetBg}" class="w-full h-9 px-2.5 rounded-xl theme-soft font-mono-num font-bold text-center">
               </div>
             </div>
@@ -910,7 +897,7 @@ function renderApp() {
               <div><div class="text-[10px] opacity-75 mb-1">Белки (г):</div><input type="text" inputmode="numeric" id="diary-inp-p" value="${mealBolus.p}" class="w-full h-9 px-2.5 rounded-xl theme-soft font-mono-num font-bold text-center"></div>
               <div><div class="text-[10px] opacity-75 mb-1">Жиры (г):</div><input type="text" inputmode="numeric" id="diary-inp-f" value="${mealBolus.f}" class="w-full h-9 px-2.5 rounded-xl theme-soft font-mono-num font-bold text-center"></div>
               <div><div class="text-[10px] opacity-75 mb-1">Углеводы (г):</div><input type="text" inputmode="numeric" id="diary-inp-c" value="${mealBolus.c}" class="w-full h-9 px-2.5 rounded-xl theme-soft font-mono-num font-bold text-center"></div>
-              <div><div class="text-[10px] opacity-75 mb-1">💉 Инсулин (ЕД):</div><input type="text" inputmode="decimal" id="diary-inp-ins" value="${bolus.totalUnits}" class="w-full h-9 px-2.5 rounded-xl theme-soft font-mono-num font-extrabold text-center"></div>
+              <div><div class="text-[10px] opacity-75 mb-1">💉 Болюс (ЕД):</div><input type="text" inputmode="decimal" id="diary-inp-ins" value="${bolus.totalUnits}" class="w-full h-9 px-2.5 rounded-xl theme-soft font-mono-num font-extrabold text-center"></div>
             </div>
             <div class="flex flex-wrap gap-2 pt-1">
               <button onclick="addPulledMealToDiary()" class="flex-1 py-2.5 px-4 rounded-xl theme-grad text-white font-extrabold text-xs shadow cursor-pointer">✓ Сохранить запись в День ${activeDiaryDay}</button>
@@ -919,7 +906,6 @@ function renderApp() {
             </div>
           </div>
 
-          <!-- LIST OF LOGS WITH FULL INLINE EDITING -->
           <div class="space-y-2">
             <div class="flex justify-between items-center">
               <h3 class="font-extrabold text-xs sm:text-sm">📋 Хронология за День ${activeDiaryDay} (всего за 3 дня: ${allDiaryLogs.length}):</h3>
@@ -935,7 +921,7 @@ function renderApp() {
                         <span>${item.title}</span>
                       </div>
                       <div class="text-[11px] opacity-85 font-mono-num mt-0.5">
-                        ${item.bg !== null ? `Сахар: <strong>${item.bg} ммоль/л</strong> · ` : ''}Уколото: <strong>${item.insulin} ЕД</strong> ${item.notes ? `· ${item.notes}` : ''}
+                        ${item.bg !== null ? `Показатель: <strong>${item.bg} ммоль/л</strong> · ` : ''}Инсулин: <strong>${item.insulin} ЕД</strong> ${item.notes ? `· ${item.notes}` : ''}
                       </div>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
@@ -948,27 +934,25 @@ function renderApp() {
                       <div><span>День:</span><select id="edit-day-${item.id}" class="w-full h-8 px-2 rounded-lg theme-soft font-bold mt-0.5"><option value="1" ${item.day===1?'selected':''}>День 1</option><option value="2" ${item.day===2?'selected':''}>День 2</option><option value="3" ${item.day===3?'selected':''}>День 3</option></select></div>
                       <div><span>Время:</span><input type="time" id="edit-time-${item.id}" value="${item.time}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold mt-0.5"></div>
                       <div><span>Тип:</span><select id="edit-type-${item.id}" class="w-full h-8 px-2 rounded-lg theme-soft font-bold mt-0.5"><option value="meal" ${item.type==='meal'?'selected':''}>Еда</option><option value="hypo" ${item.type==='hypo'?'selected':''}>Гипо</option><option value="hyper" ${item.type==='hyper'?'selected':''}>Гипер</option><option value="basal" ${item.type==='basal'?'selected':''}>База</option></select></div>
-                      <div><span>Сахар:</span><input type="text" id="edit-bg-${item.id}" value="${item.bg !== null ? item.bg : ''}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold text-center mt-0.5"></div>
+                      <div><span>Показатель:</span><input type="text" id="edit-bg-${item.id}" value="${item.bg !== null ? item.bg : ''}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold text-center mt-0.5"></div>
                       <div><span>Белки (г):</span><input type="text" id="edit-p-${item.id}" value="${item.p||0}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold text-center mt-0.5"></div>
                       <div><span>Жиры (г):</span><input type="text" id="edit-f-${item.id}" value="${item.f||0}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold text-center mt-0.5"></div>
                       <div><span>Углеводы (г):</span><input type="text" id="edit-c-${item.id}" value="${item.c||0}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold text-center mt-0.5"></div>
                       <div><span>Инсулин (ЕД):</span><input type="text" id="edit-ins-${item.id}" value="${item.insulin||0}" class="w-full h-8 px-2 rounded-lg theme-soft font-mono-num font-bold text-center mt-0.5"></div>
-                      <button onclick="saveEditedDiaryItem(${item.id})" class="col-span-2 sm:col-span-4 py-2 rounded-xl theme-grad text-white font-extrabold">💾 Сохранить изменения записи</button>
+                      <button onclick="saveEditedDiaryItem(${item.id})" class="col-span-2 sm:col-span-4 py-2 rounded-xl theme-grad text-white font-extrabold">💾 Сохранить изменения</button>
                     </div>
                   ` : ''}
                 </div>
               `).join('') : `
-                <div class="p-4 rounded-2xl theme-input text-center text-xs opacity-75">В Дне ${activeDiaryDay} пока нет записей. Нажмите «Сохранить запись» выше или переключите день.</div>
+                <div class="p-4 rounded-2xl theme-input text-center text-xs opacity-75">В Дне ${activeDiaryDay} пока нет записей.</div>
               `}
             </div>
           </div>
 
-          <!-- BUTTON TO TRIGGER SCIENTIFIC CALCULATION -->
           <button onclick="diaryCalibrationVisible=true;renderApp();" class="w-full py-3.5 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs sm:text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer">
-            <span>🧬</span><span>Рассчитать базовый инсулин и коэффициенты по данным 3 дней</span>
+            <span>🧬</span><span>Рассчитать базу и коэффициенты по данным 3 дней</span>
           </button>
 
-          <!-- SCIENTIFIC RECOMMENDATION & NEXT 3 DAYS WORKOUT SELECTOR -->
           ${diaryCalibrationVisible ? `
             <div class="p-4 sm:p-5 rounded-3xl border-2 space-y-4 shadow-lg" style="border-color:var(--brand);background:var(--brand-soft);">
               <div class="font-extrabold text-sm sm:text-base flex items-center justify-between gap-2">
@@ -976,21 +960,19 @@ function renderApp() {
                 <span class="text-[11px] font-mono-num px-2.5 py-0.5 rounded-lg theme-input">По данным 3 дней</span>
               </div>
 
-              <!-- WORKOUT PLAN FOR NEXT 3 DAYS (DIRECTLY ADJUSTS BASAL & ICR) -->
               <div class="p-3.5 rounded-2xl theme-input space-y-2.5 border border-white/15">
-                <div class="text-xs font-extrabold">🏃 Планируется ли тренировка в следующие 3 дня? (влияет на базу и коэффициенты):</div>
+                <div class="text-xs font-extrabold">🏃 Планируется ли тренировка в следующие 3 дня?</div>
                 <div class="grid grid-cols-2 gap-2">
                   <button onclick="p.next3dWorkout.planned=false;saveStorage();renderApp();" class="py-2 px-3 rounded-xl text-xs font-extrabold transition ${!tw.planned ? 'theme-grad text-white shadow' : 'theme-soft'}">🛋 Нет тренировок</button>
-                  <button onclick="p.next3dWorkout.planned=true;saveStorage();renderApp();" class="py-2 px-3 rounded-xl text-xs font-extrabold transition ${tw.planned ? 'theme-grad text-white shadow' : 'theme-soft'}">⚡ Да, планирую тренироваться</button>
+                  <button onclick="p.next3dWorkout.planned=true;saveStorage();renderApp();" class="py-2 px-3 rounded-xl text-xs font-extrabold transition ${tw.planned ? 'theme-grad text-white shadow' : 'theme-soft'}">⚡ Да, планирую</button>
                 </div>
                 ${tw.planned ? `
                   <div class="space-y-2 pt-1">
-                    <div class="text-[11px] font-bold opacity-85">Выберите тип (интенсивность) и количество тренировок в следующие 3 дня:</div>
+                    <div class="text-[11px] font-bold opacity-85">Интенсивность и частота в следующие 3 дня:</div>
                     <div class="grid grid-cols-3 gap-1.5">
                       ${WORKOUT_INTENSITIES.map(wi => `
                         <button onclick="p.next3dWorkout.intensity='${wi.id}';saveStorage();renderApp();" class="p-2 rounded-xl text-center transition ${tw.intensity===wi.id ? 'theme-grad text-white shadow' : 'theme-soft'}">
                           <div class="text-xs font-extrabold">${wi.name}</div>
-                          <div class="text-[9px] opacity-80">${wi.shortDesc}</div>
                         </button>
                       `).join('')}
                     </div>
@@ -1004,21 +986,9 @@ function renderApp() {
               </div>
 
               <div class="grid grid-cols-3 gap-2 text-center font-mono-num text-xs">
-                <div class="p-3 rounded-2xl theme-input">
-                  <div class="text-[10px] font-sans opacity-75">База (было ${dayPlan.effectiveBasal})</div>
-                  <div class="text-lg font-extrabold" style="color:#2DD4BF;">${diaryAnalysis.recBasal} ЕД</div>
-                  <div class="text-[9px] font-sans opacity-80">Ночной фон</div>
-                </div>
-                <div class="p-3 rounded-2xl theme-input">
-                  <div class="text-[10px] font-sans opacity-75">Базовый УК (было ${p.icr})</div>
-                  <div class="text-lg font-extrabold" style="color:#2DD4BF;">${diaryAnalysis.recIcr}</div>
-                  <div class="text-[9px] font-sans opacity-80">У:${diaryAnalysis.recMorningIcr} Д:${diaryAnalysis.recLunchIcr} В:${diaryAnalysis.recEveningIcr}</div>
-                </div>
-                <div class="p-3 rounded-2xl theme-input">
-                  <div class="text-[10px] font-sans opacity-75">ФЧИ (было ${dayPlan.effectiveIsf})</div>
-                  <div class="text-lg font-extrabold" style="color:#2DD4BF;">${diaryAnalysis.recIsf}</div>
-                  <div class="text-[9px] font-sans opacity-80">ммоль/л на 1 ЕД</div>
-                </div>
+                <div class="p-3 rounded-2xl theme-input"><div class="text-[10px] font-sans opacity-75">База (было ${dayPlan.effectiveBasal})</div><div class="text-lg font-extrabold" style="color:#2DD4BF;">${diaryAnalysis.recBasal} ЕД</div></div>
+                <div class="p-3 rounded-2xl theme-input"><div class="text-[10px] font-sans opacity-75">УК (было ${p.icr})</div><div class="text-lg font-extrabold" style="color:#2DD4BF;">${diaryAnalysis.recIcr}</div></div>
+                <div class="p-3 rounded-2xl theme-input"><div class="text-[10px] font-sans opacity-75">ФЧИ (было ${dayPlan.effectiveIsf})</div><div class="text-lg font-extrabold" style="color:#2DD4BF;">${diaryAnalysis.recIsf}</div></div>
               </div>
 
               <div class="space-y-1.5 text-xs leading-relaxed">
@@ -1026,7 +996,7 @@ function renderApp() {
               </div>
 
               <button onclick="applyDiaryCalibration(${diaryAnalysis.recBasal}, ${diaryAnalysis.recIcr},${diaryAnalysis.recIsf})" class="w-full py-3 px-4 rounded-2xl theme-grad text-white font-extrabold text-xs shadow-lg cursor-pointer">
-                ✓ Применить рассчитанную Базу (${diaryAnalysis.recBasal} ЕД), УК (${diaryAnalysis.recIcr}) и ФЧИ (${diaryAnalysis.recIsf}) в профиль
+                ✓ Применить Базу (${diaryAnalysis.recBasal} ЕД), УК (${diaryAnalysis.recIcr}) и ФЧИ (${diaryAnalysis.recIsf}) в профиль
               </button>
             </div>
           ` : ''}
@@ -1034,7 +1004,7 @@ function renderApp() {
       </section>
     </main>
 
-    <!-- FROZEN BOTTOM BAR: HYPO + HYPER + REPORT + AI MENTOR -->
+    <!-- FROZEN BOTTOM BAR -->
     <div class="fixed bottom-0 left-0 right-0 z-40 glass-card border-t px-2.5 py-2 shadow-2xl">
       <div class="max-w-7xl mx-auto grid grid-cols-12 gap-1.5 items-center">
         <button onclick="openHypoModal()" class="col-span-3 h-11 rounded-2xl text-white font-extrabold text-xs flex items-center justify-center gap-1 shadow-lg cursor-pointer" style="background:linear-gradient(135deg,#E11D48,#BE123C);">
@@ -1052,7 +1022,7 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- EDUCATIONAL HELP POPUP MODAL -->
+    <!-- MODALS -->
     <div id="modal-help" onclick="closeHelpModal()" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
       <div onclick="event.stopPropagation()" class="glass-card rounded-3xl max-w-md w-full p-5 space-y-3.5 border-2 shadow-2xl max-h-[88vh] overflow-y-auto" style="border-color:#2DD4BF;">
         <div class="flex justify-between items-center gap-2">
@@ -1064,35 +1034,30 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- SOS HYPOGLYCEMIA MODAL (PULLS TO 3-DAY DIARY WITH TIME) -->
     <div id="modal-hypo" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
       <div class="glass-card rounded-3xl max-w-md w-full p-5 space-y-3.5 border-2 border-rose-500 shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center">
-          <h3 class="font-extrabold text-sm sm:text-base text-white px-3 py-1 rounded-xl" style="background:#E11D48;">🆘 Протокол 15/15: Низкий сахар</h3>
+          <h3 class="font-extrabold text-sm sm:text-base text-white px-3 py-1 rounded-xl" style="background:#E11D48;">🆘 Протокол 15/15: Низкий показатель</h3>
           <button onclick="document.getElementById('modal-hypo').classList.add('hidden')" class="w-9 h-9 rounded-2xl theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
         </div>
         <div class="p-3 rounded-2xl theme-input flex justify-between items-center text-xs">
-          <span class="font-bold">Ваш текущий сахар (ммоль/л):</span>
+          <span class="font-bold">Текущий показатель (ммоль/л):</span>
           <input type="text" inputmode="decimal" value="${hypoBgInput}" onchange="hypoBgInput=this.value;renderApp();openHypoModal();" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold text-sm rounded-xl theme-soft">
         </div>
-        <div class="p-3.5 rounded-2xl theme-soft border border-white/15 text-xs leading-relaxed">
-          ❤️ <strong>Выдохни на секунду:</strong> я понимаю, что сейчас — когда внутри всё дрожит, а организм бьёт тревогу — тебе хочется съесть всё, что попадается на глаза. Но делать так не стоит: лишняя и жирная еда не поднимет сахар быстрее, а через час приведёт к тяжёлому скачку. Давай купируем гипу мягко и точно:
-        </div>
         <div class="p-4 rounded-2xl bg-rose-500/20 border border-rose-400/50 space-y-2 text-xs">
-          <div class="font-extrabold text-sm leading-snug">Примите сейчас: <span class="px-2 py-0.5 rounded-lg bg-rose-500 text-white font-extrabold">${hypoRescue.fastCarbGrams} г</span> быстрых углеводов (${hypoRescue.xe} ХЕ)</div>
+          <div class="font-extrabold text-sm">Примите сейчас: <span class="px-2 py-0.5 rounded-lg bg-rose-500 text-white font-extrabold">${hypoRescue.fastCarbGrams} г</span> быстрых углеводов (${hypoRescue.xe} ХЕ)</div>
           <ul class="space-y-1 pt-1 font-semibold">
-            <li>🍬 Декстроза / Глюкоза: <strong>${hypoRescue.dextroseTabs} шт.</strong> (по 4 г)</li>
-            <li>🧃 Фруктовый сок / сладкая газировка: <strong>${hypoRescue.juiceMl} мл</strong></li>
-            <li>☕️ Сахар в тёплой воде: <strong>${hypoRescue.sugarCubes} кус. (${hypoRescue.fastCarbGrams} г)</strong></li>
+            <li>🍬 Декстроза: <strong>${hypoRescue.dextroseTabs} шт.</strong> (по 4 г)</li>
+            <li>🧃 Сок / газировка: <strong>${hypoRescue.juiceMl} мл</strong></li>
+            <li>☕️ Сахар в воде: <strong>${hypoRescue.sugarCubes} кус.</strong></li>
           </ul>
         </div>
         <button onclick="logHypoFromModal(${hypoRescue.fastCarbGrams})" class="w-full py-3 rounded-2xl text-white font-extrabold text-xs shadow-lg cursor-pointer" style="background:#E11D48;">
-          ⏱ Зафиксировать Гипо (${hypoRescue.bg} ммоль/л) со временем в Дневник (День ${activeDiaryDay})
+          ⏱ Зафиксировать Гипо со временем в Дневник (День ${activeDiaryDay})
         </button>
       </div>
     </div>
 
-    <!-- HYPERGLYCEMIA MODAL (PULLS TO 3-DAY DIARY WITH TIME) -->
     <div id="modal-hyper" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
       <div class="glass-card rounded-3xl max-w-md w-full p-5 space-y-3.5 border-2 border-amber-500 shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center">
@@ -1100,25 +1065,22 @@ function renderApp() {
           <button onclick="closeHyperModal()" class="w-9 h-9 rounded-2xl theme-soft font-bold flex items-center justify-center shrink-0">✕</button>
         </div>
         <div class="p-3 rounded-2xl theme-input flex justify-between items-center text-xs">
-          <span class="font-bold">Ваш высокий сахар (ммоль/л):</span>
+          <span class="font-bold">Высокий показатель (ммоль/л):</span>
           <input type="text" inputmode="decimal" value="${hyperBgInput}" onchange="hyperBgInput=this.value;renderApp();openHyperModal();" onkeydown="blurOnEnter(event)" class="w-20 h-8 text-center font-mono-num font-bold text-sm rounded-xl theme-soft">
         </div>
         <div class="p-4 rounded-2xl bg-amber-500/20 border border-amber-400/50 space-y-2 text-xs">
           <div class="font-extrabold text-sm">Рекомендуемая подколка (ДПС): <span class="px-2 py-0.5 rounded-lg bg-amber-600 text-white font-mono-num">${hyperRescue.recUnits} ЕД</span></div>
-          <div class="text-[11px] opacity-90">Расчет к цели ${hyperRescue.target} ммоль/л по вашему ФЧИ (${hyperRescue.isf} ммоль/ЕД)${hyperRescue.resistMult>1?` с учетом резистентности ×${hyperRescue.resistMult}`:''}.</div>
           <div class="flex justify-between items-center pt-1">
-            <span>Фактически вводимая доза ДПС (ЕД):</span>
+            <span>Фактически вводимая доза (ЕД):</span>
             <input type="text" inputmode="decimal" id="inp-hyper-dps-custom" value="${hyperRescue.recUnits}" class="w-20 h-8 text-center font-mono-num font-extrabold rounded-xl theme-input">
           </div>
         </div>
-        <div class="text-[11px] opacity-85 leading-relaxed">💧 Пейте больше воды и не делайте повторных подколок ДПС чаще чем раз в 3 часа, чтобы избежать наложения доз!</div>
         <button onclick="logHyperFromModal(document.getElementById('inp-hyper-dps-custom').value)" class="w-full py-3 rounded-2xl text-white font-extrabold text-xs shadow-lg cursor-pointer" style="background:#D97706;">
           ⏱ Зафиксировать Гипер и ДПС со временем в Дневник (День ${activeDiaryDay})
         </button>
       </div>
     </div>
 
-    <!-- DOCTOR SUMMARY REPORT MODAL -->
     <div id="modal-report" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3">
       <div class="glass-card rounded-3xl max-w-md w-full p-5 space-y-4 border-2 shadow-2xl" style="border-color:var(--brand);">
         <div class="flex justify-between items-center">
@@ -1130,14 +1092,13 @@ function renderApp() {
           <div><strong>Цель:</strong> ${p.targetWeight} кг за ${p.targetWeeks} нед. (Норма: ${m.effectiveKcal} ккал)</div>
           <div><strong>Активность:</strong> ${wMeta.name} (ЧСС ${wMeta.hrMin}–${wMeta.hrMax} уд/мин), шагов: ${p.steps}/дн</div>
           <div><strong>Суточное БЖУ:</strong> Б ${m.normP}г / Ж ${m.normF}г / У ${m.normC}г ${p.diabetesType!=='none'?`(${m.totalXE} ХЕ)`:''}</div>
-          <div><strong>Инсулин:</strong> ${dayPlan.ins.name} (шаг ${p.insulinStep} ЕД) · База: ${dayPlan.effectiveBasal} ЕД · УК: ${p.icr} · ФЧИ: ${dayPlan.effectiveIsf}</div>
+          <div><strong>Инсулин:</strong> ${dayPlan.ins.name} · База: ${dayPlan.effectiveBasal} ЕД · УК: ${p.icr} · ФЧИ: ${dayPlan.effectiveIsf}</div>
           <div><strong>Дневник (3 дня):</strong> записей ${allDiaryLogs.length} (гипо: ${diaryAnalysis.hypoCount}, гипер: ${diaryAnalysis.hyperCount})</div>
         </div>
         <button onclick="copyDoctorReport()" class="w-full py-3 rounded-2xl theme-grad text-white font-extrabold text-xs shadow">📄 Скопировать сводку в буфер обмена</button>
       </div>
     </div>
 
-    <!-- AI MENTOR MODAL -->
     <div id="modal-ai" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       <div class="glass-card rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border-2 pb-8" style="border-color:var(--brand);">
         <div class="flex justify-between items-center sticky top-0 py-2.5 px-3.5 z-10 rounded-2xl glass-card border border-white/10 gap-2 mb-1" style="background: var(--card-bg);">
@@ -1158,7 +1119,6 @@ function renderApp() {
             <button onclick="askAiMentor('Что такое гипергликемия и как сбить высокий сахар?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Гипергликемия</button>
             <button onclick="askAiMentor('Что такое гипогликемия и как поднять низкий сахар?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Гипогликемия</button>
             <button onclick="askAiMentor('Как работает 3-дневная калибровка дневника?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Дневник 3 дня</button>
-            <button onclick="askAiMentor('Как тренироваться без гипогликемии?')" class="px-2 py-1 rounded-lg theme-soft text-[10px] font-bold">Спорт и пульс</button>
           </div>
           <div id="ai-chat-box" class="${aiChatAnswer ? '' : 'hidden'} p-3 rounded-2xl theme-soft text-xs leading-relaxed border border-white/15 space-y-1">${aiChatAnswer}</div>
         </div>
@@ -1183,7 +1143,7 @@ function copyDoctorReport() {
   const el = document.getElementById('report-text-box');
   if (!el) return;
   navigator.clipboard.writeText(el.innerText).then(() => {
-    alert('✅ Сводка скопирована! Вы можете отправить её врачу или сохранить в заметки.');
+    alert('✅ Сводка скопирована!');
   });
 }
 
@@ -1203,17 +1163,6 @@ async function askAiMentor(presetQuery, forceCloud = false) {
     aiChatAnswer = `<div>${instant.html}</div>${isAiTrulyActive ? `<div class="pt-2 mt-2 border-t border-white/10 flex justify-end"><button onclick="askAiMentor('${safeQ}', true)" class="px-2.5 py-1 rounded-xl theme-input text-[10px] font-extrabold inline-flex items-center gap-1 cursor-pointer" style="color:#2DD4BF;">✨ Дополнить ответом облачной нейросети</button></div>` : ''}`;
     if (box) { box.classList.remove('hidden'); box.innerHTML = aiChatAnswer; }
     return;
-  }
-
-  if (isAiTrulyActive) {
-    if (box) { box.classList.remove('hidden'); box.innerHTML = `<div class="flex items-center gap-2 font-bold animate-pulse">${IC_SPARK}<span>AI-ментор печатает ответ...</span></div>`; }
-    const sys = `Ментор DIAingo. Профиль: ${p.weight}кг, норма ${m.effectiveKcal}ккал, УК:${p.icr}, ФЧИ:${dayPlan.effectiveIsf}, база:${dayPlan.effectiveBasal}ЕД. Ответь прямо на вопрос (3 предложения), научно и тепло. Без слова болезнь.`;
-    const cloudAns = await callSmartAi(q, sys);
-    if (cloudAns) {
-      aiChatAnswer = `<strong>✨ Ответ AI-ментора:</strong><br>${cloudAns.replace(/\n/g, '<br>')}`;
-      if (box) box.innerHTML = aiChatAnswer;
-      return;
-    }
   }
 
   aiChatAnswer = instant.html;
